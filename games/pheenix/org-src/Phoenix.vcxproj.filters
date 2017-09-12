@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="Phoenix.asm" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="sprites">
+      <UniqueIdentifier>{211b923c-c5e4-4f77-b11c-7bcf5b68f33e}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="sprites\birds.equb">
+      <Filter>sprites</Filter>
+    </None>
+    <None Include="sprites\boss.equb">
+      <Filter>sprites</Filter>
+    </None>
+    <None Include="sprites\explosion.equb">
+      <Filter>sprites</Filter>
+    </None>
+    <None Include="sprites\ship.equb">
+      <Filter>sprites</Filter>
+    </None>
+    <None Include="sprites\text.equb">
+      <Filter>sprites</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="sprites\birds.tga">
+      <Filter>sprites</Filter>
+    </Image>
+    <Image Include="sprites\boss.tga">
+      <Filter>sprites</Filter>
+    </Image>
+    <Image Include="sprites\explosion.tga">
+      <Filter>sprites</Filter>
+    </Image>
+    <Image Include="sprites\ship.tga">
+      <Filter>sprites</Filter>
+    </Image>
+    <Image Include="sprites\text.tga">
+      <Filter>sprites</Filter>
+    </Image>
+  </ItemGroup>
+</Project>

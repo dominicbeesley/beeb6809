@@ -1,0 +1,241 @@
+PHSYICAL MEMORY MAP, used in memory mapping hardware
+
+
+$00 0000	+-----------------------+
+		| RAM 0 (512k)          |
+$08 0000	+=======================+
+		| RAM 1	(512k battery)	|
+$10 0000	+=======================+
+		| RAM 2	(512k opt)	|
+$18 0000	+=======================+
+		| ROM 0			|
+$18 4000	+=======================+
+		| ROM 1			|
+$18 8000	+=======================+
+		| ROM 2			|
+$18 C000	+=======================+
+		| ROM 3			|
+		+=======================+
+		...
+$1B 0000	+=======================+
+		| ROM E			|
+$1B C000	+=======================+
+		| ROM F			|
+$1C 0000	+=======================+
+		| unused		|
+$1F E000	+=======================+
+		| unused		|
+$1F FC00	+=======================+
+		| I/O registers		|
+$1F FF00	+=======================+
+		| unused		|
+$20 0000	+=======================+
+
+
+==============================================================================
+LOGICAL MAPS - In Linear mode
+==============================================================================
+
+MEMCMODE 	= b'xxxxxxM1
+		M = 	0 for SYS  map (MMUMAP0..7)
+			1 for USER map (MMUMAP8..15)
+		(default $00)
+
+BANKS are 64k
+CHUNKS are 8k
+
+There is a USER map and a SYS map, reset, interrupts etc cause the map to
+switch to SYS map (i.e. reset M bit(s) above). 
+
+SYSLOC		(SYS ROM)
+SYSLOC2		(LOGIC TO PHYS MAP AT $C000) <-- this is the one used to do
+SYSLOC3		(SAVED SYSLOC2)			the actual mapping!
+[	
+-	writing to SYSLOC sets SYSLOC2, SYSLOC3)
+-	writing to SYSLOC2 changes map and SYSLOC3)
+-	interrupts and accesses to $FFXX reset SYSLOC2 
+	to SYSLOC but preserves SYSLOC3
+-	RTI copies SYSLOC3 to SYSLOC2
+
+SYSLOC 	= F (normal SYSROM)
+SYSLOC2 = 3 (user routines)
+	
+	SEI
+	LDA	#3
+	STA	MOSLOC
+	CLI
+	... program using $C000 = ROM 3 
+
+	IRQ / SWI / OS CALL enter	MOSLOC2 -> MOSLOC
+	LDA	MOSLOC3
+	PSHS	A 		; .. save mosloc
+	... interupt call processing ...
+	... possibly reenable interrupts?
+	... possibly reset MOSLOC2
+	PULS	A
+	STA	MOSLOC3
+	RTI			; copies MOSLOC3 -> MOSLOC2 on LIC
+]
+
+]
+
+SYS (MAP 0)
+$0000		+-----------------------+
+		| MMUMAP 0		|
+$2000		+-----------------------+
+		| MMUMAP 1		|
+$4000		+-----------------------+
+		| MMUMAP 2 		|
+$6000		+-----------------------+
+		| MMUMAP 3		|
+$8000		+-----------------------+
+		| MMUMAP 4		|
+$A000		+-----------------------+
+		| MMUMAP 5		|
+$C000		+-----------------------+
+		| MMUMAP 6		|
+$E000		+-----------------------+
+		| 			|
+		| SYSROM                |
+		|                       | should this be MMUMAP 7?
+		|                       | 
+		|       vectors at F7FX |
+$FC00		+-----------------------+
+		| I/O  FRED    		| 
+$FD00		+-----------------------+
+		| I/O  JIM     		|
+$FE00		+-----------------------+
+		| I/O  SHEILA  		|
+$FF00		+-----------------------+
+		| SYSROM	   	|		
+		+-----------------------+
+
+USER (MAP 1)
+$0000		+-----------------------+
+		| MMUMAP 8		|
+$2000		+-----------------------+
+		| MMUMAP 9		|
+$4000		+-----------------------+
+		| MMUMAP A		|
+$6000		+-----------------------+
+		| MMUMAP B		|
+$8000		+-----------------------+
+		| MMUMAP C		|
+$A000		+-----------------------+
+		| MMUMAP D		|
+$C000		+-----------------------+
+		| MMUMAP E		|
+$E000		+-----------------------+
+		| MMUMAP F		|
+		+-----------------------+
+
+
+==============================================================================
+LOGICAL MAPS - In BBC banked mode 
+==============================================================================
+
+RAM  BANKS ARE 64K in size
+RAM  CHUNKS ARE 4K in size
+ROMS ARE 16K in size
+
+MEMCMODE 	= b'xxxxxxM0 
+		M = 	0 for SYS  map (MMUMAP0..7)
+			1 for USER map (MMUMAP8..15)
+		( default at boot $00 )
+
+MMUMAP [0..7] contains 8 bit pointers to 4k chunks in 
+RAM 0..1 only, these map to first 32k
+		( default contents = 0 to 15 )
+
+SHADOW 		= b'IxRRxxDD
+		= I, when set causes an IRQ, read SHADOW to clear
+		  RR when set causes instructions at C000-DFFF to
+		  read memory in bank RR
+		  DD display memory at bank DD
+
+		  (default = $00)
+
+
+ROMLOC	 	= $00..$0F maps SWROM to ROM 0..F
+	 	= $10..$1F maps SWROM to RAM 1 $08 0000-$0C 0000 in 16k blocks
+	 	= $40..$FF maps SWROM to RAM $00 0000 - $17 FFFF in 8k blocks 
+	 	  (access all RAM) 
+
+	 	  (default = $00)
+
+(NOTE: MOS only recognises ROMS at $00-$1F!)
+
+
+MOSLOC		(MOS ROM)
+MOSLOC2		(LOGIC TO PHYS MAP AT $C000)
+MOSLOC3		(SAVED MOSLOC2)
+
+		(default = $00)
+
+[	
+-	MOSLOC1..3 are interpreted as ROMLOC
+-	writing to MOS loc sets MOSLOC2, MOSLOC3)
+-	writing to MOSLOC2 changes map and MOSLOC3)
+-	interrupts and accesses to $FFXX reset MOSLOC2 
+	to MOSLOC but preserves MOSLOC3
+-	RTI copies MOSLOC3 to MOSLOC2
+
+MOSLOC 	= 0 (normal MOS ROM)
+MOSLOC2 = 3 (user routines)
+	
+	SEI
+	LDA	#3
+	STA	MOSLOC
+	CLI
+	... program using $C000 = ROM 3 
+
+	IRQ / SWI / OS CALL enter	MOSLOC2 -> MOSLOC
+	LDA	MOSLOC3
+	PSHS	A 		; .. save mosloc
+	... interupt call processing ...
+	... possibly reenable interrupts?
+	... possibly reset MOSLOC2
+	PULS	A
+	STA	MOSLOC3
+	RTI			; copies MOSLOC3 -> MOSLOC2 on LIC
+]
+
+
+)		+---+
+		|MMU (depending on |
+$0000		+-----------------------+
+		|0/8|DP and OSWKSP      |
+$E00+		+..........PAGE.........+  ($1000 in multitask mode)
+		|1/9|USER PROGRAM       |
+$3000		|...|                   |==========+=====+=====+ 
+		|.........HIMEM.........| shadow   |     |     |
+		|...|                   | screen 1 |  2  |  3  |
+		|6/E|SCREEN (0)         |          |     |     |
+		|7/F|                   |          |     |     |
+$8000		+-----------------------+==========+=====+=====+
+		|			|
+		| SWROM / RAM           |
+		|                       |
+		|                       |
+		|                       |
+$C000		+-----------------------+
+		| 			|
+		| MOSROM                |
+		|                       |
+		|                       |
+		|       vectors at F7FX |
+$FC00		+-----------------------+
+		| I/O  FRED    		| 
+$FD00		+-----------------------+
+		| I/O  JIM     		|
+$FE00		+-----------------------+
+		| I/O  SHEILA  		|
+$FF00		+-----------------------+
+		| MOSROM  OS calls   	|
+		+-----------------------+
+
+FRED, JIM, SHEILA always map to hardware 
+
+The screen display is always at the end of _physical RAM_ bank 0,1,2,3 depending on
+shadow registers. It wraps at $10000 in physical memory but will be mapped to end either
+at $8000 or $C000 in logical memory (maybe as a windowed access)

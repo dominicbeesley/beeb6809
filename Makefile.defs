@@ -1,0 +1,26 @@
+.PHONY:		all clean
+MLCa:=$(words $(MAKEFILE_LIST))
+MLCb:=$(shell echo "$(MLCa) - 1" | bc)
+CALLER_MAKE=$(realpath $(lastword $(wordlist 1,$(MLCb),$(MAKEFILE_LIST))))
+AS=asm6809
+TOP:=$(realpath $(dir $(lastword $(MAKEFILE_LIST))))
+INC:=$(TOP)/includes
+OSDEPS:=$(INC)/hardware.inc $(INC)/mosrom.inc $(INC)/common.inc $(INC)/noice.inc
+SCRIPTS:=$(TOP)/scripts
+
+%.hex:		%.asm $(DEPS)
+		$(AS) $(ASFLAGS) -S -o $@ -l $(basename $@).lst $<
+		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+
+%.bin:		%.asm $(DEPS)
+		$(AS) -o $@ -l $(basename $@).lst $<
+		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+
+
+all:		$(TARGETS)
+
+clean:		$(clean_extra)
+		$(foreach cln,$(TARGETS), \
+		rm -f $(basename $(cln)).bin $(basename $(cln)).lst $(basename $(cln)).sym $(basename $(cln)).hex \
+		rm -f $(cln) \
+		)

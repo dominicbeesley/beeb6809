@@ -1,0 +1,48 @@
+
+Blitter?
+=======
+Ability of VIDC to access RAM during "dead" cycles - how to connect to MEMC?
+Ability to slow up CPU to 1/2 Mhz during blit to free up RAM cycles
+Ability VIDC to set RAM R/W and buffer
+full load (src), load(mask), rotate (concat), mask, save
+different bit depts?
+vdu 5?
+
+
+
+- rotate DIN6!
+- Add clean NPGFE? or at least some way of cleaning up?
+- check RGB levels spec
+- Serial = use 1MHzE for ADS as 2MHzE is now stretched - check wiring and problems with serial board
+- reset REQ - check what's what with that, don't go through CPLD but route Break key!
+- routing through W1/W2, fix component to exclude routing
+- serial board, serial connector pin order is incorrect
+- bus-A19 now Vcc (conflicts with tsti3? check on board file)
+- bus-A17 now req_nRESET
+- testpoints 19 now 8MHz (cpu_clk_x4)
+- bus buffers, which items can be write only, make a write only bus?
+- 1MHz bus buffers? possible?
+- feed RA3 to VIDULA to switch video ram banks for double size modes alternate banks every 8 scanlines
+- full mapped mode - 2k pages (see 6809 memory controller)
+- legacy mode - MOS, SWROM, mapped with single registers, main memory still in 2k blocks
+- video as main blocks 
+- write via C000-F000, write-only mode on C000-F000 mapped onto video bank?
+- Add global resets to CPLDs
+- Add LIC signal into MEMc
+- add separate grounds for RGB_A, SND_A, ANALOG_A
+- add ADC / joystick port?
+- 3v3 supplies for each cpld
+- add NMI button where reset hole is
+- char rom - add eprom to latched teletext data lines, with pixels out to vidc for attribute modes?
+- spectrum style modes? memc addressing and latched data?
+
+
+CHECKLIST
+=========
+- check all decoupling routing
+- check all gnd routing
+- check all 
+
+VHDL
+====
+- cold reset flag in MEMC

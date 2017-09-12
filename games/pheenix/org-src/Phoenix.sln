@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.40629.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Phoenix", "Phoenix.vcxproj", "{238E6BD8-4C70-41D3-A481-EE4F0900E400}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tga2equb", "tga2equb.vcxproj", "{99E789B1-1D8F-359E-5B71-42E68D2DC527}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "wavAnalyse", "..\wavAnalyse\wavAnalyse.vcxproj", "{FD3103DD-66B5-420A-BA9A-AC58FFC87D7A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{238E6BD8-4C70-41D3-A481-EE4F0900E400}.Debug|Win32.ActiveCfg = Debug|Win32
+		{238E6BD8-4C70-41D3-A481-EE4F0900E400}.Debug|Win32.Build.0 = Debug|Win32
+		{238E6BD8-4C70-41D3-A481-EE4F0900E400}.Release|Win32.ActiveCfg = Release|Win32
+		{238E6BD8-4C70-41D3-A481-EE4F0900E400}.Release|Win32.Build.0 = Release|Win32
+		{99E789B1-1D8F-359E-5B71-42E68D2DC527}.Debug|Win32.ActiveCfg = Debug|Win32
+		{99E789B1-1D8F-359E-5B71-42E68D2DC527}.Debug|Win32.Build.0 = Debug|Win32
+		{99E789B1-1D8F-359E-5B71-42E68D2DC527}.Release|Win32.ActiveCfg = Release|Win32
+		{99E789B1-1D8F-359E-5B71-42E68D2DC527}.Release|Win32.Build.0 = Release|Win32
+		{FD3103DD-66B5-420A-BA9A-AC58FFC87D7A}.Debug|Win32.ActiveCfg = Debug|Win32
+		{FD3103DD-66B5-420A-BA9A-AC58FFC87D7A}.Debug|Win32.Build.0 = Debug|Win32
+		{FD3103DD-66B5-420A-BA9A-AC58FFC87D7A}.Release|Win32.ActiveCfg = Release|Win32
+		{FD3103DD-66B5-420A-BA9A-AC58FFC87D7A}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
