@@ -1,0 +1,41 @@
+DIM - not implemented
+Assembler - not implemented
+PRINT# - not implemented
+CALL - not implemented
+DELETE - not implemented
+RENUMBER - not implemented
+AUTO - not implemented
+Array variables - not implemented
+TRACE - prints U register along with line number
+=POS - not implemented
+=USR - not implemented
+=VPOS - not implemented
+=OPEN - not implemented
+=EVAL - not implemented
+=VAL - not implemented
+=SGN - not implemented
+=POINT - not implemented
+OPT - part implemented
+=GET - not implemented
+=INKEY$ - not implemented
+WIDTH - not implemented
+INPUT - not implemented
+
+
+
+Variable exists skip if OPT 2 - not implemented, causes dump
+
+Doesn't properly do all the TUBE init code 
+
+Evaluator:
+	^ - not implemented
+
+Trig:
+	Occasional errors in some transcendental functions, needs debug
+	ACS - not implemented
+	ASN - not implemented
+	RAD - not implemented
+	LOG - not implemented
+	DEG - not implemented
+
+

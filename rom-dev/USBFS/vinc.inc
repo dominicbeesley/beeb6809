@@ -1,8 +1,38 @@
-		; vinc is 	D0-7	USER VIA	PB0-7
-		; 		RXF#			PA0
-		;		TXE#			PA1
-		;		RD#			PA2
-		;		WR			PA3
+
+
+;	                _______
+;                        |     |
+;                 +------|     |------+
+;                 |      J1   J2      | 	
+;        Vcc     -+ 5v0     1     3v3 +-	NC
+;                 |                   | 	
+;        NC      -+ IO5     2    PRG# +-	Vcc
+;                 |                   | 	
+;        NC      -+ IO6     3    RST# +-	nRESET (note conditioned as noise was causing issues)
+;                 |                   | 	
+;        NC      -+ U1P     4    IO25 +-	NC
+;                 |                   | 	
+;        NC      -+ U1M     5    IO24 +-	NC
+;                 |                   | 	
+;        D0      -+ IO12    6    IO23 +-	#WR
+;                 |                   | 	
+;        GND     -+ GND     7     GND +-	GND
+;                 |                   | 	
+;        D1      -+ IO13    8    IO22 +-	#RD
+;                 |                   | 	
+;        D2      -+ IO14    9    IO21 +-	#TXE
+;                 |                   | 	
+;        D3      -+ IO15    10   IO20 +-	#RXF
+;                 |                   | 	
+;        D4      -+ IO16    11   IO19 +-	D7
+;                 |                   | 	
+;        D5      -+ IO17    12   IO18 +-	D6
+;                 |                   | 	
+;                 +-------------------+
+;
+;
+;
+
 
 VINC_CMD_SCS	EQU	$10
 VINC_CMD_ECS	EQU	$11

@@ -1,4 +1,4 @@
-AS=asm6809 -v -3 
+AS=asm6809 -v -9 
 
 MOSDIR=../..
 

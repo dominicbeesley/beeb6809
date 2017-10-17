@@ -120,6 +120,7 @@ sws_fsp_match_HASH	EQU	MA+$10CD			; if set to '#' then match '#' as wildcard
 sws_fsp_match_STAR	EQU	MA+$10CE			; if set to '*' then match '*' as wildcard
 
 sws_TubePresentIf0	EQU	MA+$10D6
+sws_RunCommandTail	EQU	MA+$10D9
 sws_param_ptr		EQU	MA+$10DB
 sws_error_flag_qry	EQU	MA+$10DD
 
@@ -1570,12 +1571,11 @@ dommcinit
  **				RTS
  **			
  **				\\ *DRIVE <drive>
-		TODOCMD	"CMD_DRIVE"
- **			.CMD_DRIVE
- **				JSR Param_DriveNo_Syntax
- **				STA sws_default_drive
- **				RTS
- **			
+CMD_DRIVE
+		jsr	Param_DriveNo_Syntax_API
+		sta	sws_default_drive
+		rts
+	
 SetCurrentDrive_Adrive
 		anda	#$03
 		sta	DP_FSW_CurrentDrv
@@ -1647,93 +1647,100 @@ load_copyfileinfo_loop
  **				JSR ReadFileAttributesToX_YCat_API
  **				JMP SaveMemBlock
  **			
-		TODOCMD "fscv2_4_11_starRUN"
- **			.fscv2_4_11_starRUN
+fscv2_4_11_starRUN
  **				JSR SetTextPointerYX		; ** RUN
-		TODOCMD	"CMD_notFound_tblDUtils"
- **			.CMD_notFound_tblDUtils
- **			{
- **				JSR SetWordBA_txtptr		; (Y preserved)
- **				STY MA+$10DA			; Y=0
- **				JSR read_fspBA_reset		; Look in default drive/dir
- **				STY MA+$10D9			; Y=text ptr offset
- **				JSR get_cat_firstentry81
- **				BCS runfile_found		; If file found
- **				LDY MA+$10DA
- **				LDA sws_lib_dir			; Look in library
- **				STA DP_FSW_DirectoryParam
- **				LDA sws_lib_drive
- **				JSR SetCurrentDrive_Adrive
- **				JSR read_fspBA
- **				JSR get_cat_firstentry81
- **				BCS runfile_found		; If file found
+CMD_notFound_tblDUtils
+ 		stx	DP_BA_FILEV_FNAME_PTR
+;;		jsr	SetWordBA_txtptr		; (Y preserved)
+;;		sty	MA+$10DA			; Y=0
+		stx	,--S
+		jsr	read_fspBA_reset		; Look in default drive/dir
+		stx	MA+$10D9			; Y=text ptr offset
+		jsr	srch_cat_X
+		bcs	runfile_found			; If file found
+		ldx	,S				; get back command pointer
+		lda	sws_lib_dir			; Look in library
+		sta	DP_FSW_DirectoryParam
+		lda	sws_lib_drive
+		jsr	SetCurrentDrive_Adrive
+		jsr	read_fspBA
+		jsr	srch_cat_X
+		bcs	runfile_found			; If file found
 errBADCOMMAND
+		leas	2,S				; unstack X
 		jsr	errBAD
 		fcb	$FE, "command",0
+
+runfile_found
+		leas	2,S				; drop saved X
+		; Y now points at cat entry, check to see if exec = FFFFFF, if so *EXEC it
+		lda	$106,Y				; New to DFS
+		anda	#$C0
+		cmpa	#$C0
+		bne	runfile_run			; If ExecAddr<>$FFFFFFFF
+		ldd	$102,Y
+		cmpd	#$FFFF
+		bne	runfile_run			; If ExecAddr<>$FFFFFFFF
+		pshsw
+		ldw	#7
+		ldy	#sws_DMATCH_STR + 7
+		ldx	#sws_DMATCH_STR
+		tfm	X+,Y+
+		pulsw
+
+		ldx	#sws_DMATCH_STR
+		lda	#$0D
+		sta	sws_DMATCH_STR + $E
+		lda	#'E'
+		sta	,X+			; "E"
+		lda	#'.'			; "."
+		sta	,X+
+		lda	#':'			; ":"
+		sta	,X+
+		lda	DP_FSW_CurrentDrv
+		ora	#$30
+		sta	,X+			; Drive number X
+		lda	#'.'			; "."
+		sta	,X+
+		sta	1,X
+		lda	DP_FSW_DirectoryParam		; Directory D
+		sta	,X+
+		jmp	OSCLI
  **			
- **			.runfile_found
- **				LDA MA+$0F0E,Y			; New to DFS
- **				JSR A_rorx6and3			; If ExecAddr=$FFFFFFFF *EXEC it
- **				CMP #$03
- **				BNE runfile_run			; If ExecAddr<>$FFFFFFFF
- **				LDA MA+$0F0A,Y
- **				AND MA+$0F0B,Y
- **				CMP #$FF
- **				BNE runfile_run			; If ExecAddr<>$FFFFFFFF
- **				LDX #$06			; Else *EXEC file  (New to DFS)
- **			.runfile_exec_loop
- **				LDA MA+$1000,X			; Move filename
- **				STA MA+$1007,X
- **				DEX
- **				BPL runfile_exec_loop
- **				LDA #$0D
- **				STA MA+$100E
- **				LDA #$45
- **				STA MA+$1000			; "E"
- **				LDA #$2E			; "."
- **				STA MA+$1001
- **				LDA #$3A			; ":"
- **				STA MA+$1002
- **				LDA DP_FSW_CurrentDrv
- **				ORA #$30
- **				STA MA+$1003			; Drive number X
- **				LDA #$2E			; "."
- **				STA MA+$1004
- **				STA MA+$1006
- **				LDA DP_FSW_DirectoryParam		; Directory D
- **				STA MA+$1005
- **				LDX #$00			; "E.:X.D.FILENAM"
- **				LDY #MP+$10
- **				JMP OSCLI
- **			
- **			.runfile_run
- **				JSR LoadFile_Ycatoffset	; Load file (host|sp)
- **				CLC
- **				LDA MA+$10D9			; Word $10D9 += text ptr
- **				TAY 				; i.e. -> parameters
- **				ADC TextPointer
- **				STA MA+$10D9
- **				LDA TextPointer+1
- **				ADC #$00
- **				STA MA+$10DA
- **				LDA MA+$1076			; Execution address hi bytes
- **				AND MA+$1077
- **				ORA sws_TubePresentIf0
- **				CMP #$FF
- **				BEQ runfile_inhost		; If in Host
- **				LDA $BE				; Copy exec add low bytes
- **				STA MA+$1074
- **				LDA $BF
- **				STA MA+$1075
- **				JSR TUBE_CLAIM
- **				LDX #$74			; Tell second processor
- **				\ assume tube code doesn't change sw rom
- **				LDY #MP+$10
- **				LDA #$04			; (Exec addr @ 1074)
- **				JMP TUBE_CODE_QRY			; YX=addr,A=0:initrd,A=1:initwr,A=4:strexe
- **			.runfile_inhost
- **				LDA #$01			; Execute program
- **				JMP ($00BE)
+runfile_run
+		lda	#$FF
+		sta	DP_BE_FILEV_EXEC + 1	; use catalogue address
+
+		jsr	LoadFile_Ycatoffset	; Load file (host|sp)
+		ldx	sws_RunCommandTail
+;; **				CLC
+;; **				LDA MA+$10D9			; Word $10D9 += text ptr
+;; **				TAY 				; i.e. -> parameters
+;; **				ADC TextPointer
+;; **				STA MA+$10D9
+;; **				LDA TextPointer+1
+;; **				ADC #$00
+;; **				STA MA+$10DA
+		lda	sws_FILEV_EXEC_highord		; Execution address hi bytes
+		anda	sws_FILEV_EXEC_highord + 1
+		ora	sws_TubePresentIf0
+		cmpa	#$FF
+		beq	runfile_inhost			; If in Host
+		TODOSTOP	"RUN via TUBE"
+		; sort out endianness and TUBE_CODE/COPY
+;;		lda	$BE				; Copy exec add low bytes
+;;		sta	MA+$1074
+;;		lda	$BF
+;;		sta	MA+$1075
+;;		jsr	TUBE_CLAIM
+;;		ldx	#$74			; Tell second processor
+;;		; assume tube code doesn't change sw rom
+;;		ldy	#MP+$10
+;;		lda	#$04			; (Exec addr @ 1074)
+;;		jmp	TUBE_CODE_QRY			; YX=addr,A=0:initrd,A=1:initwr,A=4:strexe
+runfile_inhost
+		LDA	#$01			; Execute program
+		JMP	[DP_BE_FILEV_EXEC]
  **			}
  **			
  **			.SetWordBA_txtptr
@@ -5693,6 +5700,8 @@ CheckCurDrvCat
 USBFS_LoadDisks
 	;	Reset Discs in Drives
 ***********************************************************************
+	lda	DP_FSW_CurrentDrv
+	sta	,-S
 	clra
 	sta	DP_FS_DISKNO
 	ldb	#3
@@ -5701,6 +5710,8 @@ USBFS_LoadDisks
 	jsr	LoadDrive
 	decb	
 	bpl	1B
+	lda	,S+
+	sta	DP_FSW_CurrentDrv
 	rts	
 
 

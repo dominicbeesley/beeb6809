@@ -1,4 +1,29 @@
 
+Interrupts
+==========
+Send all lines through VIDC
+Allow select FIRQ,IRQ,NMI for each. What defaults? Don't forget JIM / hw irq during nRESET, enhance?
+
+
+SERIAL
+======
+Use MAX232 instead of other chips? (Just remove pins 1/18 or leave as on mk1 but socket for 16pin?)
+
+DISC
+====
+Use circuit from Master + 1770
+
+ECONET
+======
+NETINT into VIDC/MEMC, program to send to IRQ, NMI, FIRQ
+take module like master/Arch
+station id from cmos?
+
+RTC
+===
+Verify
+
+
 Blitter?
 =======
 Ability of VIDC to access RAM during "dead" cycles - how to connect to MEMC?
@@ -8,6 +33,15 @@ full load (src), load(mask), rotate (concat), mask, save
 different bit depts?
 vdu 5?
 
+
+DAC
+===
+- audio / parallel? links to feed direct or via SID/external
+- other ?
+
+SID
+===
+- fit as standard, links to redirect DAC/sn76 to here and back to amplifier?
 
 
 - rotate DIN6!

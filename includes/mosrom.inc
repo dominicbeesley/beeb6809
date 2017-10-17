@@ -2,6 +2,7 @@ mos_MACHINE_TYPE_BYTE			EQU $63
 
 * Address of MOS ROM base
 MOSROMBASE				EQU $C000
+MOSSTRINGS				EQU $F470
 
 * default direct page for MOS ROM
 MOSROMSYS_DP				EQU $0
@@ -55,9 +56,9 @@ zp_mos_keynumfirst			EQU $00ED	; Internal key number (first)
 zp_mos_keynumignore			EQU $00EE	; Internal key number of character to be ignored by OSBYTE &79, also the 1MHz bus paging register
 zp_mos_OSBW_A				EQU $00EF	; OSBYTE/OSWORD A reg value
 	***** NOTE: zp_mos_OSBW_Y&X swapped for endiannedss
+zp_mos_OSWORD_X				EQU $00F0
 zp_mos_OSBW_Y				EQU $00F0	; OSBYTE/OSWORD Y reg value
 zp_mos_OSBW_X				EQU $00F1	; OSBYTE/OSWORD X reg value
-zp_mos_OSWORD_X				EQU $00F0
 
 zp_mos_txtptr				EQU $00F2	; OS Text pointer (eg star commands and filenames)
 zp_mos_curROM				EQU $00F4	; Currently selected ROM

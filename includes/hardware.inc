@@ -94,6 +94,26 @@ sheila_SYSVIA_ier			EQU $FE4E
 sheila_SYSVIA_ora_nh			EQU $FE4F
 
 ***********************************************************************
+* SYS VIA - slow data bus RTC                                         *
+***********************************************************************
+
+BITS_RTC_AS_ON	equ		$88			; PB7
+BITS_RTC_AS_OFF equ		$08			;
+BITS_RTC_CS	equ		$04			; latch
+BITS_RTC_DS	equ		$02			; latch
+BITS_RTC_RnW	equ		$01			; latch
+BITS_LAT_ON	equ		$08			; latch
+
+RTC_REG_SECONDS	equ		$0
+RTC_REG_MINUTES	equ		$2
+RTC_REG_HOURS	equ		$4
+RTC_REG_DOW	equ		$6
+RTC_REG_DAY	equ		$7
+RTC_REG_MONTH	equ		$8
+RTC_REG_YEAR	equ		$9
+
+
+***********************************************************************
 * User VIA                                                            *
 ***********************************************************************
 sheila_USRVIA_orb			EQU $FE60
@@ -133,3 +153,9 @@ SER_BIT_RXRDY		EQU	$01            ; BIT MASK FOR RX BUFFER FULL
 SER_BIT_TXRDY		EQU	$20            ; BIT MASK FOR TX BUFFER EMPTY
 
 SER_BAUD_CLOCK_IN	EQU	7372800			; frequency of on board serial crystal
+
+
+sheila_VINC_data	EQU	$FE50
+sheila_VINC_status	EQU	$FE52
+VINC_status_TXE		EQU	$01
+VINC_status_RXF		EQU	$02

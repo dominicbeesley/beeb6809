@@ -26,6 +26,8 @@ checkstat "adding *.inf"
 if [[ -e "$FOLDER/include.lst" ]]; then
   while IFS= read -d $'\n' -r line; do
     f="`readlink --canonicalize -f "$FOLDER/$line"`"
+    fb="`basename "$f"`"
+    fne="${fb%.*}"
     if [[ ! -e "$f" ]]; then
       warn "Skipping missing $f";
     else
@@ -35,13 +37,13 @@ if [[ -e "$FOLDER/include.lst" ]]; then
       	start=`$MY_DIR/hex2bin.pl "$f" "$tmpf"`
       	checkstat "converting hex file $f to binary"
       	if [[ -n "$start" ]]; then
-      	  dfs add -l "0x$start" -e "0x$start" -f "`basename "$f"`" "$SSD" "$tmpf"
+      	  dfs add -l "0x$start" -e "0x$start" -f "$fne" "$SSD" "$tmpf"
       	else
       	  error "Bad hex file?"
       	fi
       	rm "$tmpf"
       else
-      	dfs add -l "0x$start" -e "0x$start" -f "`basename "$f"`" "$SSD" "$f"
+      	dfs add -l "0x$start" -e "0x$start" -f "$fne" "$SSD" "$f"
       fi
     fi;
 

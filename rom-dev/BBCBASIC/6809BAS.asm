@@ -82,12 +82,12 @@ tblTENS_BE		FDB	$0001
 ;		;  LANGUAGE STARTUP
 ;		;  ================
 ROM_LANGST	RESET_MACH_STACK
-		STA	,-S				; store A
+		PSHS	A					; store A
 
 
 
-;;		CLRA
-;;		TFR	A, DP				; Default direct page
+		CLRA
+;;		TFR	A, DP					; Default direct page
 
 		CALL	OSINIT					; A=0, Set up default environment
 		STA	ZP_BIGEND
@@ -118,7 +118,7 @@ ROM_LANGST	RESET_MACH_STACK
 
 	IF DEBUG != 0
 		TST	ZP_BIGEND
-		BEQ	1F
+		BPL	1F
 		PRINT_STR	"(LE"
 		BRA	2F
 1		PRINT_STR	"(BE"
@@ -238,7 +238,7 @@ fll_sk_nomatch
 		;  =======================
 		; NEW API
 		;  On entry,	ZP_INT_WA + 2 => line number
-		;  On Exit,	Y and ZP_FPB + 2 => program line start or next line (points at the 0D at start of this line)
+		;  On Exit,	X,Y and ZP_FPB + 2 => program line start or next line (points at the 0D at start of this line)
 		;		Cy=1 indicates line found
 		;		Cy=0 not found
 	;  TODO: check all occurrences and remove store to ZP_FPB if not ever used
@@ -359,7 +359,7 @@ evalDoIntDivide						; L80F9
 		SBCA	ZP_INT_WA + 0
 		BCS	4F				; Couldn't subtract, do next bit
 		STD	ZP_INT_WA_C + 0
-		LDD	,S++
+		PULS	D
 		STD	ZP_INT_WA_C + 2			; Remainder=Remainder-Divisor
 		BRA	5F				; Loop to do next bit
 4							; L816C:
@@ -2006,7 +2006,7 @@ tokSkipEndTryNext					;L8E5D:
 		BPL	tokSkipEndTryNext
 		CMPA	#tknWIDTH
 		BNE	tokMoveNextTkn			; not the last one, increment pointer and carry on
-		BRA	tokNotKey_SkipVarName		; TODO = is this always true - I think it is
+		BRA	tokNotKey_SkipVarName		
 
 tokKeyAbbrev						;L8E68:
 tokKeyAbbrevLp1						;L8E69:
@@ -2408,7 +2408,7 @@ L90EA		TFR	A,B			; B & A contain the ammount that VARTOP needs to be shifted by
 		CMPX	,S++
 		BHS	brkNoRoom		;  Compare to STACKBOT, no room if new VARTOP>=STACKBOT
 		STX	ZP_VARTOP		;  Store new VARTOP
-		LDB	,S+
+		PULS	B
 		STB	2,Y			;  Get string length back and store it
 		TST	ZP_INT_WA + 2
 		BEQ	L910E			;  Get string address, jump if not moved
@@ -3224,63 +3224,38 @@ cmdDIM
 ;			;  -------------------------------------------------------
 varSetHIMEM			; L960F!
 
-			TODO_CMD "varSetHIMEM"
 			
-;		CALL L96B9
-;			;  Check for '=', evaluate integer
-;		LDA ZP_INT_WA
-;		STA ZP_HIMEM
-;		STA ZP_BAS_SP
-;			;  Set STACKBOT and HIMEM
-;		LDA ZP_INT_WA + 1
-;		STA ZP_HIMEM + 1
-;		STA ZP_BAS_SP + 1
-;		BRA L963B
-;			;  Return to execution loop
+			
+		CALL	evalAssignEqInteger		;  Check for '=', evaluate integer
+		LDU	ZP_INT_WA + 2
+		STU	ZP_HIMEM
+		BRA	L963B_continue			;  Return to execution loop
 ;			;  LOMEM=address
 ;			;  -------------
 varSetLOMEM			; L9620!
-
-			TODO_CMD "varSetLOMEM"
-			
-;		CALL L96B9
-;			;  Check for '=', evaluate integer
-;		LDA ZP_INT_WA
-;		STA ZP_LOMEM
-;		STA ZP_VARTOP
-;			;  Set LOMEM and VARTOP
-;		LDA ZP_INT_WA + 1
-;		STA ZP_LOMEM + 1
-;		STA ZP_VARTOP + 1
-;		CALL InittblFPRtnAddr
-;			;  Clear dynamic variables
-;		BRA L963B
-;			;  Return to execution loop
+		CALL	evalAssignEqInteger		;  Check for '=', evaluate integer
+		LDX	ZP_INT_WA + 2
+		STX	ZP_LOMEM
+		STX	ZP_VARTOP
+		CALL	InittblFPRtnAddr		;  Clear dynamic variables
+		BRA	L963B_continue;			;  Return to execution loop
 ;			;  PAGE=address - Set program start
 ;			;  --------------------------------
 varSetPAGE			; L9634!
+		CALL	evalAssignEqInteger		;  Check for '=', evaluate integer
+		LDA	ZP_INT_WA + 2
+		STA	ZP_PAGE_H			;  Set PAGE
+L963B_continue
+		JUMP	continue			;  Return to execution loop
 
-			TODO_CMD "varSetPAGE"
-			
-;		CALL L96B9
-;			;  Check for '=', evaluate integer
-;		LDA ZP_INT_WA + 1
-;		STA ZP_PAGE_H
-;			;  Set PAGE
-;L963B:
-;		JUMP continue
-;			;  Return to execution loop
 ;			;  CLEAR
 ;			;  -----
-cmdCLEAR			; L963E!
+cmdCLEAR						; L963E
 
-			TODO_CMD "cmdCLEAR"
-			
-;		CALL scanNextStmt
-;		CALL ResetVars
-;			;  Check end of statement, clear variables
-;		BRA L963B
-;			;  Return to execution loop
+		CALL	scanNextStmtFromY	
+		CALL	ResetVars			;  Check end of statement, clear variables
+		BRA	L963B_continue;			;  Return to execution loop
+
 ;			;  TRACE [ON|OFFOFF|<linenum>]
 ;			;  ---------------------------
 cmdTRACE
@@ -3304,7 +3279,8 @@ L9667		LEAY	1,Y
 		BRA	L965F				;  Jump to set TRACE $FFxx and TRACE ON
 L9670		LEAY	1,Y
 		CALL	scanNextStmtFromY		;  Check end of statement
-		CLRD
+		CLRA
+		CLRB
 		BRA	L9663
 
 			;  Jump to set TRACE OFF
@@ -3312,44 +3288,31 @@ L9670		LEAY	1,Y
 			;  ======================================
 varSetTIME			; L9679!
 
-			TODO_CMD "varSetTIME"
 			
-;		INY
-;		LDA (ZP_TXTPTR),Y
-;			;  Get next character
-;		CMP #'$'
-;		BEQ L968E
-;			;  Jump for TIME$=
-;		CALL L96B9
-;		STZ ZP_FPA
-;			;  Check for '=', evaluate integer, set byte 5 to zero
-;		LDX #ZP_INT_WA
-;		LDY #$00			;DP
-;			;  Point to IntA
-;		LDA #$02
-;			;  A=2 for Write TIME
-;L968B:
-;		JUMP OSWORD_continue
-;			;  Call OSWORD, return to execution loop
+		LDA	,Y				;  Get next character
+		CMPA	#'$'
+		BEQ	varSetTime_Dollar		;  Jump for TIME$=
+		CALL	evalAssignEqInteger
+		CALL	SwapEndian
+		CLR	ZP_FPA				;  Check for '=', evaluate integer, set byte 5 to zero
+		LDX	#ZP_INT_WA
+		LDA	#$02				;  A=2 for Write TIME
+L968B
+		JUMP	OSWORD_continue			;  Call OSWORD, return to execution loop
+
 ;			;  TIME$=string
 ;			;  ------------
-;L968E:
-;		INC ZP_TXTOFF
-;		CALL L9B46
-;			;  Step past '$', step past '=', evaluate expression
-;		LDA ZP_VARTYPE
-;		BNE JUMPBrkTypeMismatch2
-;			;  If not string, jump to Type mismatch
-;		LDA #$0F\
-;			;  A = $0F for Write RTC
-;		LDY ZP_STRBUFLEN
-;		STY $05FF
-;			;  Store string length as subfunction
-;		LDX #$FF
-;		LDY #$05
-;			;  Point to StringBuf-1
-;		BRA L968B
-;			;  Call OSWORD, return to execution loop
+varSetTime_Dollar					; L968E
+		LEAY	1,Y				; skip '$'
+		CALL	styZP_TXTPTR2_skipSpacesExectEqEvalExp
+		LDA	ZP_VARTYPE
+		LBNE	brkTypeMismatch			;  If not string, jump to Type mismatch
+		LDA	#$0F				;  A = $0F for Write RTC
+		LDB	ZP_STRBUFLEN
+		LDX	#BASWKSP_STRING-1		;  Store string length as subfunction
+		STB	,X				;  Point to StringBuf-1
+		BRA 	L968B				;  Call OSWORD, return to execution loop
+
 evalstackStringExpectINTCloseBracket			; L96A4
 		CALL	StackString
 evalL1OpenBracketConvert2INT				; L96A7
@@ -3367,7 +3330,8 @@ evalLevel1checkTypeStoreAsINT
 		BRA	checkTypeInAConvert2INT
 ;			;  Evaluate =<integer>
 ;			;  ===================
-;L96B9:		CALL L9B46			;  Check for '=', evaluate expression
+evalAssignEqInteger					; L96B9
+		CALL styZP_TXTPTR2_skipSpacesExectEqEvalExp			;  Check for '=', evaluate expression
 checkTypeInZP_VARTYPEConvert2INT		; L96BC
 		LDA ZP_VARTYPE			;  Get type and ensure is an integer
 ;		
@@ -3407,12 +3371,6 @@ checkTypeIntToReal
 cmdPROC
 
 ;;;			;  PROC
-;;;		LDA ZP_TXTPTR
-;;;		STA ZP_TXTPTR2
-;;;		LDA ZP_TXTPTR + 1
-;;;		STA ZP_TXTPTR2 + 1
-;;;		LDA ZP_TXTOFF
-;;;		STA ZP_TXTOFF2
 		STY	ZP_TXTPTR2
 		LDA	#tknPROC
 		CALL	doFNPROCcall
@@ -4083,8 +4041,6 @@ skipSpacesDecodeLineNumberlp
 		STY	ZP_TXTPTR
 		BRA	__rtsCLC				;  Not line number, return CC
 decodeLineNumber
-		CLR	ZP_INT_WA				; TODO - remove these added for testing API changes
-		CLR	ZP_INT_WA + 1				; TODO - remove these added for testing API changes
 		LDA	,Y+
 		ASLA
 		ASLA
@@ -4108,13 +4064,14 @@ __rtsCLC
 ;			;  ====================
 ;			;  ExpectEquals - evalute =<expr>
 ;			;  ------------------------------
-;L9B46:
-;		LDA ZP_TXTPTR
-;		STA ZP_TXTPTR2
-;		LDA ZP_TXTPTR + 1
-;		STA ZP_TXTPTR2 + 1
-;		LDA ZP_TXTOFF
-;		STA ZP_TXTOFF2
+styZP_TXTPTR2_skipSpacesExectEqEvalExp
+		STY	ZP_TXTPTR2
+;;		LDA ZP_TXTPTR
+;;		STA ZP_TXTPTR2
+;;		LDA ZP_TXTPTR + 1
+;;		STA ZP_TXTPTR2 + 1
+;;		LDA ZP_TXTOFF
+;;		STA ZP_TXTOFF2
 skipSpacesExpectEqEvalExp				; L9B52
 		LDY	ZP_TXTPTR2
 sseeee_lp1	LDA	,Y+
@@ -4225,7 +4182,7 @@ skCmdIfNotReal						; L9C12:
 		JUMP	skipSpacesAtYexecImmed
 skCmdIfTHEN						; L9C27:
 		LEAY	1,Y				; skip THEN token
-skCmdIfExecImplicitGotoOrTokens				; L9C29	
+execTHENorELSEimpicitGOTO				; L9C29	
 		CALL	skipSpacesDecodeLineNumberNewAPI; look for line number
 		LBCC	skipSpacesAtYexecImmed		; if not found exec after THEN/ELSE
 		CALL	findProgLineOrBRK
@@ -4235,7 +4192,7 @@ skCmdIFFALSE						; L9C37
 							; L9C39
 		LDA 	,Y+				; look for ELSE, if not found exec as next line
 		CMPA	#tknELSE
-		BEQ	skCmdIfExecImplicitGotoOrTokens
+		BEQ	execTHENorELSEimpicitGOTO
 		CMPA	#$0D
 		BNE	skCmdIFFALSE
 		LEAY	-1,Y
@@ -4338,10 +4295,10 @@ evalDoCompare						; L9CCA
 		EORA	 #$80
 		STA	 ZP_INT_WA + 0			; swap RHS sign bit
 					;  Compare current integer with stacked integer
-		LDD	,S++
+		PULS	D
 		SUBD	ZP_INT_WA + 2
 		STD	ZP_INT_WA + 2	; subtract least sig
-		LDD	,S++
+		PULS	D
 		SBCB	ZP_INT_WA + 1
 		EORA	#$80
 		SBCA	ZP_INT_WA + 0	; subtract most sig
@@ -5424,7 +5381,7 @@ parseDecimalLiteral
 		ADDA	ZP_FPA
 		STA	ZP_FPA + 7			;  num=num*10+digit
 parseD_lp1	LDA	,Y+				;  Step to next character	
-		BRA	1F				; TODO: this is a bit of a cludge, maybe make '.' do branch?
+		BRA	1F				; TODO: this is a bit of a kludge, maybe make '.' do branch?
 parseD_sknotdig	LDA	-1,Y				; reload previous char
 1		CMPA	#'.'
 		BNE	parseD_sknotdp			;  Not decimal point, jump to check if digit
@@ -5825,26 +5782,21 @@ LA5B3
 		LDA	#$FF
 		RTS
 LA5BE
-;;		TAX
 		TFR	A,B
 		TSTB
 		BPL LA5C9
-;;		DEC A
-;;		EOR #$FF
 		NEGA
-		STA	,-S
+		PSHS	A
 		CALL	fpFPAeq1.0divFPA
-;;		PLX
-		LDB	,S+
+		PULS    B
 LA5C9
 		BEQ	fpLoad1			;  Floata=1.0
 		CALL	fpCopyFPA_FPTEMP1
 		DECB
 		BEQ	LA5D7
-LA5D1		STB	,-S
+LA5D1		PSHS	B
 		CALL	fpFPAeqPTR1mulFPA
-;;		DEX
-		LDB	,S+
+		PULS	B
 		DECB
 		BNE	LA5D1
 LA5D7
@@ -6097,7 +6049,7 @@ mul_done
 fnLN							;  =LN
 		CALL evalLevel1ConvertReal
 fnLN_FPA						; LA749
-		STY	,--S
+		PSHS	Y
 		CALL	fpCheckMant0SetSignExp0
 		BEQ	brkLogRange
 		BPL	LA766
@@ -6124,7 +6076,7 @@ LA77C
 		INCB
 		DECA
 LA77E
-		STB	,-S
+		PSHS	B
 		STA	ZP_FPA + 2
 		CALL	fpAddAtoBStoreAndRoundA
 		LDX	#BASWKSP_FPTEMP4
@@ -6138,7 +6090,7 @@ LA77E
 		CALL	fpFPAeqPTR1mulFPA
 		CALL	fpFPAeqPTR1addFPA
 		CALL	fpCopyFPA_FPTEMP1
-		LDA	,S+
+		PULS	A
 		SUBA	#$81
 		CALL	IntToReal_8signedA2real_check
 		LDX	#fpConst_ln_2
@@ -6496,7 +6448,7 @@ fnDEG
 ;		BRA fpFPAeqXmulFPA_checkusingX!
 fnEXP			;  =EXP
 		CALL	evalLevel1ConvertReal
-		STY	,--S
+		PSHS	Y
 LA9E2
 		LDA	ZP_FPA + 2
 		CMPA	#$87
@@ -6668,7 +6620,7 @@ varGetFInfo
 		JSR	OSARGS			; Read to INTA
 		LDY	ZP_TXTPTR		; Get TXTPTR back
 		TST	ZP_BIGEND
-		LBNE	SwapEndian		; Swap INTA
+		LBMI	SwapEndian		; Swap INTA
 		RTS
 
 			;  =BGET#channel - get byte from open file
@@ -6823,15 +6775,12 @@ LABAD
 
 
 fnASC
-
-			TODO_CMD "fnASC"			
-;			;  =ASN
-;		CALL evalLevel1
-		LBNE brkTypeMismatch
-;		LDA ZP_STRBUFLEN
-;		BEQ returnINTminus1
-		LDB BAS_StrA
-		JUMP retB8asINT
+		CALL	evalLevel1
+		LBNE	brkTypeMismatch
+		LDA	ZP_STRBUFLEN
+		BEQ	returnINTminus1
+		LDB	BAS_StrA
+		JUMP	retB8asINT
 
 fnINKEY		;  =INKEY
 		CALL	callOSByte81withXYfromINT
@@ -6856,11 +6805,9 @@ fnEOF
 			;  =====
 returnINTminus1					; TODO - possibly use D?
 
-		LDA #$FF			;  Return -1
-returnAasINT	STA ZP_INT_WA
-		STA ZP_INT_WA + 1		;  Store in INTA
-		STA ZP_INT_WA + 2
-		STA ZP_INT_WA + 3
+		LDD #$FFFF			;  Return -1
+returnAasINT	STD ZP_INT_WA
+		STD ZP_INT_WA + 2
 returnINT	LDA #$40
 		RTS				;  Return Integer
 			;  =FALSE
@@ -6946,7 +6893,7 @@ fnINSTR_sk_nop3	TST	ZP_INT_WA + 3
 		INC	ZP_INT_WA + 3			; if 0 make 1
 1		DEC	ZP_INT_WA + 3			; now make it 0 based!
 
-		STY	,--S				; save Y we're about to use it for matching
+		PSHS	Y				; save Y we're about to use it for matching
 		CLRA
 		LDB	,U+				; D now contains length of second string
 		STB	ZP_INT_WA
@@ -6973,7 +6920,7 @@ fnINSTR_lp1
 		BNE	1B
 		; we have a match
 		LEAS	4,S				; discard saved X,Y
-		LDY	,S++				; get back original Y
+		PULS	Y				; get back original Y
 		LDA	ZP_INT_WA + 3
 		INCA					; make back to 1 based
 		JUMP	retA8asINT
@@ -6983,7 +6930,7 @@ fnINSTR_sknom	PULS	X,Y
 		BRA	fnINSTR_lp1
 
 fnINSTR_notfound
-		LDY	,S++
+		PULS	Y
 		CLRA
 		JUMP	retA8asINT
 
@@ -7044,19 +6991,16 @@ fnINSTR_notfound
 ;JUMPBrkTypeMismatch:
 ;		JUMP brkTypeMismatch
 ;		
-fnABS
-
-			TODO_CMD "fnABS"
-			;  =ABS
-;		CALL evalLevel1
-;		BEQ JUMPBrkTypeMismatch
-;		BMI fpClearWA_A_sign
+fnABS			;  =ABS
+		CALL	evalLevel1
+		LBEQ	brkTypeMismatch
+		BMI 	fpClearWA_A_sign
 intWA_ABS	TST	ZP_INT_WA + 0
 		BMI	negateIntA
 		BRA	A_eq_40_rts
-;fpClearWA_A_sign:
-;		STZ ZP_FPA
-;		RTS
+fpClearWA_A_sign
+		CLR	ZP_FPA
+		RTS
 ;			;  Negate real
 ;			;  -----------
 fpFPAeqPTR1subFPAnegFPA					; LACC7
@@ -7360,15 +7304,14 @@ SwapEndian
 							;41	14
 
 		LDA	#VAR_TYPE_INT
-		PULS	PC
+		RTS
 
 varGetTIME_DOLLAR
 		LEAY	1,Y
 		PSHS	Y
 		LDA	#$0E
-		LDX	#$00
-		LDY	#$06
-		CLR	BASWKSP_STRING
+		LDX	#BASWKSP_STRING
+		CLR	,X
 		JSR	OSWORD
 		LDA	#$18
 		PULS	Y
@@ -7380,17 +7323,20 @@ fnGETDOLLAR		; LAE69!
 		JSR	OSRDCH
 returnAAsString						; LAE6C
 		STA	BASWKSP_STRING
+returnString1
 		LDA	#$01
 		BRA	staZpStrBufLen
+returnBAsString	STB	BASWKSP_STRING
+		BRA	returnString1
 
 fnLEFT			; LAE73!
-		LDA	#1
-		STA	ZP_FP_TMP		; flag we want LEFT$ below
+		CLC
 		BRA	1F
 fnRIGHT			; LAE74!
 
-		CLR	ZP_FP_TMP		; flag we want RIGHT$
-1		CALL	evalAtY
+		SEC
+1		PSHS	CC			; flag we want LEFT$ below
+		CALL	evalAtY
 		TSTA
 		LBNE	brkTypeMismatch
 		CMPB	#','
@@ -7398,8 +7344,8 @@ fnRIGHT			; LAE74!
 		LEAY	1,Y
 		CALL	evalstackStringExpectINTCloseBracket
 		CALL	popStackedStringNew
-		TST	ZP_FP_TMP
-		BEQ	fnRIGHT_do_RIGHT		; DO RIGHT$
+		PULS	CC
+		BCS	fnRIGHT_do_RIGHT		; DO RIGHT$
 		LDA	ZP_INT_WA + 3
 		CMPA	ZP_STRBUFLEN
 		BCC	retAeq0
@@ -7431,22 +7377,15 @@ LAEA5
 
 
 fnINKEYDOLLAR		; LAEB3!
-
-			TODO_CMD "fnINKEYDOLLAR"
-			
-;			;  =INKEY$
-;		CALL callOSByte81withXYfromINT
-;		TXA
-;		CPY #$00
-;		BEQ returnAAsString
+			;  =INKEY$
+		CALL callOSByte81withXYfromINT
+		TFR	X,D
+		LEAY	0,Y					; check for 0
+		BEQ	returnBAsString
 strRet0LenStr							; LAEBB
 		CLRA	
 		BRA	staZpStrBufLen
-;;;LAEBF:
-;;;		JUMP brkTypeMismatch
-;;;LAEC2:
-;;;		JUMP brkMissingComma
-;		
+	
 fnMIDstr
 		CALL	evalAtY
 		TSTA
@@ -7457,7 +7396,7 @@ fnMIDstr
 		LEAY	1,Y					; skip ,
 		CALL	evalAtYcheckTypeInAConvert2INT
 		LDA	ZP_INT_WA + 3				; store low byte on stack
-		STA	,-S
+		PSHS	A
 		LDA	#$FF
 		STA	ZP_INT_WA				; default length to 255
 		LDB	,Y					; reload this, it may have been eaten converting to INT above
@@ -7467,7 +7406,7 @@ fnMIDstr
 		CMPB	#','
 		LBNE	brkMissingComma
 		CALL	evalL1OpenBracketConvert2INT
-LAEEA		LDB	,S+					; get back 2nd param (start 1-based index)
+LAEEA		PULS	B					; get back 2nd param (start 1-based index)
 		PSHS	Y					; remember Y
 		BEQ	LAEF8
 		CMPB	,U
@@ -7705,7 +7644,7 @@ doFNPROCcall	STA	ZP_VARTYPE			;  Save PROC/FN token
 		STS	,X++				; Store current machine stack pointer
 1		CMPS	#MACH_STACK_TOP			; Copy machine stack contents to BASIC stack
 		BHS	2F				; TODO: use 16bit copy? Require test on first/last loop for single byte tfr
-		LDA	,S+
+		PULS	A
 		STA	,X+
 		BRA	1B
 2		; S now points at top of stack X points at OLD U value
@@ -7758,7 +7697,7 @@ LB080
 		PULS	X
 		STX	ZP_TXTPTR2
 		STX	ZP_TXTPTR
-		LDA	,S+				; get back params flag
+		LDA	,S+				; get back params flag (use LD for flags)
 		BEQ	LB0A4
 		STA	ZP_FPB + 4			; get number of "params" (and locals) to reset
 LB09A
@@ -7800,7 +7739,7 @@ doFNPROCargumentsEntry
 		BEQ	doBrkArguments
 		PULS	X
 		STX	ZP_TXTPTR2
-		LDA	,S+				; bet back "params flag"
+		PULS	A				; bet back "params flag"
 		LDX	ZP_INT_WA + 2
 		LDB	ZP_INT_WA
 		INCA
@@ -7867,7 +7806,7 @@ LB16D		LDA	ZP_INT_WA + 1
 LB177		DEC	ZP_FP_TMP + 9
 		BNE	LB140
 		LDA	ZP_FP_TMP + 10
-		STA	,-S
+		PSHS	A
 		LDY	ZP_EXTRA_SAVE_PROC
 		JUMP	LB080
 
@@ -8025,11 +7964,11 @@ HandleBRKFindERL_sk2					;LB270:
 HandleBRKFindERL_sk1					;LB277:
 		RTS
 HandleBRK
-		STX	zp_mos_error_ptr		; TODO: move this into BASIC's DP? Document
+		STX	zp_mos_error_ptr		; TODO: look at JGH API?
 		LDB	#$FF
 		STB	ZP_OPT
 		RESET_MACH_STACK
-		STX	,--S
+		PSHS	X
 		LDX	#0
 		LDY	#$00
 		LDA	#$DA
@@ -8061,15 +8000,15 @@ defErrBas
 cmdSOUND						; LB2C8
 		CALL	evalForceINT
 		LDA	#OSWORD_SOUND
-		STA	,-S				; store OSWORD # on stack
+		PSHS	A				; store OSWORD # on stack
 		LDB	#$04				; read 4 params
 LB2CD		LDX	ZP_INT_WA + 2			; store 16 bit number on stack - reversing bytes
-		STX	,--S
+		PSHS	X
 		DECB
 		BEQ	1F
-		STB	,-S
+		PSHS	B
 		CALL	checkCommaThenEvalAtYcheckTypeInAConvert2INT
-		LDB	,S+
+		PULS	B
 		BRA	LB2CD
 1		CALL	LDYZP_TXTPTR2scanNextStmtFromY
 		LDB	#$07				; # bytes to restore minus 1
@@ -8077,25 +8016,25 @@ LB2CD		LDX	ZP_INT_WA + 2			; store 16 bit number on stack - reversing bytes
 cmdENVELOPE			; LB2EC!
 		CALL	evalForceINT
 		LDA	#OSWORD_ENVELOPE
-		STA	,-S				; store OSWORD #
+		PSHS	A				; store OSWORD #
 		LDB	#14				; read 14 params
 LB2F1		LDA	ZP_INT_WA + 3			; get low byte of int
-		STA	,-S
+		PSHS	A
 		DECB
 		BEQ	1F
-		STB	,-S
+		PSHS	B
 		CALL	checkCommaThenEvalAtYcheckTypeInAConvert2INT
-		LDB	,S+
+		PULS	B
 		BRA	LB2F1
 1		CALL	LDYZP_TXTPTR2scanNextStmtFromY
 		LDB	#13
 sndPullBthenAtoZP_SAVE_BUF_OSWORD_A				; LB307
 		LDX	#ZP_SAVE_BUF
-1		LDA	,S+
+1		PULS	A
 		STA	B,X
 		DECB
 		BPL	1B
-		LDA	,S+				; get back OSWORD #
+		PULS	A				; get back OSWORD #
 OSWORD_continue
 		PSHS	Y
 		JSR	OSWORD
@@ -8653,7 +8592,7 @@ cmdFORrealNoStep					; LB6C7
 			;============================
 cmdGOSUB
 		CALL	decodeLineNumberFindProgLine
-LB6DC		CALL	scanNextStmtFromY
+intGOSUB_FPB_2	CALL	scanNextStmtFromY		; LB6DC
 		LDB	ZP_GOSUB_LVL			; Get GOSUB index
 		CMPB	#GOSUBSTACK_MAX			; Check whether stack is full
 		BHS	brkTooManyGosubs
@@ -8703,110 +8642,93 @@ STYZPTXTPTR_continue					; LB732
 		STY	ZP_TXTPTR
 		JUMP	skipSpacesAtYexecImmed
 
-;LB739:
-;		CALL scanNextStmt
-;		CALL ONERROROFF
-;		BRA LB71A
-;LB741:
-;		CALL skipSpacesPTRA
-;		CMP #tknOFF
-;		BEQ LB739
-;		LDY ZP_TXTOFF
-;		DEY
-;		CALL storeYasTXTPTR
-;		STZ ZP_TXTOFF
-;		LDA ZP_TXTPTR
-;		STA ZP_ERR_VECT
-;		LDA ZP_TXTPTR + 1
-;		STA ZP_ERR_VECT + 1
-;		JUMP cmdREM	;
+cmdONERROROFF						; LB739
+		CALL	scanNextStmtFromY
+		CALL	ONERROROFF
+		JUMP	continue
+cmdONERROR						; LB741
+		CALL	skipSpacesY
+		CMPA	#tknOFF
+		BEQ	cmdONERROROFF
+		LEAY	-1,Y
+		STY	ZP_ERR_VECT
+		JUMP	cmdREM				; skip rest
 ;			;  ON [ERROR][GOTO][GOSUB]
 ;			;  =======================
-cmdON			; LB75B!
+cmdON							; LB75B!
 
-			TODO_CMD "cmdON"
-			
-;		CALL skipSpacesPTRA
-;		CMP #tknERROR
-;		BEQ LB741
-;			;  ON ERROR
-;		DEC ZP_TXTOFF
-;		CALL evalForceINT
-;			;  Evaluate ON <num>
-;		CPX #tknPROC
-;		BEQ LB774
-;			;  ON <num> PROC
-;		INY
-;		CPX #$E5
-;		BEQ LB774
-;			;  ON <num> GOTO
-;		CPX #$E4
-;		BNE brkONSyntax
-;			;  ON <num> GOSUB
-;LB774:
-;		PHX
-;			;  Save token
-;		LDA ZP_INT_WA + 1
-;		ORA ZP_INT_WA + 2
-;		ORA ZP_INT_WA + 3
-;		BNE LB7D5
-;		DEC ZP_INT_WA
-;		BEQ LB7B6
-;		BMI LB7D5
-;LB783:
-;		LDA (ZP_TXTPTR),Y
-;		CMP #$0D
-;		BEQ LB7D5
-;		CMP #$3A
-;		BEQ LB7D5
-;		CMP #tknELSE
-;		BEQ LB7D5
-;		INY
-;		CMP #$22
-;		BNE LB79A
-;		EOR ZP_INT_WA + 1
-;		STA ZP_INT_WA + 1
-;LB79A:
-;		LDX ZP_INT_WA + 1
-;		BNE LB783
-;		CMP #')'
-;		BNE LB7A4
-;		DEC ZP_INT_WA + 2
-;LB7A4:
-;		CMP #'('
-;		BNE LB7AA
-;		INC ZP_INT_WA + 2
-;LB7AA:
-;		CMP #$2C
-;		BNE LB783
-;		LDX ZP_INT_WA + 2
-;		BNE LB783
-;		DEC ZP_INT_WA
-;		BNE LB783
-;LB7B6:
-;		PLA
-;		CMP #$F2
-;		BEQ LB803
-;		STY ZP_TXTOFF
-;		CMP #$E4
-;		BEQ LB7CA
-;		CALL decodeLineNumberFindProgLine
-;		CALL setTXTOFFeq1CheckESC
-;		JUMP cmdGOTODecodedLineNumber
-;LB7CA:
-;		CALL decodeLineNumberFindProgLine
-;		LDY ZP_TXTOFF
-;		CALL LB81D
-;		JUMP LB6DC
-;LB7D5:
-;		PLA
-;LB7D6:
-;		LDA (ZP_TXTPTR),Y
-;		INY
-;		CMP #tknELSE
-;		BEQ LB817
-;		CMP #$0D
-;		BNE LB7D6
+		CALL	skipSpacesY
+		CMPA	#tknERROR
+		BEQ	cmdONERROR				;  ON ERROR
+
+		LEAY	-1,Y
+		CALL	evalForceINT				;  Evaluate ON <num>
+		CMPB 	#tknPROC
+		BEQ 	cmdOnGSP				;  ON <num> PROC
+		LEAY	1,Y
+		CMPB	#tknGOTO
+		BEQ	cmdOnGSP				;  ON <num> GOTO
+		CMPB	#tknGOSUB
+		BNE 	brkONSyntax				;  ON <num> GOSUB
+cmdOnGSP							; LB774
+		PSHS	B					;  Save token
+		LDA	ZP_INT_WA + 0
+		ORA	ZP_INT_WA + 1
+		ORA	ZP_INT_WA + 2		
+		BNE	cmdOnSkipNoMatch			; if >255
+		DEC	ZP_INT_WA + 3				; make 0-based
+		BEQ	cmdOnFound
+		BMI	cmdOnSkipNoMatch
+cmdOnCharloop							; LB783
+		LDA	,Y+
+		CMPA	#$0D
+		BEQ	cmdOnSkipNoMatch2
+		CMPA	#':'
+		BEQ	cmdOnSkipNoMatch2
+		CMPA	#tknELSE
+		BEQ	cmdOnSkipNoMatch2
+		CMPA	#'"'
+		BNE	1F
+		EORA	ZP_INT_WA + 1
+		STA	ZP_INT_WA + 1				; quotes flag
+1		TST	ZP_INT_WA + 1				; LB79A
+		BNE	cmdOnCharloop				; skip over quotes PROC params
+		CMPA	#')'
+		BNE	1F
+		DEC 	ZP_INT_WA + 2
+1		CMPA 	#'('					; LB7A4
+		BNE	1F
+		INC	ZP_INT_WA + 2
+1		CMPA	#','					; LB7AA
+		BNE	 cmdOnCharloop
+		TST	 ZP_INT_WA + 2				; brackets
+		BNE	 cmdOnCharloop
+		DEC	 ZP_INT_WA + 3
+		BNE	 cmdOnCharloop
+cmdOnFound							; LB7B6
+		PULS	A	
+		CMPA	#tknPROC
+		BEQ	cmdOnFoundPROC
+		STY	ZP_TXTOFF
+		CMPA	#tknGOSUB
+		BEQ	cmdOnFoundGOSUB
+		CALL	decodeLineNumberFindProgLine
+		CALL	checkForESC
+		JUMP	cmdGOTODecodedLineNumber
+cmdOnFoundGOSUB							; LB7CA
+		CALL	decodeLineNumberFindProgLine
+		LDY	ZP_TXTOFF
+		CALL	findNextStmt				; find $0D or ':' to use as return from GOSUB
+		JUMP	intGOSUB_FPB_2
+cmdOnSkipNoMatch2
+		LEAY	-1,Y
+cmdOnSkipNoMatch						; LB7D5
+		LEAS	1,S					; remove token from stack
+1		LDA	,Y+					; search for ELSE or end of statement
+		CMPA	#tknELSE
+		LBEQ	execTHENorELSEimpicitGOTO
+		CMPA	#$0D
+		BNE	1B
 		DO_BRK_B
 		FCB	$28, tknON, " range", 0
 brkONSyntax
@@ -8815,30 +8737,36 @@ brkONSyntax
 brkNoSuchLine
 		DO_BRK_B
 		FCB	$29, "No such line", 0
-;LB803:
-;		STY ZP_TXTOFF2
-;		CALL skipSpacesPTRB
-;		CMP #$F2
-;		BNE brkONSyntax
-;		CALL doFNPROCcall
-;		LDY ZP_TXTOFF2
-;		CALL LB81D
-;		JUMP scanNextContinue
-;LB817:
-;		STY ZP_TXTOFF
-;		JUMP skCmdIfExecImplicitGotoOrTokens
-;LB81C:
-;		INY
-;LB81D:
-;		LDA (ZP_TXTPTR),Y
-;		CMP #$0D
-;		BEQ LB827
-;		CMP #$3A
-;		BNE LB81C
-;LB827:
-;		STY ZP_TXTOFF
-;		RTS
-;		
+cmdOnFoundPROC							; LB803
+		PSHS	Y
+		CALL	skipSpacesY
+		CMPA	#tknPROC
+		BNE	brkONSyntax
+		CALL	doFNPROCcall
+		PULS	Y
+		CALL	findNextStmt
+		JUMP	scanNextContinue
+;;LB81C:
+;;		INY
+;;LB81D:
+;;		LDA (ZP_TXTPTR),Y
+;;		CMP #$0D
+;;		BEQ LB827
+;;		CMP #$3A
+;;		BNE LB81C
+;;LB827:
+;;		STY ZP_TXTOFF
+;;		RTS
+;;		
+findNextStmt	LDA	,Y+
+		CMPA	#':'
+		BEQ	1F
+		CMPA	#$0D
+		BNE	findNextStmt
+1		LEAY	-1,Y
+		RTS
+
+
 decodeLineNumberFindProgLine
 		CALL	skipSpacesDecodeLineNumberNewAPI
 		BCS	findProgLineOrBRK			; tokenised line number found
@@ -9040,13 +8968,13 @@ cmdREAD
 		CALL	findVarOrAllocEmpty
 		BEQ	cmdREAD_next			; bad var name, skip
 		BCS	cmdREAD_readString		; string ?
-		STY	,--S
+		PSHS	Y
 		CALL	cmdREAD_findNextDataItem
 		CALL	pushVarPtrAndType
 		CALL	evalAtYAndStoreEvaledExpressioninStackedVarPTr
 		BRA	LB99D
 cmdREAD_readString
-		STY	,--S
+		PSHS	Y
 		CALL	cmdREAD_findNextDataItem
 		CALL	stackINT_WAasINT
 		CALL	readCommaSepString
@@ -9054,7 +8982,7 @@ cmdREAD_readString
 		CALL	copyStringToVar
 LB99D
 		STY	ZP_READ_PTR
-		LDY	,S++
+		PULS	Y
 		BRA	cmdREAD_next
 
 cmdREAD_findNextDataItem
@@ -9172,7 +9100,7 @@ ReadKeysTo_PageInA
 		LDB	#$FF
 		STB	ZP_GEN_PTR + 4
 		LDX	#ZP_GEN_PTR
-		LDY	#0
+;;		LDY	#0
 		CLRA
 		JSR	OSWORD		; OSWORD 0 - read line to buf at XY
 		BCC	clearPRLINCOUNT
@@ -9304,18 +9232,19 @@ ResetVars	LDD ZP_TOP
 ;			;  Clear dynamic variables
 ;			;  -----------------------
 InittblFPRtnAddr
-		LDX #$10
-1		LDD tblFPRtnAddr_const-2,X
-		STD $07F0-2,X				;  Copy entry addresses to $07F0-$07FF
-		LEAX -2, X
-		BNE 1B
-		LDA #$40
-		LDX #0
-		LDY #BASWKSP_DYNVAR_HEADS
-1		STX ,Y++
-		DECA
-		BNE 1B					;  Clear dynamic variables
-		RTS
+		PSHS	Y
+		LDX 	#$10
+1		LDD 	tblFPRtnAddr_const-2,X
+		STD 	$07F0-2,X				;  Copy entry addresses to $07F0-$07FF
+		LEAX	 -2, X
+		BNE 	1B
+		LDA 	#$40
+		LDX 	#0
+		LDY 	#BASWKSP_DYNVAR_HEADS
+1		STX 	,Y++
+		DECA	
+		BNE 	1B					;  Clear dynamic variables
+		PULS	Y,PC
 ResetStackProgStartRepeatGosubFor
 		LDA ZP_PAGE_H
 		CLRB
@@ -9588,9 +9517,14 @@ CopyIntA2ZPX				   ; DB: Changed this to use 16 bit reg and X can point anywhere
 ;			;  --------------------
 loadProg2Page
 		CALL	GetFileNamePageAndHighOrderAddr	; get cr-string, FILE_NAME=STRA, FILE_LOAD=PAGE/memhigh
-		LDY	#ZP_SAVE_BUF + OSFILE_OFS_EXEC	; set exec address low byte to 0
-		LDD	#0
-		CALL	Set32BELE
+; Returns FILE_NAME=>string
+;         FILE_EXEC=&00000000
+;         X=machine high address
+;         D=page
+;         Cy=big/little
+;
+		LDY	#ZP_GEN_PTR+2
+		CALL	StoreFileAddress		; Store PAGE at ctrl+2/3/4/5
 		LDA	#OSFILE_LOAD
 		LDX	#ZP_GEN_PTR			;  Point to OSFILE block
 		JSR	OSFILE				;  Continue into FindTOP
@@ -9616,7 +9550,7 @@ ftop_sk1
 		RTS
 printBadProgram
 		PRINT_STR "\rBad program\r"
-		JUMP immedPrompt
+		JUMP	immedPrompt
 ;		
 str600CRtermSetGenPtr600
 		LDX	#BAS_StrA
@@ -9625,8 +9559,10 @@ str600CRtermSetGenPtr600
 str600CRterm	LDX	#BAS_StrA
 1		LDB	ZP_STRBUFLEN			;  Get length of string in buffer
 		LDA	#$0D
-		STA 	B,X
-		RTS					;  Store <cr> at end of string
+		PSHS	X
+		ABX
+		STA 	,X
+		PULS	X,PC				;  Store <cr> at end of string
 
 evalYExpectString					; LBE36
 		CALL	evalExpressionMAIN		;  Call expression evaluator
@@ -9637,42 +9573,56 @@ evalYExpectString					; LBE36
 		JUMP	scanNextExpectColonElseCR
 
 OSByte82	LDA	#$82
-		JSR	OSBYTE
-		RTS
+		JMP	OSBYTE
 GetFileNamePageAndHighOrderAddr				; LBE41
 		CALL	evalYExpectString		; Get CR-string
 		CALL	OSByte82
-		LDA	ZP_PAGE_H
+		CLRA
 		CLRB
-		LDY	#ZP_SAVE_BUF + OSFILE_OFS_LOAD
-Set32BELE						; set a 32 bit number either as BE or LE depending on flag at ZP_BIGEND
-							; high order address is in X, D contains value, Y is pointer to value to
-		TST	ZP_BIGEND
-		BNE	Set32LE
-Set32BE		STX	,Y				; high order
-		STD	2,Y				; low order
+		STD	ZP_GEN_PTR+6			; exec=0 regardless of endianness
+		STD	ZP_GEN_PTR+8
+		LDA	ZP_BIGEND
+		ASLA					; Cy=big/little
+		LDA	ZP_PAGE_H			; D=PAGE
 		RTS
-Set32LE		STD	,--S				; save D
-		TFR	X,D				; swap endianness of high order word
-		EXG	A,B
-		STD	2,Y				; store in high bytes
-		LDD	,S
-		EXG	A,B
-		STD	0,Y
-		PULS	D,PC
+StoreFileAddressNext
+		LEAY	4,Y				; Point to next address
+StoreFileAddress
+		PSHS	X
+		BCC	StoreFileBigAddr
+		EXG	A,B				; Swap to make little-endian
+		EXG	X,D
+StoreFileBigAddr
+		STX	0,Y
+		STD	2,Y
+		PULS	X,PC
 
 cmdSAVE							; LBE55
 		CALL	findTOP
 		CALL	GetFileNamePageAndHighOrderAddr
-		LDY	#ZP_SAVE_BUF + OSFILE_OFS_START	; D already contains PAGE
-		CALL	Set32BELE
-		LDY	#ZP_SAVE_BUF + OSFILE_OFS_END
+; Returns FILE_NAME=>string
+;         FILE_EXEC=&00000000
+;         X=machine high address
+;         D=page
+;         Cy=big/little
+;
+		LDY	#ZP_SAVE_BUF+10
+		CALL	StoreFileAddress		; FILE_START=PAGE
 		LDD	ZP_TOP
-		CALL	Set32BELE
-		LDD	#$802B				; BASIC ROM start addr (what to do here?)
-		LDY	#ZP_SAVE_BUF + OSFILE_OFS_EXEC
-		CALL	Set32BELE
+		CALL	StoreFileAddressNext		; FILE_END=TOP
+		LDY	#ZP_SAVE_BUF+2
+		LDX	#$FFFF
+		LDD	#$FB00
+		CALL	StoreFileAddress		; FILE_LOAD=FFFFFB00 = filetyped to BASIC
+
+;+;		LDX	#ZP_SAVE_BUF+5			; Implement this bit later
+;+;		LDA	#3
+;+;		STX	0,X
+;+;		LDA	#14
+;+;		CALL	varGetTime2			; Read RTC datestamp to FILE_EXEC
+
 		LDA	#OSFILE_SAVE			; OSFILE 0
+		LDX	#ZP_SAVE_BUF
 		JSR	OSFILE
 		JUMP	continue
 
@@ -9702,7 +9652,7 @@ varSetFInfo					; LBE99
 		CALL	skipSpacesExpectEqEvalExp
 		CALL	checkTypeInZP_VARTYPEConvert2INT
 		TST	ZP_BIGEND
-		BEQ	1F
+		BMI	1F
 		CALL	SwapEndian		; Swap INTA
 1		STY	ZP_TXTPTR		; Save TXTPTR
 		LDX	#ZP_INT_WA

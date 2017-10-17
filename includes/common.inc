@@ -63,24 +63,6 @@ m_tyb		MACRO
 		ENDM
 
 
-ASSERT		MACRO
-		jsr	debug_print
-		fcb	\1, 13, 0
-		swi
-		ENDM
-
-DEBUGPR		MACRO
-		jsr	debug_print
-		fcb	\1, 13, 0
-		ENDM
-
-TODO		MACRO
-		ASSERT "TODO HALT:\1"
-		ENDM
-
-TODOSKIP	MACRO
-		DEBUGPR	\1
-		ENDM
 
 BRKSIZE		EQU	2
 

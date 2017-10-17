@@ -1,0 +1,159 @@
+                        beeb6809 SHEILA Hardware I/O Addresses
+                              ======================================
+            Speed
+      Mk.1  Mk.2  BBC Addr  Write Action                      Read Action
+                      -------------------------------------------------------------------------
+                  1   FE00-07 6845 CTRC Video controller
+      1               FE00-0F 6845 CTRC Video controller
+            2?        FE00-01 6845 CTRC Video controller
+                      ==================================
+                      FE00 Register Address
+                      FE01 Register Data                      Register Data
+                                     
+                      
+                      FE20-2F Video ULA
+                      =================
+      *     4     2   FE20 Video Control                      Video Control (only on Mk2)
+      X               FE21 Palette Control                    -                                     Superseded by RAMDAC
+                           %ccccfbgr - palette selection
+      *     4         FE22 Pixel AND                          Pixel AND                             AND mask pixel data to RAMDAC for palette switch
+      *     4         FE23 Pixel EOR                          Pixel EOR                             EOR pixel data to RAMDAC for palette switch
+      *     4         FE24 Video Control 2                    Video Control 2                       TTX mode, ANSI mode, etc
+      
+                      
+                      
+                      FE30-3F Memory control
+                      ======================
+      *     4     2   FE30 ROMSEL                             ROMSEL
+      *     4         FE31 MOSSEL                             MOSSEL
+      *               FE32 RAMSEL                             RAMSEL
+      *               FE33 SCROFF                             SCROFF                                - screen offset register
+            4         FE32 MOSSEL2                            MOSSEL2
+            4         FE33 MOSSEL3                            MOSSEL2
+            4         FE34 MEMC_MODE                          MEMC_MODE
+            4         FE35 MEMC_SCR_OFFS???
+            4         FE36 MEMC_SHADOW????
+      
+                                      
+                      FE40-5F System VIA (note only FE40-FE4F on 6809)
+                      ==================
+      *     1     1   FE40 Output register B                  Input register B
+      *     1     1   FE41 Output register A                  Input register A
+      *     1     1   FE42 Data direction register B          Data direction register B
+      *     1     1   FE43 Data direction register A          Data direction register A
+      *     1     1   FE44 T1 low-order counter               T1 low-order latches
+      *     1     1   FE45 T1 high-order counter              T1 high-order counter
+      *     1     1   FE46 T1 low-order latches               T1 low-order latches
+      *     1     1   FE47 T1 high-order latches              -
+      *     1     1   FE48 T2 low-order latches               T2 low-order counter               
+      *     1     1   FE49 T2 high order counter              T2 high order counter              
+      *     1     1   FE4A Shift register                     Shift register
+      *     1     1   FE4B Auxilary control register          Auxilary control register
+      *     1     1   FE4C Peripheral control register        Peripheral control register
+      *     1     1   FE4D Interrupt flag register            Interrupt flag register
+      *     1     1   FE4E Interrupt enable register          Interrupt enable register
+      *     1     1   FE4F Output register A, no handshake    Input register A, no handshake
+                      
+                      FE50-FE53 VINC
+                      ===============
+      *     4         FE50 DATA                               DATA
+      *     4         FE52 -                                  STATUS (b0 = VINC_TXE, b1 = VINC_RXF)
+      
+                      FE54-55 Analogue-to-Digital Convertor and latch (was at FE18 on Master)
+                      ==============================================
+      *     4?        FE54 MAX1264 CONN                       Data low
+                      FE55 MAX1264 CONN                       Data high
+
+                      FE56-57 ECONET interrupt control
+                      ================================
+            4?        FE56 Station ID(not used?)              B7 int on/off
+      
+                      FE60-7F User VIA (note only FE60-FE6F on 6809)
+                      ================
+      *     1     1   FE60 Output register B (User port)      Input register B (User port)
+      *     1     1   FE61 Output register A (Printer port)   Input register A (Printer port)
+      *     1     1   FE62 Data direction register B          Data direction register B
+      *     1     1   FE63 Data direction register A          Data direction register A
+      *     1     1   FE64 T1 low-order counter               T1 low-order latches
+      *     1     1   FE65 T1 high-order counter              T1 high-order counter
+      *     1     1   FE66 T1 low-order latches               T1 low-order latches
+      *     1     1   FE67 T1 high-order latches              -
+      *     1     1   FE68 T2 low-order latches               T2 low-order counter               
+      *     1     1   FE69 T2 high order counter              T2 high order counter              
+      *     1     1   FE6A Shift register                     Shift register
+      *     1     1   FE6B Auxilary control register          Auxilary control register
+      *     1     1   FE6C Peripheral control register        Peripheral control register
+      *     1     1   FE6D Interrupt flag register            Interrupt flag register
+      *     1     1   FE6E Interrupt enable register          Interrupt enable register
+      *     1     1   FE6F Output register A, no handshake    Input register A, no handshake     
+      
+                      FE70-FE77 16650 serial (A)
+                      ======================
+      *     4?        FE70 S16550_RXR
+      *     4?        FE71 S16550_TXR
+      *     4?        FE72 S16550_IER
+      *     4?        FE73 S16550_FCR
+      *     4?        FE74 S16550_LCR
+      *     4?        FE75 S16550_MCR
+      *     4?        FE76 S16550_DTR
+      *     4?        FE77 S16550_LSR
+      
+                      
+                      FE78-FE7F 16650 serial (B)
+                      ======================
+      *     4?        FE78 S16550_RXR
+      *     4?        FE79 S16550_TXR
+      *     4?        FE7A S16550_IER
+      *     4?        FE7B S16550_FCR
+      *     4?        FE7C S16550_LCR
+      *     4?        FE7D S16550_MCR
+      *     4?        FE7E S16550_DTR
+      *     4?        FE7F S16550_LSR
+      
+                      FE80-FE83 177x Floppy Disk Controller - (was FE28 on master)
+                      ============================================
+            2?    2   FE80 Command                            Status
+            2?    2   FE81 Track                              Track
+            2?    2   FE82 Sector                             Sector
+            2?    2   FE83 Data                               Data
+                      
+                      FE84-87 Disk control
+                      =============================
+            2         FE88 Drive control register             -                                     At FE24 on Master!
+
+
+
+                  M   FE80-9F Master internal expansion port (PL12)
+                      =============================================
+                      
+                      FE80-8F Videodisc SCSI controller (Master)
+                      ==========================================
+                      FE80 Data Out                           Data In
+                      FE81 -                                  Status        
+                      FE82 Select                             -             
+                      FE83 INT enable                         -             
+                      
+                      FEA0-BF 6854 ADLC Econet controller
+                      ===================================
+            2     2   FEA0 Control register 1                 Status register 1
+            2     2   FEA1 Control register 2,3               Status register 2
+            2     2   FEA2 Transmit data, continue frame      Receive data
+            2     2   FEA3 Transmit data, terminate frame     Receive data
+                      
+            4         FED0-DF MMU registers
+                      =====================
+      
+                      
+                      
+                      FEE0-FF Tube control
+                      ====================
+            2     2   FEE0 Status Register 1 and Tube control Status Register 1
+            2     2   FEE1 Data Register 1                    Data Register 1
+            2     2   FEE2 Status Register 2                  Status Register 2
+            2     2   FEE3 Data Register 2                    Data Register 2
+            2     2   FEE4 Status Register 3                  Status Register 3
+            2     2   FEE5 Data Register 3                    Data Register 3
+            2     2   FEE6 Status Register 4 and CPU control  Status Register 4
+            2     2   FEE7 Data Register 4                    Data Register 4
+                      
+      

@@ -4,15 +4,59 @@
 	include "../../includes/noice.inc"
 	include "../../includes/oslib.inc"
 
+DEBUGPR		MACRO
+		SECTION	"tables_and_strings"
+1		FCB	\1,0
+__STR		SET	1B
+		CODE
+		PSHS	X
+		LEAX	__STR,PCR
+		JSR	debug_printX
+		JSR	debug_print_newl
+		PULS	X
+		ENDM
+
+DEBUGPR2	MACRO
+		SECTION	"tables_and_strings"
+1		FCB	\1,0
+__STR		SET	1B
+		CODE
+		PSHS	X
+		LEAX	__STR,PCR
+		JSR	debug_printX
+		PULS	X
+		ENDM
+
+
+ASSERT		MACRO
+		DEBUGPR	\1
+		SWI
+		ENDM
+
+TODO		MACRO
+		jsr	prTODO
+		ASSERT	\1
+		ENDM
+
+TODOSKIP	MACRO
+		DEBUGPR	\1
+		ENDM
+
+
 
 	; NOTE: MOS only runs on a 6309 and uses 6309 extra registers
 	; NOTE: currently doesn't support native mode!
 
+	CODE
 	ORG	MOSROMBASE
 	setdp	MOSROMSYS_DP
+	SECTION	"tables_and_strings"
+	ORG	MOSSTRINGS
+
 
 NATIVE	equ	0
 
+	CODE
 mostbl_chardefs
 	FCB	$00,$00,$00,$00,$00,$00,$00,$00
 	FCB	$18,$18,$18,$18,$18,$00,$18,$00
@@ -314,7 +358,9 @@ mc_logo_0
 	FCB	$00,$00,$00,$00,$00,$07,$F8,$00
 	FCB	$66,$2C,$2C,$18,$60,$80,$00,$00
 
-
+prTODO
+	DEBUGPR2	"TODO HALT: ", 1
+	rts
 ;; ----------------------------------------------------------------------------
 mos_VDU_WRCH
 	ldb	sysvar_VDU_Q_LEN		;	C4C0
@@ -894,6 +940,7 @@ mos_VDU_19
 LC89E	anda	#$0F				; 
 	ldx	#vduvar_PALLETTE		;
 	sta	b,x				; store in saved palette TODO: where to store RGB? Don't store?
+
 	ldb	vduvar_COL_COUNT_MINUS1		; a <= colours - 1
 
 	; get left most pixel mask for this mode
@@ -905,16 +952,8 @@ LC89E	anda	#$0F				;
 	asrb
 	bcc	1F
 	ora	#$22
-1	; a now contains a left most pixel mask
 
-	; store in RAMDAC pixel mask (TODO: move to MODE change/boot?)
-	sta	sheila_VIDULA_pixand
-	pshs	A
-	lda	#$FF
-	sta	sheila_RAMDAC_PIXMASK			; do we need this here, probably move to boot
-	puls	A
-	
-	ldb	vduvar_COL_COUNT_MINUS1			; a <= colours - 1
+1	ldb	vduvar_COL_COUNT_MINUS1			; a <= colours - 1
 	andb	#$07
 	addb	,S+					; get back logical colour from stack
 	ldx	#mostbl_2_colour_pixmasks-1
@@ -1380,6 +1419,27 @@ mos_VDU_set_mode_bmsk1
 	lda	mostbl_VDU_bytes_per_row_low,x
 	sta	vduvar_BYTES_PER_ROW + 1
 	lda	#$43				;	CB9B
+
+	; Setup RAMDAC / VIDC stuff
+	lda	#$FF
+	sta	sheila_RAMDAC_PIXMASK
+
+	ldb	vduvar_COL_COUNT_MINUS1		; a <= colours - 1
+
+	; get left most pixel mask for this mode
+	lda	#$80
+	asrb
+	asrb
+	bcc	1F
+	ora	#$08
+	asrb
+	bcc	1F
+	ora	#$22
+1	; a now contains a left most pixel mask
+
+	; store in RAMDAC pixel mask (TODO: move to MODE change/boot?)
+	sta	sheila_VIDULA_pixand
+
 	jsr	mos_VDU_and_A_vdustatus		;	CB9D
 	lda	vduvar_MODE			;	CBA0
 	ldx	#mostbl_VDU_VIDPROC_CTL_by_mode
@@ -1498,7 +1558,8 @@ mos_OSBYTE_20
 LCD10	sta	b,y
 	decb
 	bpl	LCD10				;	CD14
-	tfr	X,D
+;	tfr	X,D
+	ldb	zp_mos_OSBW_X
 	cmpb	#$07				;	CD16
 	bhs	LCD1C				;	CD18
 	ldb	#$06				;	CD1A
@@ -1945,7 +2006,7 @@ render_char
 LCFBF_renderchar2
 	lda	zp_vdu_status			;	CFC2
 	anda	#$20				;	CFC4
-	lbne	x_Graphics_cursor_display_routine;	CFC6
+	bne	x_Graphics_cursor_display_routine;	CFC6
 	ldx	zp_vdu_wksp + 4
 render_logo2
 	ldb	#7
@@ -3633,7 +3694,7 @@ mos_handle_res_skip_clear_mem1
 
 ;; Don't clear memory if clear memory flag not set
 mos_handle_res_skip_clear_mem2
-	ldb	#$0F				;	DA03
+	ldb	#$8F				;	DA03
 	stb	sheila_SYSVIA_ddrb		;	DA05
 
  *************************************************************************
@@ -3921,7 +3982,7 @@ x_SCREEN_SET_UP
 	jsr	printWelcome1
 
 	; TODO REMOVE THIS
-	jsr	jgh_PRTEXT
+	jsr	mos_PRTEXT
 	fcb	"MOS=",0
 	lda	SHEILA_ROMCTL_MOS
 	jsr	PRHEX
@@ -4174,11 +4235,7 @@ LDD1E		lda	sysvar_FLASH_CTDOWN		;load flash counter
 		ldb	sysvar_FLASH_MARK_PERIOD	;else get space period count in X
 LDD34		rola					;restore bit
 		eora	#$01				;and invert it
-		pshs	A
 		jsr	mos_VIDPROC_set_CTL		;then change colour		;; TODO: remove this it's redundant?
-		puls	A
-		anda	#$01
-		sta	sheila_VIDULA_pixeor		; TODO - more, interrupts etc?
 
 		stb	sysvar_FLASH_CTDOWN		;&0251=X resetting the counter
 
@@ -4401,7 +4458,7 @@ mos_IRQ2V_default_entry
 
 mos_OSBYTE_17						; LDE8C
 		clr	adc_CH_LAST			;set last channel to finish conversion - DB: check should this be 0?
-LDE8F		m_txb
+LDE8F		;;m_txb
 		cmpb	#$05				;if X<4 then
 		blo	1F				;DE95
 		ldb	#$04				;else X=4
@@ -4530,6 +4587,7 @@ mostbl_star_commands
 	STARCMD	"SAVE"	,mos_STAR_SAVE		,$00	; *SAVE     &E23E, A=0     X=>String
 	STARCMD	"SPOOL"	,mos_STAR_SPOOL		,$00	; *SPOOL    &E281, A=0     X=>String
 ;;;	STARCMD	"TAPE'	,mos_STAR_OSBYTE_A	,$8C	; *TAPE     &E348, A=&8C   OSBYTE
+	STARCMD "TIME"	,mos_STAR_TIME		,$00	; *TIME
 	STARCMD	"TV"	,mos_STAR_OSBYTE_A	,$90	; *TV       &E348, A=&90   OSBYTE
 	STARCMDx	mos_jmp_FSCV		,$03	; Unmatched &E031, A=3     FSCV, X=>String
 	FCB	00					; Table end marker
@@ -4627,6 +4685,7 @@ cli_get_params					; LE004
 	andcc	#~CC_Z				; DB: not sure this is needed but *EXEC expects Z clear on entry!
 LE017rts
 	rts					;	E017
+
 ;; ----------------------------------------------------------------------------
 mos_STAR_BASIC					; LE018
 	ldb	sysvar_ROMNO_BASIC		; get BASIC rom no
@@ -4688,7 +4747,7 @@ cli_parse_number_API					; LE04E
 	bra	1B
 LE076	cmpa	#$0D				;	E078
 	SEC					;	E07A
-2	leay	-1,Y
+2	leax	-1,X
 	rts
 ;; ----------------------------------------------------------------------------
 ;LE07C:	iny					;	E07C
@@ -4957,6 +5016,8 @@ x_loadsave_clr_4bytesY_API
 		clr	1,Y
 		clr	0,Y
 		rts					;	E21E
+
+
 ;; ----------------------------------------------------------------------------
 ;; shift through osfile control block
 x_shift_through_osfile_control_block
@@ -4995,7 +5056,7 @@ LE257		jsr	mos_GSREAD			; read a code from text line if OK read next
 		bcc	LE257				; until end of filename reached
 		tst	,S				; get back A without stack changes
 		beq	x_SAVE_build_ctl_block		; IF A=0 (SAVE)  E2C2
-		leax	-1,X				; step back one
+;;		leax	-1,X				; step back one
 		jsr	x_LOADSAVE_readaddr		; set up file block
 		bcs	x_loadsave_setAXOSFILE_clrEXEClo; if carry set do OSFILE
 		beq	x_loadsave_setAXOSFILE		; else if A=0 goto OSFILE, or drop through for bad addr!
@@ -5041,6 +5102,8 @@ x_loadsave_setAXOSFILE					;	E2A5
 ;; check for hex digit
 x_LOADSAVE_readaddr
 		jsr	mos_skip_spaces_at_X		;	E2AD
+		beq	LE2C1
+		leax	-1,X
 		jsr	x_CheckDigitatXisHEX		;	E2B0
 		bcc	LE2C1				;	E2B3
 		jsr	x_loadsave_clr_4bytesY_API	;	E2B5
@@ -5306,8 +5369,8 @@ mostbl_BUFFER_ADDRESS_OFFS
 ;on exit Y next character or preserved if buffer empty
 ;if buffer is empty C=1, Y is preserved else C=0
 mos_OSBYTE_152					; LE45B
-	SEV
-	bra	jmpREMV				;	E45E
+		SEV
+		bra	jmpREMV				;	E45E
 *************************************************************************
 *                                                                       *
 *       OSBYTE 145 Get byte from Buffer                                 *
@@ -5592,7 +5655,7 @@ x_get_byte_from_buffer					; LE539
 		puls	A				;
 		bcs	x_get_byte_from_buffer		;if carry is set E539 screen disabled
 		cmpa	#$87				;else is it COPY key
-		lbeq	x_deal_with_COPY_key		;if so E5A6
+		beq	x_deal_with_COPY_key		;if so E5A6
 
 		;TODO cursor editing
 						; LE575
@@ -5676,9 +5739,10 @@ mostbl_OSBYTE_LOOK_UP
 		FDB	mos_OSBYTE_19			;	E5D9
 		FDB	mos_OSBYTE_20			;	E5DB
 		FDB	mos_OSBYTE_21			;	E5DD
-
-
-		FDB	mos_OSBYTE_nowt			;	E5DF
+OSBYTE1_END	equ	21
+OSBYTE2_START	equ	117
+mostbl_OSBYTE_LOOK_UP2
+		FDB	mos_OSBYTE_117			;	E5DF
 		FDB	mos_OSBYTE_118			;	E5E1
 		FDB	mos_OSBYTE_nowt			;	E5E3
 		FDB	mos_OSBYTE_nowt			;	E5E5
@@ -5721,16 +5785,18 @@ mostbl_OSBYTE_LOOK_UP
 		FDB	mos_OSBYTE_nowt			;	E62F
 		FDB	mos_OSBYTE_nowt			;	E631
 		FDB	mos_OSBYTE_nowt			;	E633
-		FDB	mos_READ_VDU_VARIABLE		;	E635
-		FDB	mos_RW_SYSTEM_VARIABLE_OSBYTE	;	E637
+		FDB	mos_OSBYTE_160			;	E635
+OSBYTE2_END	equ	160
+
+		FDB	mos_OSBYTE_RW_SYSTEM_VARIABLE	;	E637
 		FDB	mos_OSBYTE_nowt			;	E639
 ;; OSWORD LOOK UP TABLE !!!!!ADDRESSES!!!!
 mostbl_OSWORD_LOOK_UP
 		FDB	mos_OSWORD_0_read_line		;	E63B
-		FDB	mos_read_system_clock		;	E63D
-		FDB	mos_OSWORD_nowt			;	E63F
-		FDB	mos_read_interval_timer		;	E641
-		FDB	mos_OSWORD_nowt			;	E643
+		FDB	mos_OSWORD_1_rd_sys_clk		;	E63D
+		FDB	mos_OSWORD_2_wr_sys_clk		;	E63F
+		FDB	mos_OSWORD_3_rd_timer		;	E641
+		FDB	mos_OSWORD_4_wr_int_timer	;	E643
 		FDB	mos_OSWORD_nowt			;	E645
 		FDB	mos_OSWORD_nowt			;	E647
 		FDB	mos_OSWORD_7_SOUND		;	E649
@@ -5740,8 +5806,11 @@ mostbl_OSWORD_LOOK_UP
 		FDB	mos_OSWORD_nowt			;	E651
 		FDB	mos_OSWORD_nowt			;	E653
 		FDB	mos_OSWORD_nowt			;	E655
+		FDB	mos_OSWORD_E_read_rtc
+		FDB	mos_OSWORD_F_write_rtc
 
-
+OSWORD_MAX			equ	15
+OSBYTE_TABLE_OSBYTE_SIZE 	equ	mostbl_OSWORD_LOOK_UP - mostbl_OSBYTE_LOOK_UP
 
 *ORIGINALTABLE*
 ;	FDB	mos_OSBYTE_0			;	E5B3
@@ -5766,7 +5835,7 @@ mostbl_OSWORD_LOOK_UP
 ;	FDB	mos_OSBYTE_19		;	E5D9
 ;	FDB	mos_OSBYTE_20			;	E5DB
 ;	FDB	mos_OSBYTE_21			;	E5DD
-;	FDB	mos_read_VDU_status		;	E5DF
+;	FDB	mos_OSBYTE_117			;	E5DF
 ;	FDB	mos_OSBYTE_118			;	E5E1
 ;	FDB	mos_CLOSE_SPOOL_EXEC		;	E5E3
 ;	FDB	mos_OSBYTE_120			;	E5E5
@@ -5809,16 +5878,16 @@ mostbl_OSWORD_LOOK_UP
 ;	FDB	mos_OSBYTE_157			;	E62F
 ;	FDB	mos_OSBYTE_158			;	E631
 ;	FDB	mos_OSBYTE_159			;	E633
-;	FDB	mos_READ_VDU_VARIABLE		;	E635
-;	FDB	mos_RW_SYSTEM_VARIABLE_OSBYTE	;	E637
-;	FDB	mos_jmp_USERV		;	E639
+;	FDB	mos_OSBYTE_160		;	E635
+;	FDB	mos_OSBYTE_RW_SYSTEM_VARIABLE	;	E637
+;	FDB	mos_jmp_USERV			;	E639
 ;; OSWORD LOOK UP TABLE !!!!!ADDRESSES!!!!
 ;mostbl_OSWORD_LOOK_UP:
 ;	FDB	OSWORD_0_read_line;	E63B
-;	FDB	mos_read_system_clock		;	E63D
-;	FDB	mos_write_system_clock		;	E63F
-;	FDB	mos_read_interval_timer		;	E641
-;	FDB	mos_write_interval_timer	;	E643
+;	FDB	mos_OSWORD_1_rd_sys_clk		;	E63D
+;	FDB	mos_OSWORD_2_wr_sys_clk		;	E63F
+;	FDB	mos_OSWORD_3_rd_timer		;	E641
+;	FDB	mos_OSWORD_4_wr_int_timer	;	E643
 ;	FDB	mos_read_a_byte_from_IO_memory	;	E645
 ;	FDB	mos_write_a_byte_to_IO_memory	;	E647
 ;	FDB	mos_OSWORD_7_SOUND		;	E649
@@ -6096,26 +6165,25 @@ mos_default_BYTEV_handler
 	sty	zp_mos_OSBW_Y			;        
 	STX_B	zp_mos_OSBW_X			;        
 	ldx	#$07				; X=7 to signal osbyte is being attempted
-	cmpa	#117				; if A=0-116
-	blo	x_Process_OSBYTE_CALLS_BELOW_117; then E7C2
+	cmpa	#OSBYTE2_START			; if A=0-116
+	blo	x_Process_OSBYTE_SECTION_1	; then E7C2
 	cmpa	#161				; if A<161 
-	blo	x_process_osbyte_calls_117to160 ; then E78E
+	blo	x_Process_OSBYTE_SECTION_2	; then E78E
 	cmpa	#166				; if A=161-165
-	blo	mos_exec_BYTEV_from_osword_ge14	; then EC78
+	blo	mos_exec_BYTEV_from_osword_gtMAX; then EC78
 	CLC					; clear carry
 
 mos_exec_BYTEV_from_osword_gt224		; LE78A enters here from above with X=7, carry clear, or from OSWORD with X=8 and carry set, A>=224
-	lda	#$A1				; A=&A1
+	lda	#OSBYTE2_END + 1		; A=&A1
 	adca	#$00				;
 ;; process osbyte calls 117 - 160
-x_process_osbyte_calls_117to160
-;;;	sec					;	E78E
-	suba	#95				;convert to &16 to &41 (22-65) (OSBYTE 117 to 160) or &42 for OSBYTE > 165, &43 for OSWORD > 224
+x_Process_OSBYTE_SECTION_2
+	suba	#OSBYTE2_START - OSBYTE1_END - 1;convert to &16 to &41 (22-65) (OSBYTE 117 to 160) or &42 for OSBYTE > 165, &43 for OSWORD > 224
 LE791
 	asla					;	E791
 	SEC					;	E792
 	STY_B	zp_mos_OSBW_Y			; store Y - may have been set in 
-mos_exec_BYTEV_from_osword_lt14			; LE793
+mos_exec_BYTEV_from_osword_leMAX			; LE793
 	;TODO ECONET, this would need to go back in WORDV too for econet!
 ;;	bit	sysvar_ECO_OSBW_INTERCEPT	;read econet intercept flag
 ;;	bpl	LE7A2				;if no econet intercept required E7A2
@@ -6133,10 +6201,13 @@ LE7A2	ldx	#mostbl_OSBYTE_LOOK_UP
 	LDY_B	zp_mos_OSBW_Y			;Y
 	bcs	LE7B6				;if carry is set E7B6
 ;;	ldy	#$00				;else
-	lda	[zp_mos_OSBW_Y]			;get value from address pointed to by &F0/1 (Y,X) - CHECK new API
-LE7B6	SEC					;set carry
-	LDX_B	zp_mos_OSBW_X			;restore X      			;TODO: fewer cycles here
-	ldb	zp_mos_OSBW_X			;pass B=X : DB: extra new api to
+	lda	[zp_mos_OSWORD_X]		;get value from address pointed to by &F0/1 (Y,X) - CHECK new API
+	ldx	zp_mos_OSBW_Y			; get full 16 bit X for OSWORD
+	SEC					;set carry
+	bra	1F
+LE7B6	
+	LDX_B	zp_mos_OSBW_X
+1	ldb	zp_mos_OSBW_X			;pass B=X : DB: extra new api to
 	jsr	[zp_mos_OS_wksp2]		;call &FA/B
 LE7BC	rora					;C=bit 0
 	puls	CC				;get back flags
@@ -6146,11 +6217,11 @@ LE7BC	rora					;C=bit 0
 						;and exit
 ;; ----------------------------------------------------------------------------
 ;; Process OSBYTE CALLS BELOW &75
-x_Process_OSBYTE_CALLS_BELOW_117
+x_Process_OSBYTE_SECTION_1
 	ldy	#$00				;	E7C2
 	cmpa	#$16				;	E7C4
 	blo	LE791				;	E7C6
-mos_exec_BYTEV_from_osword_ge14
+mos_exec_BYTEV_from_osword_gtMAX
 ;;;	php					;	E7C8
 ;;;	php					;	E7C9
 ;;;LE7CA:	pla					;	E7CA
@@ -6200,12 +6271,12 @@ mos_WORDV_default_entry				; LE7EB
 	cmpa	#$E0				;if A=>224
 	bhs	1F				;then E78A with carry set
 
-	cmpa	#$0E				;else if A=>14
-	bhs	2F				;else E7C8 with carry set pass to ROMS & exit
+	cmpa	#OSWORD_MAX				;else if A=>14
+	bhi	2F				;else E7C8 with carry set pass to ROMS & exit
 
-	adda	#$44
 	asla
-	jmp	mos_exec_BYTEV_from_osword_lt14
+	adda	#OSBYTE_TABLE_OSBYTE_SIZE
+	jmp	mos_exec_BYTEV_from_osword_leMAX
 
 
 1
@@ -6213,7 +6284,7 @@ mos_WORDV_default_entry				; LE7EB
 	lbra	mos_exec_BYTEV_from_osword_gt224
 2
 	SEC
-	bra	mos_exec_BYTEV_from_osword_ge14
+	bra	mos_exec_BYTEV_from_osword_gtMAX
 
 ;; read a byte from I/O memory; block of 4 bytes set atFDBess pointed to by 00F0/1 (Y,X) ; XY +0  ADDRESS of byte ; +4	 on exit byte read 
 ;mos_read_a_byte_from_IO_memory:
@@ -6298,9 +6369,9 @@ LE869	leas	2,S				;else get back
 
 ;; read VDU status
 
-;mos_read_VDU_status:
-;	ldx	zp_vdu_status			;	E86C
-;	rts					;	E86E
+mos_OSBYTE_117
+		LDX_B	zp_vdu_status			;	E86C
+		rts					;	E86E
 ;; ----------------------------------------------------------------------------
 ;; set up sound data for Bell
 mos_VDU_7					; LE86F
@@ -6401,11 +6472,11 @@ snd_test_H1orF1_API				; LE8C9
 	puls	CC,PC				; and exit
 ;; ----------------------------------------------------------------------------
 ;; read interval timer
-mos_read_interval_timer
+mos_OSWORD_3_rd_timer
 	ldy	#oswksp_OSWORD3_CTDOWN+5	; point 1 after end
 	bra	LE8D8
 ;; read system clock
-mos_read_system_clock
+mos_OSWORD_1_rd_sys_clk
 	ldy	#sysvar_BREAK_LAST_TYPE+5	; point 1 after end
 	ldb	sysvar_TIMER_SWITCH
 	leay	B,Y
@@ -6417,26 +6488,27 @@ LE8DA	lda	,-Y
 LE8E3	rts					;	E8E3
 ;; ----------------------------------------------------------------------------
 ;; write interval timer
-;mos_write_interval_timer:
-;	lda	#$0F				;	E8E4
-;	bne	LE8EE				;	E8E6
-;; write system clock
-;mos_write_system_clock:
-;	lda	sysvar_TIMER_SWITCH		;	E8E8
-;	eor	#$0F				;	E8EB
-;	clc					;	E8ED
-;LE8EE:	pha					;	E8EE
-;	tax					;	E8EF
-;	ldy	#$04				;	E8F0
-;LE8F2:	lda	(zp_mos_OSBW_X),y		;	E8F2
-;	sta	sysvar_BREAK_LAST_TYPE,x	;	E8F4
-;	inx					;	E8F7
-;	dey					;	E8F8
-;	bpl	LE8F2				;	E8F9
-;	pla					;	E8FB
-;	bcs	LE8E3				;	E8FC
-;	sta	sysvar_TIMER_SWITCH		;	E8FE
-;	rts					;	E901
+mos_OSWORD_4_wr_int_timer				; LE8E4
+		ldb	#$0F				; offset between clock and timer
+		bra	LE8EE				; jump to E8EE ALWAYS!!
+; write system clock
+mos_OSWORD_2_wr_sys_clk
+		ldb	sysvar_TIMER_SWITCH		; get current clock store pointer (A/5)
+		eorb	#$0F				; and invert to get inactive timer(5/A)
+		CLC					; clear carry
+LE8EE		stb	,-S				; store A
+		ldx	#oswksp_TIME-5
+		abx
+		ldb	#$04				; Y=4
+		ldy	zp_mos_OSBW_Y
+1		lda	b,y				; and transfer all 5 bytes
+		sta	,x+				; to the clock or timer
+		decb					; 
+		bpl	1B				; if Y>0 then E8F2
+		ldb	,S+				; get back stack
+		bcs	2F				; if set (write to timer) E8E3 exit
+		stb	sysvar_TIMER_SWITCH		; write back current clock store
+2		rts					; and exit
 
 
 
@@ -6519,21 +6591,378 @@ OSWORD_0_read_line_skip_err				; LE972
 ;; ----------------------------------------------------------------------------
 ;; SELECT PRINTER TYPE
 mos_OSBYTE_5
-	CLI					;allow interrupts briefly
-	SEI					;bar interrupts
-	tst	zp_mos_ESC_flag			;check if ESCAPE is pending
-	bmi	1F				;if it is E9AC
-	tst	mosbuf_buf_busy+3		;else check bit 7 buffer 3 (printer)
-	bpl	mos_OSBYTE_5			;if not empty bit 7=0 E976
-	jsr	LPT_NETV_then_UPTV		;check for user defined routine
-	ldy	#$00				;Y=0
-	sty	zp_mos_OSBW_Y			;F1=0   
+		CLI					;allow interrupts briefly
+		SEI					;bar interrupts
+		tst	zp_mos_ESC_flag			;check if ESCAPE is pending
+		bmi	1F				;if it is E9AC
+		tst	mosbuf_buf_busy+3		;else check bit 7 buffer 3 (printer)
+		bpl	mos_OSBYTE_5			;if not empty bit 7=0 E976
+		jsr	LPT_NETV_then_UPTV		;check for user defined routine
+		ldy	#$00				;Y=0
+		sty	zp_mos_OSBW_Y			;F1=0   
 
 
 mos_OSBYTE_130					; DB: new
-	ldx	#$FFFF
-	ldy	#$FFFF
-1	rts
+		ldx	#$FFFF
+		ldy	#$FFFF
+1		rts
+
+mos_STAR_TIME
+		;TODO - find somewhere else to put this?
+		ldx	#stack
+		jsr	mos_OSWORD_E_read_rtc_0
+		ldx	#stack
+
+1		lda	,X+
+		jsr	OSASCI
+		cmpa	#$D
+		bne	1B
+		rts
+
+mos_OSWORD_F_write_rtc
+		leax	1,X
+		pshs	CC
+		SEI
+		jsr	rtc_wait
+		cmpa	#8
+		beq	mos_OSWORD_F_write_rtc_8
+		cmpa	#15
+		beq	mos_OSWORD_F_write_rtc_15
+		cmpa	#24
+		beq	mos_OSWORD_F_write_rtc_24
+mos_OSWORD_F_fin
+		puls	CC,PC
+
+		; date and time
+mos_OSWORD_F_write_rtc_24
+		jsr	mos_OSWORD_F_write_rtc_15_x
+mos_OSWORD_F_write_rtc_8
+		jsr	bcd_at_X
+		ldb	#RTC_REG_HOURS
+		jsr	rtc_write
+		leax	1,X
+		jsr	bcd_at_X
+		ldb	#RTC_REG_MINUTES
+		jsr	rtc_write
+		leax	1,X
+		jsr	bcd_at_X
+		ldb	#RTC_REG_SECONDS
+		jsr	rtc_write
+		bra	mos_OSWORD_F_fin
+
+mos_OSWORD_F_write_rtc_15_x
+		pshs	CC
+mos_OSWORD_F_write_rtc_15
+		pshsw
+		ldw	,X			; D contains first two letters of day
+		ldy	#tbl_days
+		ldb	#7
+		jsr	day_find
+		ldb	#RTC_REG_DOW
+		jsr	rtc_write
+
+		leax	4,X
+		jsr	bcd_at_X
+		ldb	#RTC_REG_DAY
+		jsr	rtc_write
+		
+		leax	1,X
+		ldw	1,X			; D contains second two letters of month
+		ldy	#tbl_months+1
+		ldb	#12
+		jsr	day_find
+		ldb	#RTC_REG_MONTH
+		jsr	rtc_write
+
+		leax	6,X
+		jsr	bcd_at_X
+		ldb	#RTC_REG_YEAR
+		jsr	rtc_write
+		
+		leax	1,X
+		pulsw
+		bra	mos_OSWORD_F_fin
+
+
+;  0123456789ABCDEF012345678
+;  Day,DD Mon Year.HH:MM:SS£
+;  YMDWhms
+
+
+day_find
+		clra
+1		cmpw	,Y++
+		beq	2F
+		leay	1,Y
+		inca
+		decb
+		bpl	1B
+		clra
+2		inca
+		rts
+
+bcd_at_X	jsr	bcd_digit
+		asla
+		asla
+		asla
+		asla
+		sta	,-S
+		jsr	bcd_digit
+		adda	,S+
+		rts
+
+
+bcd_digit	lda	,X+
+		suba	#'0'
+1		cmpa	#9
+		bls	1F
+		suba	#20
+		bra	1B
+1		rts
+
+
+mos_OSWORD_E_read_rtc
+		;; lda	,X
+		tsta
+		beq	mos_OSWORD_E_read_rtc_0
+		cmpa	#1
+		beq	mos_OSWORD_E_read_rtc_1
+		cmpa	#2
+		beq	mos_OSWORD_E_read_rtc_2
+		rts
+mos_OSWORD_E_read_rtc_0
+		stx	,--S
+		jsr	mos_OSWORD_E_read_rtc_1		; get BCD time
+		ldx	,S++
+		leax	-1,X
+		bra	mos_OSWORD_E_read_rtc_2
+mos_OSWORD_E_read_rtc_1
+
+		jsr	rtc_wait
+
+		pshs	CC
+		orcc	#CC_I + CC_F		; we mustn't be interrupted
+		ldb	#9
+1		jsr	rtc_read
+		sta	,X+
+		decb
+		cmpb	#5
+		bgt	1B
+		decb
+		bpl	1B
+
+		puls	CC,PC
+
+mos_OSWORD_E_read_rtc_2
+		; seconds
+		leay	$17,X
+		lda	7,x
+		jsr	mos_hexstr_Y
+		;minutes
+		leay	$14,X
+		lda	6,X
+		jsr	mos_hexstr_Y
+		;hours
+		leay	$11,X
+		lda	5,X
+		jsr	mos_hexstr_Y
+		; YY
+		leay	$E,X
+		lda	1,X
+		jsr	mos_hexstr_Y
+		; century
+		ldb	1,X
+		lda	#$19
+		cmpa	#$80
+		adca	#0
+		daa
+		leay	$C,X
+		jsr	mos_hexstr_Y
+		; DD
+		leay	$5,X
+		lda	3,X
+		jsr	mos_hexstr_Y
+		; Mon
+		stx	,--S
+		ldb	$2,X
+		cmpb	#$10				; convert BCD to binary
+		blo	1F
+		subb	#6
+1		leay	8,X
+		ldx	#tbl_months
+		jsr	domonth
+
+		ldx	,S
+		; Day
+		ldb	$4,X
+		leay	1,X
+		ldx	#tbl_days
+		jsr	doday
+
+		ldx	,S++
+
+		; puntuation
+		lda	#$D
+		sta	$19,X
+		lda	#':'
+		sta	$13,X
+		sta	$16,X
+		lda	#'.'
+		sta	$10,X
+		lda	#','
+		sta	$4,X
+		lda	#' '
+		sta	$7,X
+		sta	$B,X
+
+
+		rts
+
+domonth
+doday
+		decb
+		stb	,-S
+		aslb
+		addb	,S+
+		abx
+		ldb	#3
+1		lda	,X+
+		sta	,Y+
+		decb
+		bne	1B
+		rts
+
+
+
+tbl_days	fcb	"SunMonTueWedThuFriSat"
+tbl_months	fcb	"JanFebMarAprMayJumJulAugSepOctNovDec"
+
+
+rtc_wait					; wait for a UIP clear or if set wait for it to end
+		std	,--S
+		ldb	#$A
+		jsr	rtc_read
+		tsta
+		bpl	2F			; if not UIP we have 240uS to read clock
+
+1		ldb	#$A
+		jsr	rtc_read
+		tsta
+		bmi	1B			; wait for UIP to go low
+
+2		puls	D,PC
+
+
+		; rtc_write A=data, B=address
+rtc_write
+		pshs	CC,A
+
+		orcc	#CC_I + CC_F			; disable interrupts
+
+		; AS low
+		lda	#BITS_RTC_AS_OFF
+		sta	sheila_SYSVIA_orb
+
+		; DS low
+		lda	#BITS_RTC_DS
+		sta	sheila_SYSVIA_orb
+
+		; AS hi
+		lda	#BITS_RTC_AS_ON
+		sta	sheila_SYSVIA_orb
+
+		lda	#$FF
+		sta	sheila_SYSVIA_ddra
+
+		; rtc address
+		stb	sheila_SYSVIA_ora_nh
+
+		; CS low
+		lda	#BITS_RTC_CS 
+		sta	sheila_SYSVIA_orb
+
+		; RnW lo
+		lda	#BITS_RTC_RnW
+		sta	sheila_SYSVIA_orb
+
+		; AS low
+		lda	#BITS_RTC_AS_OFF
+		sta	sheila_SYSVIA_orb
+
+		; DS hi
+		lda	#BITS_RTC_DS + BITS_LAT_ON
+		sta	sheila_SYSVIA_orb
+
+		lda	1,S
+		sta	sheila_SYSVIA_ora_nh
+
+		; DS low
+		lda	#BITS_RTC_DS
+		sta	sheila_SYSVIA_orb
+
+		; CS hi
+		lda	#BITS_RTC_CS + BITS_LAT_ON
+		sta	sheila_SYSVIA_orb
+
+		puls	CC,A,PC
+
+
+rtc_read	
+		pshs	CC,A
+
+		orcc	#CC_I + CC_F			; disable interrupts
+
+		; AS low
+		lda	#BITS_RTC_AS_OFF
+		sta	sheila_SYSVIA_orb
+
+		; DS low
+		lda	#BITS_RTC_DS
+		sta	sheila_SYSVIA_orb
+
+		; AS hi
+		lda	#BITS_RTC_AS_ON
+		sta	sheila_SYSVIA_orb
+
+		lda	#$FF
+		sta	sheila_SYSVIA_ddra
+
+		; rtc address
+		stb	sheila_SYSVIA_ora_nh
+
+		; CS low
+		lda	#BITS_RTC_CS 
+		sta	sheila_SYSVIA_orb
+
+		; slow D all in
+		clr	sheila_SYSVIA_ddra
+
+		; RnW hi
+		lda	#BITS_RTC_RnW + BITS_LAT_ON
+		sta	sheila_SYSVIA_orb
+
+		; AS low
+		lda	#BITS_RTC_AS_OFF
+		sta	sheila_SYSVIA_orb
+
+		; DS hi
+		lda	#BITS_RTC_DS + BITS_LAT_ON
+		sta	sheila_SYSVIA_orb
+
+		lda	sheila_SYSVIA_ora_nh
+		sta	1,S
+
+		; DS low
+		lda	#BITS_RTC_DS
+		sta	sheila_SYSVIA_orb
+
+		; CS hi
+		lda	#BITS_RTC_CS + BITS_LAT_ON
+		sta	sheila_SYSVIA_orb
+
+		puls	CC,A,PC
+
+
 
 
  *************************************************************************
@@ -6585,11 +7014,11 @@ LE99A
 *       READ/ WRITE SYSTEM VARIABLE OSBYTE NO. +&190                    *
 *                                                                       *
 *************************************************************************
-mos_RW_SYSTEM_VARIABLE_OSBYTE
+mos_OSBYTE_RW_SYSTEM_VARIABLE
 	ldx	#sysvar_OSVARADDR-$A6
 	tfr	A,B				;Y=A+&190
 	cmpb	#$B0
-	blo	mos_RW_SYSTEM_VARIABLE_OSBYTE_BE
+	blo	mos_OSBYTE_RW_SYSTEM_VARIABLE_BE
 	abx
 	ldd	,x				;i.e. A=&190 +osbyte call!
 	sta	,-S
@@ -6602,7 +7031,7 @@ mos_RW_SYSTEM_VARIABLE_OSBYTE
 	std	,--S				; stack this as X
 	puls	Y,X,PC
 
-mos_RW_SYSTEM_VARIABLE_OSBYTE_BE		; as above but frig for big endian
+mos_OSBYTE_RW_SYSTEM_VARIABLE_BE		; as above but frig for big endian
 	eorb	#1				; read these the opposite way round as they're big endian
 	abx
 	ldd	-1,X				;i.e. A=&190 +osbyte call and the byte before it (will give wrong answer in Y on odd accesses!)
@@ -6648,7 +7077,7 @@ mos_OSBYTE_19						; LE9B6
 	beq	1B				;no then E9B9
 ;; READ VDU VARIABLE; X contains the variable number ; 0 =lefthand column in pixels current graphics window ; 2 =Bottom row in pixels current graphics window ; 4 =Right hand column in pixels current graphics window ; 6 =Top row in pixels current graphics win
 	; TODO: swap certain bytes here
-mos_READ_VDU_VARIABLE
+mos_OSBYTE_160
 	lda	vduvar_GRA_WINDOW_LEFT+1,x	;	E9C0
 	m_tay
 	lda	vduvar_GRA_WINDOW_LEFT,x	;	E9C3
@@ -6729,6 +7158,8 @@ mos_VIDPROC_set_CTL
 	SEI					;disable interupts
 	sta	sysvar_VIDPROC_CTL_COPY		;save RAM copy of new parameter
 	sta	sheila_VIDULA_ctl		;write to control register
+	anda	#$01
+	sta	sheila_VIDULA_pixeor		;RAMDAC flash
 	lda	sysvar_FLASH_MARK_PERIOD	;read  space count
 	sta	sysvar_FLASH_CTDOWN		;set flash counter to this value
 	puls	CC				;get back status
@@ -7882,7 +8313,7 @@ mos_OSBYTE_21
 mos_STAR_HELP
 	ldb	#SERVICE_9_HELP			;	F0B9
 	jsr	mos_OSBYTE_143_b_cmd_x_param			;	F0BB
-	jsr	jgh_PRTEXT
+	jsr	mos_PRTEXT
 	FCB	$0D, "OS 1.09", $0D,0
 	rts					;	F0CB
 ;; ----------------------------------------------------------------------------
@@ -8992,8 +9423,10 @@ FILLNOICE		FILL	$FF,NOICE_CODE_BASE+NOICE_CODE_LEN-FILLNOICE
 ;
 
 
-FILL2
-		FILL	$FF,REMAPPED_HW_VECTORS-FILL2
+; strings are at F500
+
+;;FILL2
+;;		FILL	$FF,REMAPPED_HW_VECTORS-FILL2
 		ORG	REMAPPED_HW_VECTORS
 *************************************************************
 *     R E M A P P E D    H A R D W A R E    V E C T O R S   *
@@ -9056,8 +9489,8 @@ debug_printX
 
 debug_print_newl
 	pshs	A
-	lda	#13
-	jsr	debug_print_ch
+;;	lda	#13
+;;	jsr	debug_print_ch
 	lda	#10
 	jsr	debug_print_ch
 	puls	A,PC
@@ -9446,11 +9879,11 @@ debug_print_ch
 ;LFA46:	jsr	LE7DC				;	FA46
 ;	tay					;	FA49
 ;; Print 0 terminated string after jsr, return after string
-jgh_PRTEXT
+mos_PRTEXT
 	puls	X				; get return address back from stack
-	jsr	jgh_PRSTRING
+	jsr	mos_PRSTRING
 2	jmp	,X
-jgh_PRSTRING
+mos_PRSTRING
 1	lda	,X+
 	beq	2F
 	jsr	OSASCI
@@ -9498,7 +9931,7 @@ jgh_PRSTRING
 ;	beq	LFAD3				;	FAB9
 ;	jsr	LFB46				;	FABB
 ;	tay					;	FABE
-;	jsr	jgh_PRTEXT			;	FABF
+;	jsr	mos_PRTEXT			;	FABF
 ;	FCB	$0D,$07				;	FAC2
 ;	FCB	"Rewind tape"			;	FAC4
 ;						;	FACC
@@ -9711,12 +10144,25 @@ jgh_PRHEX
 		lsra
 		jsr	PRHEXDIG
 		puls	A
-PRHEXDIG	anda	#$0F
+PRHEXDIG	jsr	mos_convhex_nyb
+		jmp	OSASCI
+mos_convhex_nyb	anda	#$0F
 		adda	#'0'
 		cmpa	#'9'
 		bls	1F
 		adda	#'A'-'9'-1
-1		jmp	OSASCI
+1		rts
+mos_hexstr_Y	sta	,-S
+		lsra
+		lsra
+		lsra
+		lsra
+		jsr	mos_convhex_nyb
+		sta	,Y+
+		lda	,S
+		jsr	mos_convhex_nyb
+		sta	,Y+
+		puls	A,PC
 jgh_USERINT	rti
 jgh_ERRJMP	ldx	,S++
 		CLI
@@ -10088,7 +10534,7 @@ _DEBUGPRINTX	jmp	debug_printX			; FF95
 
 	ORG	JGH_OSENTRIESLOC
 _OSRDRM		jmp	mos_get_SWROM_B_X_A_API		; FF98	!!! not same as Beeb
-_PRSTRING	jmp	jgh_PRSTRING			; FF9B
+_PRSTRING	jmp	mos_PRSTRING			; FF9B
 _OSEVEN		jmp	x_CAUSE_AN_EVENT		; FF9E	!!! not same as Beeb
 _SCANHEX	jmp	jgh_SCANHEX			; FFA1
 _RAWVDU		jmp	mos_VDU_WRCH			; FFA3	!!! not same as Beeb
@@ -10096,7 +10542,7 @@ _OSQUIT		jmp	jgh_OSQUIT			; FFA7
 _PRHEX		jmp	jgh_PRHEX			; FFAA
 _PR2HEX		jmp	jgh_PR2HEX			; FFAD
 _USERINT	jmp	jgh_USERINT			; FFB0
-_PRTEXT		jmp	jgh_PRTEXT			; FFB3
+_PRTEXT		jmp	mos_PRTEXT			; FFB3
 
 	ORG	OSENTRIESLOC
 VETAB_len

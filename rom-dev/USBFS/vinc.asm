@@ -61,51 +61,41 @@ vinc_echo	pshs	A
 
 vinc_wait_TXE	pshs	D
 		ldd	#$8000
-2		tim	#$02, sheila_USRVIA_ora
+2		tim	#VINC_status_TXE, sheila_VINC_status
 		beq	1F
 		decd
 		bpl	2B
 1		puls	D,PC
 
 vinc_cmd	jsr	vinc_write_A
-		bne	1B
+		bne	1F
 		lda	#$0D
 		bra	vinc_write_A
+1		rts
 
 vinc_write_D
 		jsr	vinc_write_A
 		tfr	B,A
-vinc_write_A	pshs	B
+vinc_write_A	;pshs	B
 		jsr	vinc_wait_TXE
 		bne	1F				; timeout
-		ldb	#$FF
-		stb	sheila_USRVIA_ddrb
-		sta	sheila_USRVIA_orb
-
-		ldb	#$04
-		stb	sheila_USRVIA_ora
-		ldb	#$0C
-		stb	sheila_USRVIA_ora
-		clr	sheila_USRVIA_ddrb
-1		puls	B,PC
+		sta	sheila_VINC_data
+		orcc	#CC_Z
+1		;puls	B,PC
+		rts
 
 vinc_read_A	jsr	vinc_wait_RXF
 		bne	1F
-vinc_read2	pshs	B
-		ldb	#$08				; #RD low
-		stb	sheila_USRVIA_ora
-		lda	sheila_USRVIA_orb
-		ldb	#$0C				; #RD hi
-		stb	sheila_USRVIA_ora
-		orcc	#CC_Z				; set Z
-		puls	B,PC
+vinc_read2	
+		lda	sheila_VINC_data
+		orcc	#CC_Z
 1		rts
 
 ;	wait for char ready
 ;	Z=0 for timeout
 vinc_wait_RXF	pshs	D
 		ldd	#$8000
-1		tim	#$01, sheila_USRVIA_ora
+1		tim	#VINC_status_RXF, sheila_VINC_status
 		beq	2F
 		decd
 		bpl	1B
@@ -115,33 +105,54 @@ vinc_wait_RXF	pshs	D
 vinc_clear_RXF	
 		pshs	D
 		ldd	#1024				; count down - get 1024 empty responses and then we should have cleared it?
-1		tim	#$01, sheila_USRVIA_ora		; check #RXF
+		ldx	#0
+1		tim	#VINC_status_RXF, sheila_VINC_status	; check #RXF
 		bne	2F
 		;do a dummy read
 		jsr	vinc_read2
-		jsr	vinc_echo
-		bra	1B
-2		decd
+;;		jsr	vinc_echo
+		leax	-1,X
 		bne	1B
+		lda	#1				; indicate error
+		puls	D,PC				; exit after fecthing 64k chars
+2		decd
+		bne	1B				; no error exit EQ
 		puls	D,PC
 
 
 
 vinc_init
-		; set ORA to RD# = 1, WR = 1
-		lda	#$0C
-		sta	sheila_USRVIA_ora
-		; set DDRA
-		sta	sheila_USRVIA_ddra
 
 		ldx	#str_init
 		jsr	DEBUGPRINTX
-
+		lda	#4
+		sta	,-S
 vinc_init_loop
+		dec	,S
+		bmi	vinc_init_err
+
 		ldx	#str_flush_init
 		jsr	DEBUGPRINTX
 		jsr	vinc_clear_RXF
+		bne	vinc_init_err
 		jsr	vinc_init_ok
+
+
+		;; synchronise
+		ldx	#str_sync_1
+		lda	#'E'
+		jsr	vinc_init_sync
+		bne	vinc_init_loop
+		;; synchronise
+		ldx	#str_sync_2
+		lda	#'e'
+		jsr	vinc_init_sync
+		bne	vinc_init_loop
+		;; synchronise
+		ldx	#str_sync_3
+		lda	#'E'
+		jsr	vinc_init_sync
+		bne	vinc_init_loop
 
 		ldx	#str_cmd_scs
 		jsr	vinc_cmd_echo
@@ -151,25 +162,15 @@ vinc_init_loop
 		jsr	vinc_cmd_echo
 		bne	vinc_init_loop
 
-		;; synchronise
-		ldx	#str_sync_1
-		lda	#'E'
-		jsr	vinc_init_sync
-		;; synchronise
-		ldx	#str_sync_2
-		lda	#'e'
-		jsr	vinc_init_sync
-		;; synchronise
-		ldx	#str_sync_3
-		lda	#'E'
-		jsr	vinc_init_sync
 
 		;; close any open file
 		ldx	#str_cmd_clf
 		jsr	vinc_cmd_echo
-		bne	vinc_init_loop
 
-		rts
+		orcc	#CC_Z
+vinc_init_err	puls	A,PC
+
+
 
 vinc_init_sync
 		sta	,-S				; store A
@@ -191,17 +192,21 @@ vinc_init_sync
 		leas	1,S
 vinc_init_ok
 		ldx	#str_ok
-		jmp	DEBUGPRINTX
+		jsr	DEBUGPRINTX
+		orcc	#CC_Z
+		rts
 vinc_init_nosync
 		ldx	#str_no_sync
+		bra	1F
 vinc_init_timeout_wr
 		ldx	#str_timeout_wr
 		bra	1F
 vinc_init_timeout_rd
 		ldx	#str_timeout_rd
 1		jsr	DEBUGPRINTX
-		leas	3,S				; don't return!
-		bra	vinc_init_loop
+		leas	1,S				; don't return!
+		andcc	#~CC_Z
+		rts
 
 
 VINC_Sector_Reset		; TODO - multiple images?
@@ -226,6 +231,7 @@ VINC_BEGIN1
 	bne	beg2
 
 	jsr	vinc_init
+	bne	carderr
 
 	; Check MMC_SECTOR & DRIVE_INDEX initialised
 beg2
@@ -274,17 +280,17 @@ VINC_SetupRead
 	pshs	D,X
 	ldx	#str_cmd_opr
 	jsr	vinc_cmd_echo
-	lbne	vinc_err
+	bne	vinc_err
 
 	ldx	#str_sek
 	jsr	DEBUGPRINTX
 
 	lda	#VINC_CMD_SEK
 	jsr	vinc_write_A
-	lbne	vinc_err
+	bne	vinc_err
 	lda	#' '
 	jsr	vinc_write_A
-	lbne	vinc_err
+	bne	vinc_err
 
 	lda	DP_VINC_SEK_ADDR
 	jsr	DEBUGPRINTHEX
@@ -315,6 +321,11 @@ VINC_SetupRead
 
 VINC_StartRead
 	rts
+
+vinc_err
+	jsr	ReportError
+	fcb	99, "VINC ERROR", 0
+
 
 VINC_ReadXtoY
 	pshsw
@@ -353,13 +364,12 @@ VINC_ReadXtoY
 	jsr	vinc_echo_cmd_response
 	bne	vinc_err
 	rts
-2	dece
+2	ince
+	cmpe	#5
 	beq	vinc_err
+	bra	1B
 
 
-vinc_err
-	jsr	ReportError
-	fcb	99, "VINC ERROR", 0
 
 
 ***********************************************************************
