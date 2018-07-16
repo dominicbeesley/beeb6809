@@ -1,12 +1,20 @@
 .PHONY:		all
 
-all:
-	$(MAKE) -C noice/noice_beeb6309 all
-	$(MAKE) -C beeb6809-mos all
-	$(MAKE) -C beebMOSloader-noice all
+all: all_chipkit all_beeb
+
+all_chipkit:
+	$(MAKE) -C noice/noice all_chipkit
+	$(MAKE) -C beeb6809-mos all_chipkit
+	$(MAKE) -C beebMOSloader-noice all_chipkit
+
+all_beeb:
+	$(MAKE) -C noice/noice all_beeb
+	$(MAKE) -C beeb6809-mos all_beeb
+	$(MAKE) -C beebMOSloader-noice all_beeb
+
 	
 clean:
-	$(MAKE) -C noice/noice_beeb6309 clean
+	$(MAKE) -C noice/noice clean
 	$(MAKE) -C beeb6809-mos clean
 	$(MAKE) -C beebMOSloader-noice clean
 	

@@ -2,7 +2,7 @@ mos_MACHINE_TYPE_BYTE			EQU $63
 
 * Address of MOS ROM base
 MOSROMBASE				EQU $C000
-MOSSTRINGS				EQU $F470
+MOSSTRINGS				EQU $F4A0
 
 * default direct page for MOS ROM
 MOSROMSYS_DP				EQU $0
@@ -21,7 +21,6 @@ DOM_DEBUG_ENTRIES			EQU JGH_OSENTRIESLOC-3*4
 BOUNCELOC				EQU JGH_OSENTRIESLOC-4*11
 
 
-SVC_OSCLI_UK				EQU $04
 
 FSCV_CODE_OSCLI_UK			EQU $03
 
@@ -93,7 +92,7 @@ sysvar_ROMNO_BASIC			EQU $024B	; fx187	  &BB	BASIC ROM number
 sysvar_ADC_CUR				EQU $024C	; fx188	  &BC	Current ADC Channel
 sysvar_ADC_MAX				EQU $024D	; fx189	  &BD	Maximum ADC Channel number
 sysvar_ADC_ACCURACY			EQU $024E	; fx190	  &BE	ADC conversion type/accuracy
-sysvar_RS423_USEFLA			EQU $024F	; fx191	  &BF	RS423 use flag
+sysvar_RS423_USEFLAG			EQU $024F	; fx191	  &BF	RS423 use flag
 sysvar_RS423_CTL_COPY			EQU $0250	; fx192	  &C0	RAM copy of RS423 control register
 sysvar_FLASH_CTDOWN			EQU $0251	; fx193	  &C1	Flashing colour countdown timer
 sysvar_FLASH_SPACE_PERIOD		EQU $0252	; fx194	  &C2	Flashing colour space period count set by FX9
@@ -150,7 +149,7 @@ sysvar_FX238				EQU $027E	; fx238	  &EE	BBC, Electron: unused
 sysvar_FX239				EQU $027F	; fx239	  &EF	unused
 sysvar_COUNTRY				EQU $0280	; fx240	  &F0	Country code
 sysvar_USERFLAG				EQU $0281	; fx241	  &F1	User flag location, set with FX1
-sysvar_SERPROC_CTL_CP			EQU $0282	; fx242	  &F2	BBC, Master: RAM copy of SERPROC control register
+sysvar_SERPROC_CTL_CPY			EQU $0282	; fx242	  &F2	BBC, Master: RAM copy of SERPROC control register
 sysvar_TIMER_SWITCH			EQU $0283	; fx243	  &F3	Timer switch state
 sysvar_KEYB_SOFT_CONSISTANCY		EQU $0284	; fx244	  &F4	Soft key consistancy flag
 sysvar_PRINT_DEST			EQU $0285	; fx245	  &F5	Printer destination, set with FX5
@@ -211,6 +210,7 @@ vduvar_GRA_CUR_INT_OLD			EQU $0314	; Old graphics cursor in external coordinates
 vduvar_TXT_CUR_X			EQU $0318	; Current text cursor X
 vduvar_TXT_CUR_Y			EQU $0319	; Current text cursor Y
 vduvar_GRA_CUR_CELL_LINE		EQU $031A	; Line within current graphics cell of graphics cursor
+vdvvar_VDU_Q_START			EQU $031B
 vduvar_VDU_Q_END			EQU $0324	; end of VDU Q (well 1 after!)
 vduvar_GRA_CUR_INT			EQU $0324	; Current graphics cursor in internal coordinates
 vduvar_TEMP_8				EQU $0328	; Bitmap read from screen by OSBYTE 135, various coordinate routines

@@ -42,6 +42,7 @@ DEBUGPRINTX				EQU	$FF95
 ;	OS Constants
 OSFILE_LOAD				EQU $FF
 OSFILE_SAVE				EQU $00
+OSFILE_CAT				EQU $05
 OSFILE_OFS_FILENAME			EQU $00
 OSFILE_OFS_LOAD				EQU $02
 OSFILE_OFS_EXEC				EQU $06
@@ -50,8 +51,24 @@ OSFILE_OFS_START			EQU $0A
 OSFILE_OFS_ATTR				EQU $0E
 OSFILE_OFS_END				EQU $0E
 
+OSFIND_CLOSE				EQU $00
+OSFIND_OPENIN				EQU $40
+OSFIND_OPENOUT				EQU $80
+OSFIND_OPENUP				EQU $C0
+
 OSWORD_SOUND				EQU $07
 OSWORD_ENVELOPE				EQU $08
+
+OSARGS_cmdtail				EQU $01
+
+OSGBPB_WRITE_PTR			EQU	$00
+OSGBPB_WRITE_NOPTR			EQU	$02
+OSGBPB_READ_PTR				EQU	$03
+OSGBPB_READ_NOPTR			EQU	$04
+OSGBPB_READ_TITLE			EQU	$05
+OSGBPB_READ_DIR				EQU	$06
+OSGBPB_READ_LIB				EQU	$07
+OSGBPB_GET_DIRENT			EQU	$08
 
 
 SERVICE_0_NOP				EQU	$0
@@ -76,6 +93,7 @@ SERVICE_12_INITFS			EQU	$12
 SERVICE_13_SERIAL_CHAR			EQU	$13
 SERVICE_14_PRINT_CHAR			EQU	$14
 SERVICE_15_100Hz			EQU	$15
+SERVICE_25_FSINFO			EQU	$25
 
 FSCV_6_NewFS				EQU	$06
 
@@ -105,9 +123,12 @@ KEYV					EQU	$0228	; Read the keyboard
 INSV					EQU	$022A	; Insert characters into a buffer
 REMV					EQU	$022C	; Remove characters from a buffer
 CNPV					EQU	$022E	; Count or Purge a buffer
-IND1V					EQU	$0230	; Spare
-IND2V					EQU	$0232	; Spare
-IND3V					EQU	$0234	; Spare
+;;IND1V					EQU	$0230	; Spare 
+SWI9V					EQU	$0230	; SWI instruction vector - do not use except for debugging
+;;IND2V					EQU	$0232	; Spare
+SW29V					EQU	$0232	; SWI2 vector, may be used by applications, though not recommnded
+;;IND3V					EQU	$0234	; Spare
+NMI9V					EQU	$0234	; NMI vector - do not use except for debugging
 
 ; OS Extended Vectors Marker addresses
 
@@ -166,3 +187,70 @@ EXT_CNPV				EQU	$0DE4	; Count or Purge a buffer
 EXT_IND1V				EQU	$0DE7	; Spare
 EXT_IND2V				EQU	$0DEA	; Spare
 EXT_IND3V				EQU	$0DED	; Spare
+
+OSBYTE_108_WRITE_SHADOW_STATE		EQU	108
+OSBYTE_119_CLOSE_SPOOL_AND_EXEC		EQU	119
+OSBYTE_126_ESCAPE_ACK			EQU	126
+OSBYTE_129_INKEY			EQU	129
+OSBYTE_142_SERVICE_CALL			EQU	143
+OSBYTE_156_SERIAL_STATE			EQU	156
+OSBYTE_160_READ_VDU_VARIABLE		EQU	160
+OSBYTE_168_READ_ROM_POINTER_TABLE	EQU	168
+OSBYTE_171_ROMTAB			EQU	170
+OSBYTE_232_VAR_IRQ_MASK_SERIAL		EQU	232
+OSBYTE_234_VAR_TUBE			EQU	234
+OSBYTE_253_VAR_LAST_RESET		EQU	253
+
+vduvar_ix_GRA_WINDOW			EQU $00				
+vduvar_ix_GRA_WINDOW_LEFT		EQU $00	; Current graphics window left column in pixels
+vduvar_ix_GRA_WINDOW_BOTTOM		EQU $02	; Current graphics window bottom row in pixels
+vduvar_ix_GRA_WINDOW_RIGHT		EQU $04	; Current graphics window right column in pixels
+vduvar_ix_GRA_WINDOW_TOP		EQU $06	; Current graphics window top row in pixels
+vduvar_ix_TXT_WINDOW_LEFT		EQU $08	; Current text window left hand column
+vduvar_ix_TXT_WINDOW_BOTTOM		EQU $09	; Current text window bottom row
+vduvar_ix_TXT_WINDOW_RIGHT		EQU $0A	; Current text window right hand column
+vduvar_ix_TXT_WINDOW_TOP		EQU $0B	; Current text window top column
+vduvar_ix_GRA_ORG_EXT			EQU $0C	; Current graphics origin in external coordinates
+vduvar_ix_GRA_CUR_EXT			EQU $10	; Current graphics cursor in external coordinates
+vduvar_ix_GRA_CUR_INT_OLD		EQU $14	; Old graphics cursor in external coordinates
+vduvar_ix_TXT_CUR_X			EQU $18	; Current text cursor X
+vduvar_ix_TXT_CUR_Y			EQU $19	; Current text cursor Y
+vduvar_ix_GRA_CUR_CELL_LINE		EQU $1A	; Line within current graphics cell of graphics cursor
+vdvvar_ix_VDU_Q_START			EQU $1B
+vduvar_ix_VDU_Q_END			EQU $24	; end of VDU Q (well 1 after!)
+vduvar_ix_GRA_CUR_INT			EQU $24	; Current graphics cursor in internal coordinates
+vduvar_ix_TEMP_8			EQU $28	; Bitmap read from screen by OSBYTE 135, various coordinate routines
+vduvar_ix_GRA_WKSP			EQU $30	; Graphics workspace
+vduvar_ix_6845_CURSOR_ADDR		EQU $4A	; Text cursor address for 6845
+vduvar_ix_TXT_WINDOW_WIDTH_BYTES	EQU $4C	; Text window width in bytes
+vduvar_ix_SCREEN_BOTTOM_HIGH		EQU $4E	; High byte of bottom of screen memory
+vduvar_ix_BYTES_PER_CHAR		EQU $4F	; Bytes per character for current mode
+vduvar_ix_6845_SCREEN_START		EQU $50	; Screen display start address for 6845
+vduvar_ix_BYTES_PER_ROW			EQU $52	; Bytes per screen row
+vduvar_ix_SCREEN_SIZE_HIGH		EQU $54	; Screen memory size high byte
+vduvar_ix_MODE				EQU $55	; Current screen mode
+vduvar_ix_MODE_SIZE			EQU $56	; Memory map type: 0 - 20K, 1 - 16K, 2 - 10K, 3 - 8K, 4 - 1K
+vduvar_ix_TXT_FORE			EQU $57	; Foreground text colour
+vduvar_ix_TXT_BACK			EQU $58	; Background text colour
+vduvar_ix_GRA_FORE			EQU $59	; Foreground graphics colour
+vduvar_ix_GRA_BACK			EQU $5A	; Background graphics colour
+vduvar_ix_GRA_PLOT_FORE			EQU $5B	; Foreground plot mode
+vduvar_ix_GRA_PLOT_BACK			EQU $5C	; Background plot mode
+vduvar_ix_VDU_VEC_JMP			EQU $5D	; General VDU jump vector
+vduvar_ix_CUR_START_PREV		EQU $5F	; Cursor start register previous setting
+vduvar_ix_COL_COUNT_MINUS1		EQU $60	; Number logical colours -1
+vduvar_ix_PIXELS_PER_BYTE_MINUS1	EQU $61	; Pixels per byte -1 (zero if text only mode)
+vduvar_ix_LEFTMOST_PIX_MASK		EQU $62	; Leftmost pixel colour mask
+vduvar_ix_RIGHTMOST_PIX_MASK		EQU $63	; Rightmost pixel colour mask
+vduvar_ix_TEXT_IN_CUR_X			EQU $64	; Text input cursor X
+vduvar_ix_TEXT_IN_CUR_Y			EQU $65	; Text input cursor Y
+vduvar_ix_MO7_CUR_CHAR			EQU $66	; Teletext output cursor character
+vduvar_ix_EXPLODE_FLAGS			EQU $67	; Font explosion flags, b1=224-255 in RAM, b7=32-63 in RAM
+vduvar_ix_FONT_LOC32_63			EQU $68	; Font location, characters 32-63
+vduvar_ix_FONT_LOC64_95			EQU $69	; Font location, characters 64-95 
+vduvar_ix_FONT_LOC96_127		EQU $6A	; Font location, characters 96-127
+vduvar_ix_FONT_LOC128_159		EQU $6B	; Font location, characters 128-159
+vduvar_ix_FONT_LOC160_191		EQU $6C	; Font location, characters 160-191
+vduvar_ix_FONT_LOC192_223		EQU $6D	; Font location, characters 192-223
+vduvar_ix_FONT_LOC224_255		EQU $6E	; Font location, characters 224-255
+vduvar_ix_PALLETTE			EQU $6F	; Palette for colours 0 to 15

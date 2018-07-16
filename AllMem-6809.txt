@@ -1,4 +1,128 @@
-; API Changes for 6809
+API Changes for 6809
+======================================
+
+These are rough notes of API changes made for the Chipkit and Beeb6809 MOS. 
+This is a work in progress and all information is subject to change.
+
+This is in no particular order!
+
+INTERRUPTS
+==========
+
+The 6809 has 3 hardware interrupt levels compared to the 6502's 2. The MOS is set up to use two
+of the 6809 interrupt levels IRQ and FIRQ and these roughly map to the 6502's IRQ and NMI usage.
+
+The 6809 NMI is left for debugging only or future hardware expansion. 
+
+The 6809 FIRQ is a better fit for the existing functions of the 6502 NMIs (fast data transfers) as
+the NMI on the 6809 stacks the whole machine state. Also, it is desirable to have a proper debug
+button that halts the machine even in interrupt routines.
+
+On NoICE builds of the MOS the NMI vector is handled by NoICE and used as a debug button. On other
+MOS builds the NMI handler executes JMP [NMI9V] (this replaces the old IND3V) 
+
+Enabling and reenabling interrupts.
+
+Care should be taken when disabling interrupts. In general in user code the CLI/SEI pseudo 
+instructions are acceptable (which map as below). However, it should be noted that this will not
+disable FIRQs
+
+pseudo    6809 eq.        Comments
+======    ===========     ============
+CLI       ANDCC #$EF      enable IRQs
+SEI       ORCC #$10       disable IRQs
+
+Where it is imperative the all interrupts be stopped then it is recommended to use a sequence such
+as:
+
+PSHS  CC            ; save FIRQ/IRQ status
+ORCC  #$50          ; disable FIRQs/IRQs
+... do whatever ....
+PULS  CC            ; restore IRQs/FIRQs to previous state
+
+This will restore FIRQs to their original state, however it should be noted that if a transfer 
+using FIRQs was in processed halting them like this would probably corrupt the transfer. 
+
+In general FIRQ status should only be changed by code that has claimed "NMIs" using the OS service
+calls.
+
+FIRQs should always be disabled before relinquishing the NMI vector.
+
+In the rest of this document where NMIs are mentioned it these should be taken to mean FIRQs!
+
+
+SWI, SWI2, SWI3
+===============
+
+SWI
+---
+On NoICE MOS builds the SWI instruction is used with the NoICE debugger as a breakpoint instruction
+on non-NoICE MOS builds the SWI instruction executes JMP [SWI9V] vector (replaces the old IND1V) 
+which by default calls an RTI stub.
+
+SWI2
+----
+This instruction executes JMP [SW29V] which defaults to an RTI. This may be replaced in application
+code. However, this is not recommended as it may be used for OS calls and task switching in a later
+version of the MOS.
+
+SWI3
+----
+This instruction is used to replace the 6502 BRK function and in the MOS will cause the current
+error handler to be called. By convention the SWI3 instruction is followed by a single byte
+containing and error code and then followed by a zero-terminated error message string.
+
+
+Mos funnies
+-----------
+
+- BAUD rate is set to 9600 by default (ULA default=&52) - this to allow HOSTFS
+  to boot at 19,200
+
+Unimplmented MOS calls
+----------------------
+
+Unimplmented MOS calls in NOICE builds will print a message to the serial port and then execute
+a SWI instruction (see below) to enter the debugger, on NOICE builds the message will be printed
+with regular VDU, then a CWAI instruction will be executed to halt until an NMI occurs. In most
+circumstances the system should be reset, however a button rigged to NMI can be used to continue 
+execution, so long as the NMI vector contains an RTI or a NoICE MOS ROM is in use.
+
+Note: That this is the _real_ NMI vector not the $D00 vector! (See Interrupt vectors)
+
+API notes
+---------
+
+SWIx
+====
+
+SWI instruction - this is used by the NOICE debugger (in builds that support it
+in other builds it will cause a jump via the IND1V vector at $0230 the default
+action is RTI)
+SWI2 instruction - this will jump via the IND2V vector at $0232 - the default 
+action is RTI)
+SWI3 instruction - this is used in place of the 6502 BRK instruction - this
+needs some working around as it is a multi-byte instruction. However, the 
+single byte SWI is more useful as a debugging tool.
+
+
+OSFILE ?JGH? - I'm still not convinced by all this some calls are BE some LE
+======
+A is same as 6502
+X is pointer to block
+all addresses have swapped endianness in the control block
+
+Extended vectors
+================
+
+These are in the form:
+rom addr (hi)
+rom addr (lo)
+rom #
+
+OSGBPB
+======
+Entire block is little endian - (implemented in HOSTFS)
 
 OSWORD
 ======
@@ -25,8 +149,7 @@ Q0 - SND_nWE
 Acorn 6809 MOS entry points
 ---------------------------
 
-OSRDRM    $FF9B  Get byte from ROM, pointer in X, rom # in B - confirm API with JGH
-                 This likely to change for extended ROMS anyway
+OSRDRM    $FF9B  Get byte from ROM, pointer in X, rom # in Y 
 
 PRSTRING  $FFC5  Print text at X terminated with $00.
                  Returns A=$00, X=>byte after terminating $00 so multiple
@@ -65,12 +188,25 @@ OSQUIT    $FFA7  Quit current process, A=return value. Returns to any
 SCANHEX   $FFA1  Scan line at X for hex number.
                  Returns Y=number, X=>terminating character, D corrupted.
 
+                 ; TODO: ASK ?JGH? !
+FSCV      $021E  FS Control.
+                 Entry
+                 A => Action code
+                 X => Pointer / parmas, where params are not a pointer 6502 X is hi, Y is low part of 6809 X
+                 Exit
+                 A => return val
+                 X => returned data
+
 
 Service calls
-  On entry B contains rom #, Y corrupted/corruptible
+  On entry B contains rom #, Y corrupted/corruptible, X is parameter
   - 1 -   X = page # (not address)                  (TODO: change to address?)
   - 2 -   X = page # (not address)                  (TODO: change to address?)
+  - 3 -   X(low) = 0 for exec !BOOT (hi always 0)
+  - 4 -   X = command pointer
   - 9 -   16 bit X points to command tail
+  -0C -   X(low) = FS # (hi always 0)
+  -25 -   X = pointer to buffer for FS info
 
 zp_mos_OSBW_Y&X swapped for endiannedss
 

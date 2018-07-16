@@ -2,25 +2,65 @@
 MLCa:=$(words $(MAKEFILE_LIST))
 MLCb:=$(shell echo "$(MLCa) - 1" | bc)
 CALLER_MAKE=$(realpath $(lastword $(wordlist 1,$(MLCb),$(MAKEFILE_LIST))))
-AS=asm6809
+AS=asm6809 -R
 TOP:=$(realpath $(dir $(lastword $(MAKEFILE_LIST))))
 INC:=$(TOP)/includes
 OSDEPS:=$(INC)/hardware.inc $(INC)/mosrom.inc $(INC)/common.inc $(INC)/noice.inc
 SCRIPTS:=$(TOP)/scripts
+RELDIR:=$(shell realpath --relative-to=$(TOP) $(shell dirname $(CALLER_MAKE)))
 
-%.hex:		%.asm $(DEPS)
-		$(AS) $(ASFLAGS) -S -o $@ -l $(basename $@).lst $<
+BEEBOUT=$(TOP)/BEEB/$(RELDIR)
+CHIPKITOUT=$(TOP)/CHIPKIT/$(RELDIR)
+FLEXOUT=$(TOP)/FLEX/$(RELDIR)
+MATCHBOXOUT=$(TOP)/MATCHBOX/$(RELDIR)
+TARGETS_BEEB_PRE=$(addprefix $(BEEBOUT)/,$(TARGETS) $(TARGETS_BEEB))
+TARGETS_CHIPKIT_PRE=$(addprefix $(CHIPKITOUT)/,$(TARGETS) $(TARGETS_CHIPKIT))
+TARGETS_FLEX_PRE=$(addprefix $(FLEXOUT)/,$(TARGETS_FLEX))
+TARGETS_MATCHBOX_PRE=$(addprefix $(MATCHBOXOUT)/,$(TARGETS_MATCHBOX))
+
+$(CHIPKITOUT)/%.hex: 	%.asm
+		$(AS) $(ASFLAGS)  --define MACH_CHIPKIT=1 -S -o $@ -l $(basename $@).lst $<
+		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+$(BEEBOUT)/%.hex:		%.asm
+		$(AS) $(ASFLAGS) --define MACH_BEEB=1 -S -o $@ -l $(basename $@).lst $<
+		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+$(MATCHBOXOUT)/%.hex:	%.asm
+		$(AS) $(ASFLAGS) --define MACH_MATCHBOX=1 -S -o $@ -l $(basename $@).lst $<
+		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+$(FLEXOUT)/%.hex:	%.asm
+		$(AS) $(ASFLAGS) --define MACH_FLEX=1 -S -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 
-%.bin:		%.asm $(DEPS)
-		$(AS) -o $@ -l $(basename $@).lst $<
+$(CHIPKITOUT)/%.bin: 	%.asm
+		$(AS) $(ASFLAGS) --define MACH_CHIPKIT=1 -o $@ -l $(basename $@).lst $<
+		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+$(BEEBOUT)/%.bin:		%.asm
+		$(AS) $(ASFLAGS) --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
+		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+$(MATCHBOXOUT)/%.bin:	%.asm
+		$(AS) $(ASFLAGS) --define MACH_MATCHBOX=1 -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 
 
-all:		$(TARGETS)
+all:		all_beeb all_chipkit all_matchbox all_flex 
+all_chipkit:	dirs_chipkit $(TARGETS_CHIPKIT_PRE) $(TARGETS_EXTRA) $(TARGETS_EXTRA_CHIPKIT)
+all_beeb:	dirs_beeb $(TARGETS_BEEB_PRE) $(TARGETS_EXTRA) $(TARGETS_EXTRA_BEEB)
+all_matchbox: dirs_matchbox $(TARGETS_MATCHBOX_PRE)
+all_flex: dirs_flex $(TARGETS_FLEX_PRE)
+dirs_chipkit:	
+		mkdir -p $(CHIPKITOUT)
+dirs_beeb:	
+		mkdir -p $(BEEBOUT)
+dirs_matchbox:	
+		mkdir -p $(MATCHBOXOUT)
+dirs_flex:	
+		mkdir -p $(FLEXOUT)
 
-clean:		$(clean_extra)
-		$(foreach cln,$(TARGETS), \
-		rm -f $(basename $(cln)).bin $(basename $(cln)).lst $(basename $(cln)).sym $(basename $(cln)).hex \
-		rm -f $(cln) \
+clean:		
+		$(foreach cln,$(TARGETS_CHIPKIT_PRE) $(TARGETS_BEEB_PRE) $(TARGETS_MATCHBOX_PRE) $(TARGETS_FLEX_PRE), \
+			rm -f $(basename $(cln)).bin $(basename $(cln)).lst $(basename $(cln)).sym $(basename $(cln)).hex ;\
+			rm -f $(cln) \
+		)
+		$(foreach cln,$(CLEAN_EXTRA), \
+			rm -f $(cln) \
 		)

@@ -1,8 +1,12 @@
-	include "../../includes/hardware.inc"
-	include "../../includes/common.inc"
-	include "../../includes/mosrom.inc"
-	include "../../includes/noice.inc"
-	include "../../includes/oslib.inc"
+		include "../../includes/hardware.inc"
+		include "../../includes/common.inc"
+		include "../../includes/mosrom.inc"
+		include "../../includes/noice.inc"
+		include "../../includes/oslib.inc"
+		include "./gen-version.inc"
+
+
+
 
 DEBUGPR		MACRO
 		SECTION	"tables_and_strings"
@@ -30,7 +34,12 @@ __STR		SET	1B
 
 ASSERT		MACRO
 		DEBUGPR	\1
+	IF NOICE
 		SWI
+	ELSE
+		ORCC	#$FF
+		CWAI	#$FF				; wait for NMI!
+	ENDIF
 		ENDM
 
 TODO		MACRO
@@ -42,255 +51,262 @@ TODOSKIP	MACRO
 		DEBUGPR	\1
 		ENDM
 
+DEBUG_INFO	MACRO
+	IF NOICE = 1 
+		DEBUGPR \1
+	ENDIF
+		ENDM
 
 
-	; NOTE: MOS only runs on a 6309 and uses 6309 extra registers
-	; NOTE: currently doesn't support native mode!
+		; NOTE: MOS only runs on a 6309 and uses 6309 extra registers
+		; NOTE: currently doesn't support native mode!
 
-	CODE
-	ORG	MOSROMBASE
-	setdp	MOSROMSYS_DP
-	SECTION	"tables_and_strings"
-	ORG	MOSSTRINGS
+		CODE
+		ORG	MOSROMBASE
+		setdp	MOSROMSYS_DP
+		SECTION	"tables_and_strings"
+		ORG	MOSSTRINGS
 
+; set this in makefile
+;;NATIVE		equ	0
 
-NATIVE	equ	0
-
-	CODE
+		CODE
 mostbl_chardefs
-	FCB	$00,$00,$00,$00,$00,$00,$00,$00
-	FCB	$18,$18,$18,$18,$18,$00,$18,$00
-	FCB	$6C,$6C,$6C,$00,$00,$00,$00,$00
-	FCB	$36,$36,$7F,$36,$7F,$36,$36,$00
-	FCB	$0C,$3F,$68,$3E,$0B,$7E,$18,$00
-	FCB	$60,$66,$0C,$18,$30,$66,$06,$00
-	FCB	$38,$6C,$6C,$38,$6D,$66,$3B,$00
-	FCB	$0C,$18,$30,$00,$00,$00,$00,$00
-	FCB	$0C,$18,$30,$30,$30,$18,$0C,$00
-	FCB	$30,$18,$0C,$0C,$0C,$18,$30,$00
-	FCB	$00,$18,$7E,$3C,$7E,$18,$00,$00
-	FCB	$00,$18,$18,$7E,$18,$18,$00,$00
-	FCB	$00,$00,$00,$00,$00,$18,$18,$30
-	FCB	$00,$00,$00,$7E,$00,$00,$00,$00
-	FCB	$00,$00,$00,$00,$00,$18,$18,$00
-	FCB	$00,$06,$0C,$18,$30,$60,$00,$00
-	FCB	$3C,$66,$6E,$7E,$76,$66,$3C,$00
-	FCB	$18,$38,$18,$18,$18,$18,$7E,$00
-	FCB	$3C,$66,$06,$0C,$18,$30,$7E,$00
-	FCB	$3C,$66,$06,$1C,$06,$66,$3C,$00
-	FCB	$0C,$1C,$3C,$6C,$7E,$0C,$0C,$00
-	FCB	$7E,$60,$7C,$06,$06,$66,$3C,$00
-	FCB	$1C,$30,$60,$7C,$66,$66,$3C,$00
-	FCB	$7E,$06,$0C,$18,$30,$30,$30,$00
-	FCB	$3C,$66,$66,$3C,$66,$66,$3C,$00
-	FCB	$3C,$66,$66,$3E,$06,$0C,$38,$00
-	FCB	$00,$00,$18,$18,$00,$18,$18,$00
-	FCB	$00,$00,$18,$18,$00,$18,$18,$30
-	FCB	$0C,$18,$30,$60,$30,$18,$0C,$00
-	FCB	$00,$00,$7E,$00,$7E,$00,$00,$00
-	FCB	$30,$18,$0C,$06,$0C,$18,$30,$00
-	FCB	$3C,$66,$0C,$18,$18,$00,$18,$00
-	FCB	$3C,$66,$6E,$6A,$6E,$60,$3C,$00
-	FCB	$3C,$66,$66,$7E,$66,$66,$66,$00
-	FCB	$7C,$66,$66,$7C,$66,$66,$7C,$00
-	FCB	$3C,$66,$60,$60,$60,$66,$3C,$00
-	FCB	$78,$6C,$66,$66,$66,$6C,$78,$00
-	FCB	$7E,$60,$60,$7C,$60,$60,$7E,$00
-	FCB	$7E,$60,$60,$7C,$60,$60,$60,$00
-	FCB	$3C,$66,$60,$6E,$66,$66,$3C,$00
-	FCB	$66,$66,$66,$7E,$66,$66,$66,$00
-	FCB	$7E,$18,$18,$18,$18,$18,$7E,$00
-	FCB	$3E,$0C,$0C,$0C,$0C,$6C,$38,$00
-	FCB	$66,$6C,$78,$70,$78,$6C,$66,$00
-	FCB	$60,$60,$60,$60,$60,$60,$7E,$00
-	FCB	$63,$77,$7F,$6B,$6B,$63,$63,$00
-	FCB	$66,$66,$76,$7E,$6E,$66,$66,$00
-	FCB	$3C,$66,$66,$66,$66,$66,$3C,$00
-	FCB	$7C,$66,$66,$7C,$60,$60,$60,$00
-	FCB	$3C,$66,$66,$66,$6A,$6C,$36,$00
-	FCB	$7C,$66,$66,$7C,$6C,$66,$66,$00
-	FCB	$3C,$66,$60,$3C,$06,$66,$3C,$00
-	FCB	$7E,$18,$18,$18,$18,$18,$18,$00
-	FCB	$66,$66,$66,$66,$66,$66,$3C,$00
-	FCB	$66,$66,$66,$66,$66,$3C,$18,$00
-	FCB	$63,$63,$6B,$6B,$7F,$77,$63,$00
-	FCB	$66,$66,$3C,$18,$3C,$66,$66,$00
-	FCB	$66,$66,$66,$3C,$18,$18,$18,$00
-	FCB	$7E,$06,$0C,$18,$30,$60,$7E,$00
-	FCB	$7C,$60,$60,$60,$60,$60,$7C,$00
-	FCB	$00,$60,$30,$18,$0C,$06,$00,$00
-	FCB	$3E,$06,$06,$06,$06,$06,$3E,$00
-	FCB	$18,$3C,$66,$42,$00,$00,$00,$00
-	FCB	$00,$00,$00,$00,$00,$00,$00,$FF
-	FCB	$1C,$36,$30,$7C,$30,$30,$7E,$00
-	FCB	$00,$00,$3C,$06,$3E,$66,$3E,$00
-	FCB	$60,$60,$7C,$66,$66,$66,$7C,$00
-	FCB	$00,$00,$3C,$66,$60,$66,$3C,$00
-	FCB	$06,$06,$3E,$66,$66,$66,$3E,$00
-	FCB	$00,$00,$3C,$66,$7E,$60,$3C,$00
-	FCB	$1C,$30,$30,$7C,$30,$30,$30,$00
-	FCB	$00,$00,$3E,$66,$66,$3E,$06,$3C
-	FCB	$60,$60,$7C,$66,$66,$66,$66,$00
-	FCB	$18,$00,$38,$18,$18,$18,$3C,$00
-	FCB	$18,$00,$38,$18,$18,$18,$18,$70
-	FCB	$60,$60,$66,$6C,$78,$6C,$66,$00
-	FCB	$38,$18,$18,$18,$18,$18,$3C,$00
-	FCB	$00,$00,$36,$7F,$6B,$6B,$63,$00
-	FCB	$00,$00,$7C,$66,$66,$66,$66,$00
-	FCB	$00,$00,$3C,$66,$66,$66,$3C,$00
-	FCB	$00,$00,$7C,$66,$66,$7C,$60,$60
-	FCB	$00,$00,$3E,$66,$66,$3E,$06,$07
-	FCB	$00,$00,$6C,$76,$60,$60,$60,$00
-	FCB	$00,$00,$3E,$60,$3C,$06,$7C,$00
-	FCB	$30,$30,$7C,$30,$30,$30,$1C,$00
-	FCB	$00,$00,$66,$66,$66,$66,$3E,$00
-	FCB	$00,$00,$66,$66,$66,$3C,$18,$00
-	FCB	$00,$00,$63,$6B,$6B,$7F,$36,$00
-	FCB	$00,$00,$66,$3C,$18,$3C,$66,$00
-	FCB	$00,$00,$66,$66,$66,$3E,$06,$3C
-	FCB	$00,$00,$7E,$0C,$18,$30,$7E,$00
-	FCB	$0C,$18,$18,$70,$18,$18,$0C,$00
-	FCB	$18,$18,$18,$00,$18,$18,$18,$00
-	FCB	$30,$18,$18,$0E,$18,$18,$30,$00
-	FCB	$31,$6B,$46,$00,$00,$00,$00,$00
-	FCB	$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
-	ORG	$C300				; important!
+		FCB	$00,$00,$00,$00,$00,$00,$00,$00
+		FCB	$18,$18,$18,$18,$18,$00,$18,$00
+		FCB	$6C,$6C,$6C,$00,$00,$00,$00,$00
+		FCB	$36,$36,$7F,$36,$7F,$36,$36,$00
+		FCB	$0C,$3F,$68,$3E,$0B,$7E,$18,$00
+		FCB	$60,$66,$0C,$18,$30,$66,$06,$00
+		FCB	$38,$6C,$6C,$38,$6D,$66,$3B,$00
+		FCB	$0C,$18,$30,$00,$00,$00,$00,$00
+		FCB	$0C,$18,$30,$30,$30,$18,$0C,$00
+		FCB	$30,$18,$0C,$0C,$0C,$18,$30,$00
+		FCB	$00,$18,$7E,$3C,$7E,$18,$00,$00
+		FCB	$00,$18,$18,$7E,$18,$18,$00,$00
+		FCB	$00,$00,$00,$00,$00,$18,$18,$30
+		FCB	$00,$00,$00,$7E,$00,$00,$00,$00
+		FCB	$00,$00,$00,$00,$00,$18,$18,$00
+		FCB	$00,$06,$0C,$18,$30,$60,$00,$00
+		FCB	$3C,$66,$6E,$7E,$76,$66,$3C,$00
+		FCB	$18,$38,$18,$18,$18,$18,$7E,$00
+		FCB	$3C,$66,$06,$0C,$18,$30,$7E,$00
+		FCB	$3C,$66,$06,$1C,$06,$66,$3C,$00
+		FCB	$0C,$1C,$3C,$6C,$7E,$0C,$0C,$00
+		FCB	$7E,$60,$7C,$06,$06,$66,$3C,$00
+		FCB	$1C,$30,$60,$7C,$66,$66,$3C,$00
+		FCB	$7E,$06,$0C,$18,$30,$30,$30,$00
+		FCB	$3C,$66,$66,$3C,$66,$66,$3C,$00
+		FCB	$3C,$66,$66,$3E,$06,$0C,$38,$00
+		FCB	$00,$00,$18,$18,$00,$18,$18,$00
+		FCB	$00,$00,$18,$18,$00,$18,$18,$30
+		FCB	$0C,$18,$30,$60,$30,$18,$0C,$00
+		FCB	$00,$00,$7E,$00,$7E,$00,$00,$00
+		FCB	$30,$18,$0C,$06,$0C,$18,$30,$00
+		FCB	$3C,$66,$0C,$18,$18,$00,$18,$00
+		FCB	$3C,$66,$6E,$6A,$6E,$60,$3C,$00
+		FCB	$3C,$66,$66,$7E,$66,$66,$66,$00
+		FCB	$7C,$66,$66,$7C,$66,$66,$7C,$00
+		FCB	$3C,$66,$60,$60,$60,$66,$3C,$00
+		FCB	$78,$6C,$66,$66,$66,$6C,$78,$00
+		FCB	$7E,$60,$60,$7C,$60,$60,$7E,$00
+		FCB	$7E,$60,$60,$7C,$60,$60,$60,$00
+		FCB	$3C,$66,$60,$6E,$66,$66,$3C,$00
+		FCB	$66,$66,$66,$7E,$66,$66,$66,$00
+		FCB	$7E,$18,$18,$18,$18,$18,$7E,$00
+		FCB	$3E,$0C,$0C,$0C,$0C,$6C,$38,$00
+		FCB	$66,$6C,$78,$70,$78,$6C,$66,$00
+		FCB	$60,$60,$60,$60,$60,$60,$7E,$00
+		FCB	$63,$77,$7F,$6B,$6B,$63,$63,$00
+		FCB	$66,$66,$76,$7E,$6E,$66,$66,$00
+		FCB	$3C,$66,$66,$66,$66,$66,$3C,$00
+		FCB	$7C,$66,$66,$7C,$60,$60,$60,$00
+		FCB	$3C,$66,$66,$66,$6A,$6C,$36,$00
+		FCB	$7C,$66,$66,$7C,$6C,$66,$66,$00
+		FCB	$3C,$66,$60,$3C,$06,$66,$3C,$00
+		FCB	$7E,$18,$18,$18,$18,$18,$18,$00
+		FCB	$66,$66,$66,$66,$66,$66,$3C,$00
+		FCB	$66,$66,$66,$66,$66,$3C,$18,$00
+		FCB	$63,$63,$6B,$6B,$7F,$77,$63,$00
+		FCB	$66,$66,$3C,$18,$3C,$66,$66,$00
+		FCB	$66,$66,$66,$3C,$18,$18,$18,$00
+		FCB	$7E,$06,$0C,$18,$30,$60,$7E,$00
+		FCB	$7C,$60,$60,$60,$60,$60,$7C,$00
+		FCB	$00,$60,$30,$18,$0C,$06,$00,$00
+		FCB	$3E,$06,$06,$06,$06,$06,$3E,$00
+		FCB	$18,$3C,$66,$42,$00,$00,$00,$00
+		FCB	$00,$00,$00,$00,$00,$00,$00,$FF
+		FCB	$1C,$36,$30,$7C,$30,$30,$7E,$00
+		FCB	$00,$00,$3C,$06,$3E,$66,$3E,$00
+		FCB	$60,$60,$7C,$66,$66,$66,$7C,$00
+		FCB	$00,$00,$3C,$66,$60,$66,$3C,$00
+		FCB	$06,$06,$3E,$66,$66,$66,$3E,$00
+		FCB	$00,$00,$3C,$66,$7E,$60,$3C,$00
+		FCB	$1C,$30,$30,$7C,$30,$30,$30,$00
+		FCB	$00,$00,$3E,$66,$66,$3E,$06,$3C
+		FCB	$60,$60,$7C,$66,$66,$66,$66,$00
+		FCB	$18,$00,$38,$18,$18,$18,$3C,$00
+		FCB	$18,$00,$38,$18,$18,$18,$18,$70
+		FCB	$60,$60,$66,$6C,$78,$6C,$66,$00
+		FCB	$38,$18,$18,$18,$18,$18,$3C,$00
+		FCB	$00,$00,$36,$7F,$6B,$6B,$63,$00
+		FCB	$00,$00,$7C,$66,$66,$66,$66,$00
+		FCB	$00,$00,$3C,$66,$66,$66,$3C,$00
+		FCB	$00,$00,$7C,$66,$66,$7C,$60,$60
+		FCB	$00,$00,$3E,$66,$66,$3E,$06,$07
+		FCB	$00,$00,$6C,$76,$60,$60,$60,$00
+		FCB	$00,$00,$3E,$60,$3C,$06,$7C,$00
+		FCB	$30,$30,$7C,$30,$30,$30,$1C,$00
+		FCB	$00,$00,$66,$66,$66,$66,$3E,$00
+		FCB	$00,$00,$66,$66,$66,$3C,$18,$00
+		FCB	$00,$00,$63,$6B,$6B,$7F,$36,$00
+		FCB	$00,$00,$66,$3C,$18,$3C,$66,$00
+		FCB	$00,$00,$66,$66,$66,$3E,$06,$3C
+		FCB	$00,$00,$7E,$0C,$18,$30,$7E,$00
+		FCB	$0C,$18,$18,$70,$18,$18,$0C,$00
+		FCB	$18,$18,$18,$00,$18,$18,$18,$00
+		FCB	$30,$18,$18,$0E,$18,$18,$30,$00
+		FCB	$31,$6B,$46,$00,$00,$00,$00,$00
+		FCB	$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+
+		ORG	$C300				; important!
 ;; ----------------------------------------------------------------------------
 mos_jump2vdu_init
-	jmp	mos_VDU_init			;	C300
+		jmp	mos_VDU_init			;	C300
 ; ----------------------------------------------------------------------------
+mos_welcome_msg7
+		FCB	$0D, $81, "(M)", $87
 mos_welcome_msg
-	FCB	$0D
-	FCB	"Dossy 6809 512K"		;	C304
-	FCB	$07, $00
-	FCB	$08,$0D,$0D		;	C31A
+		FCB	"Dossy "
+	IF MACH_CHIPKIT
+		FCB	"chipkit"
+	ELSE
+		FCB	"beeb"
+	ENDIF
+		FCB	"-"
+	IF CPU_6309
+		FCB	"6309"
+	ELSE
+		FCB	"6809"
+	ENDIF
+	IF NATIVE
+		FCB	"-N"
+	ENDIF	
+		FCB	" 1056K", $D, 0
+mos_version7
+		FCB	"     "
+mos_version
+		MOSVERSIONSTR
+		FCB	$07, $00
+		FCB	$08,$0D,$0D			;	C31A
 ; ----------------------------------------------------------------------------
 mostbl_byte_mask_4col
-	FCB	$00,$11,$22,$33,$44,$55,$66,$77 ;	C31F
-	FCB	$88,$99,$AA,$BB,$CC,$DD,$EE,$FF ;	C327
+		FCB	$00,$11,$22,$33,$44,$55,$66,$77 ;	C31F
+		FCB	$88,$99,$AA,$BB,$CC,$DD,$EE,$FF ;	C327
 mostbl_byte_mask_16col
-	FCB	$00,$55,$AA,$FF			;	C32F
-; VDU ENTRY POINT LO	   LOOK UP TABLE !!!!!ADDRESSES!!!!
-;mostbl_vdu_entry_point_lo
-;	FCB	$11,$3B,$96,$A1,$AD,$B9,$11,$6F ;	C333
-;	FCB	$C5,$64,$F0,$5B,$59,$AF,$8D,$A6 ;	C33B
-;	FCB	$C0,$F9,$FD,$92,$39,$9B,$EB,$F1 ;	C343
-;	FCB	$39,$8C,$BD,$11,$FA,$A2,$79,$87 ;	C34B
-;	FCB	$AC				;	C353
-;; VDU ENTRY POINT HI PARAMETER LOOK UP TABLE !!!!!ADDRESSES!!!!
-;mostbl_vdu_entry_point_hi
-;	FCB	$C5,$2F,$C5,$C5,$C5,$C5,$C5,$E8 ;	C354
-;	FCB	$C5,$C6,$C6,$C6,$C7,$C7,$C5,$C5 ;	C35C
-;	FCB	$C7,$4F,$4E,$5B,$C8,$C5,$5F,$57 ;	C364
-;	FCB	$78,$6B,$C9,$C5,$3C,$7C,$C7,$4E ;	C36C
-;	FCB	$CA				;	C374
+		FCB	$00,$55,$AA,$FF			;	C32F
 mostbl_vdu_entry_points
-	FDB	LC511RTS		; VDU 0
-	FDB	mos_VDU_1		; VDU 1
-	FDB	mos_VDU_2		; VDU 2
-	FDB	mos_VDU_3		; VDU 3
-	FDB	mos_VDU_4		; VDU 4
-	FDB	mos_VDU_5		; VDU 5
-	FDB	LC511RTS		; VDU 6
-	FDB	mos_VDU_7		; VDU 7
+		FDB	LC511RTS			; VDU 0
+		FDB	mos_VDU_1			; VDU 1
+		FDB	mos_VDU_2			; VDU 2
+		FDB	mos_VDU_3			; VDU 3
+		FDB	mos_VDU_4			; VDU 4
+		FDB	mos_VDU_5			; VDU 5
+		FDB	LC511RTS			; VDU 6
+		FDB	mos_VDU_7			; VDU 7
 
-	FDB	mos_VDU_8		; VDU 8
-	FDB	mos_VDU_9		; VDU 9
-	FDB	mos_VDU_10		; VDU 10
-	FDB	mos_VDU_11		; VDU 11
-	FDB	mos_VDU_12		; VDU 12
-	FDB	mos_VDU_13
-	FDB	mos_VDU_14
-	FDB	mos_VDU_15
+		FDB	mos_VDU_8			; VDU 8
+		FDB	mos_VDU_9			; VDU 9
+		FDB	mos_VDU_10			; VDU 10
+		FDB	mos_VDU_11			; VDU 11
+		FDB	mos_VDU_12			; VDU 12
+		FDB	mos_VDU_13
+		FDB	mos_VDU_14
+		FDB	mos_VDU_15
 
-	FDB	mos_VDU_16
-	FDB	mos_VDU_17
-	FDB	mos_VDU_18
-	FDB	mos_VDU_19
-	FDB	mos_VDU_20
-	FDB	mos_VDU_21
-	FDB	mos_VDU_22
-	FDB	mos_VDU_23
+		FDB	mos_VDU_16
+		FDB	mos_VDU_17
+		FDB	mos_VDU_18
+		FDB	mos_VDU_19
+		FDB	mos_VDU_20
+		FDB	mos_VDU_21
+		FDB	mos_VDU_22
+		FDB	mos_VDU_23
 
-	FDB	mos_VDU_24
-	FDB	mos_VDU_25
-	FDB	mos_VDU_26
-	FDB	LC511RTS
-	FDB	mos_VDU_28
-	FDB	mos_VDU_29
-	FDB	mos_VDU_30
-	FDB	mos_VDU_31
+		FDB	mos_VDU_24
+		FDB	mos_VDU_25
+		FDB	mos_VDU_26
+		FDB	LC511RTS
+		FDB	mos_VDU_28
+		FDB	mos_VDU_29
+		FDB	mos_VDU_30
+		FDB	mos_VDU_31
 
-	FDB	mos_VDU_127
+		FDB	mos_VDU_127
 
 mostbl_vdu_q_lengths	; 2's complement
-	FCB	$00,$FF,$00,$00,$00,$00,$00,$00	; 0-7
-	FCB	$00,$00,$00,$00,$00,$00,$00,$00 ; 8-15
-	FCB	$00,$FF,$FE,$FB,$00,$00,$FF,$F7 ; 16-23
-	FCB	$F8,$FB,$00,$00,$FC,$FC,$00,$FE ; 24-31
-	FCB	$00
+		FCB	$00,$FF,$00,$00,$00,$00,$00,$00	; 0-7
+		FCB	$00,$00,$00,$00,$00,$00,$00,$00 ; 8-15
+		FCB	$00,$FF,$FE,$FB,$00,$00,$FF,$F7 ; 16-23
+		FCB	$F8,$FB,$00,$00,$FC,$FC,$00,$FE ; 24-31
+		FCB	$00
 
-; *40 MULTIPLICATION TABLE  TELETEXT  MODE
-mostbl_40_mul
-	FCB	$00,$00,$00,$28,$00,$50,$00,$78 ;	C3B4
-	FCB	$00,$A0,$00,$C8,$00,$F0,$01,$18 ;	C3BC
-	FCB	$01,$40,$01,$68,$01,$90,$01,$B8 ;	C3C4
-	FCB	$01,$E0,$02,$08,$02,$30,$02,$58 ;	C3CC
-	FCB	$02,$80,$02,$A8,$02,$D0,$02,$F8 ;	C3D4
-	FCB	$03,$20,$03,$48,$03,$70,$03,$98 ;	C3DC
-	FCB	$03				;	C3E4
 ; TEXT WINDOW -BOTTOM ROW LOOK UP TABLE
 mostbl_vdu_window_bottom
-	FCB	$C0,$1F,$1F,$1F,$18,$1F,$1F,$18 ;	C3E6
-	FCB	$18				;	C3EE
+		FCB	$C0,$1F,$1F,$1F,$18,$1F,$1F,$18 ;	C3E6
+		FCB	$18				;	C3EE
 ; TEXT WINDOW -RIGHT HAND COLUMN LOOK UP TABLE
 mostbl_vdu_window_right
-	FCB	$4F,$27,$13,$4F,$27,$13,$27,$27 ;	C3EF
+		FCB	$4F,$27,$13,$4F,$27,$13,$27,$27 ;	C3EF
 mostbl_VDU_VIDPROC_CTL_by_mode
-	FCB	$9C,$D8,$F4,$9C,$88,$C4,$88,$4B ;	C3F7
+		FCB	$9C,$D8,$F4,$9C,$88,$C4,$88,$4B ;	C3F7
 mostbl_VDU_bytes_per_char
-	FCB	$08,$10,$20,$08,$08,$10,$08,$01 ;	C3FF
+		FCB	$08,$10,$20,$08,$08,$10,$08,$01 ;	C3FF
 mostbl_VDU_pix_mask_16colour				
-	FCB	$AA,$55				;	C407
+		FCB	$AA,$55				;	C407
 mostbl_VDU_pix_mask_4colour
-	FCB	$88,$44,$22,$11			;	C409
+		FCB	$88,$44,$22,$11			;	C409
 mostbl_VDU_pix_mask_2colour
-	FCB	$80,$40,$20,$10,$08,$04,$02	;	C40D
+		FCB	$80,$40,$20,$10,$08,$04,$02	;	C40D
 mostbl_VDU_mode_colours_m1			; - spills into next table
-	FCB	$01,$03,$0F,$01,$01,$03,$01,$00 ;	C414
+		FCB	$01,$03,$0F,$01,$01,$03,$01,$00 ;	C414
 ; GCOL PLOT OPTIONS PROCESSING LOOK UP TABLE
 mostbl_GCOL_options_proc
-	FCB	$FF,$00,$00,$FF,$FF,$FF,$FF,$00 ;	C41C
+		FCB	$FF,$00,$00,$FF,$FF,$FF,$FF,$00 ;	C41C
 ; 2 COLOUR MODES PARAMETER LOOK UP TABLE
 mostbl_2_colour_pixmasks
-	FCB	$00,$FF				;	C424
+		FCB	$00,$FF				;	C424
 ; 4 COLOUR MODES PARAMETER LOOK UP TABLE
 mostbl_4_colour_pixmasks
-	FCB	$00,$0F,$F0,$FF			;	C426
+		FCB	$00,$0F,$F0,$FF			;	C426
 ; 16 COLOUR MODES PARAMETER LOOK UP TABLE
 mostbl_16_colour_pixmasks
-	FCB	$00,$03,$0C,$0F,$30,$33,$3C,$3F ;	C42A
-	FCB	$C0,$C3,$CC,$CF,$F0,$F3,$FC,$FF ;	C432
+		FCB	$00,$03,$0C,$0F,$30,$33,$3C,$3F ;	C42A
+		FCB	$C0,$C3,$CC,$CF,$F0,$F3,$FC,$FF ;	C432
 mostbl_leftmost_pixels
-	FCB	$80,$88,$AA
+		FCB	$80,$88,$AA
 ; modes 3,6,7 are 0 but get set to $7 in vdu_init
 mostbl_VDU_pixels_per_byte_m1
-	FCB	$07,$03,$01,$00,$07,$03		;	C43A
+		FCB	$07,$03,$01,$00,$07,$03		;	C43A
 ; mode size
 mostbl_VDU_mode_size				; note first two entries shared by previous tbl
-	FCB	$00,$00,$00,$01,$02,$02,$03,$04 ;	C440
+		FCB	$00,$00,$00,$01,$02,$02,$03,$04 ;	C440
 ; SOUND PITCH OFFSET BY CHANNEL LOOK UP TABLE ???CHECK
 mostbl_SOUND_PITCH_OFFSET_BY_CHANNEL_LOOK_UP_TABLE
-	FCB	$00,$06,$02			;	C448
-;;;; sent direct to orb of SYSVIA dependent on mode_size
-;;;mostbl_VDU_hwscroll_offb1
-;;;	FCB	$0D,$05,$0D,$05			;	C44B
-;;;; sent direct to orb of SYSVIA dependent on mode_size
-;;;mostbl_VDU_hwscroll_offb2
-;;;	FCB	$04,$04,$0C,$0C,$04		;	C44F
+		FCB	$00,$06,$02			;	C448
+	IF MACH_BEEB
+; sent direct to orb of SYSVIA dependent on mode_size
+mostbl_VDU_hwscroll_offb1
+		FCB	$0D,$05,$0D,$05			;	C44B
+; sent direct to orb of SYSVIA dependent on mode_size
+mostbl_VDU_hwscroll_offb2
+		FCB	$04,$04,$0C,$0C,$04		;	C44F
+	ENDIF
+	IF MACH_CHIPKIT
 ; new scroll offset table for 6809 hardware offset
 mostbl_VDU_hwscroll_offs
-	FCB	$06,$08,$0B,$0C,$F;			TODO: mode 7 doesn't work!
+		FCB	$06,$08,$0B,$0C,$F;			TODO: mode 7 doesn't work!
+	ENDIF
 ; where to jump to in CLS unwound
 ;;;mostbl_VDU_cls_vecjmp
 ;;;	FDB	cls_Mode_012_entry_point
@@ -299,33 +315,33 @@ mostbl_VDU_hwscroll_offs
 ;;;	FDB	cls_Mode_6_entry_point
 ;;;	FDB	cls_Mode_7_entry_point
 mostbl_VDU_screensize_h
-	FCB	$50,$40,$28,$20,$04		;	C459
+		FCB	$50,$40,$28,$20,$04		;	C459
 mostbl_VDU_screebot_h
-	FCB	$30,$40,$58,$60,$7C		;	C45E
+		FCB	$30,$40,$58,$60,$7C		;	C45E
 mostbl_VDU_bytes_per_row_low
-	FCB	$28,$40,$80			;	C463
+		FCB	$28,$40,$80			;	C463
 ; pointers to tables of 6845 values that follow this by
 mostbl_VDU_ptr_end_6845tab
-	FCB	$0B + 1
-	FCB	$17 + 1
-	FCB	$23 + 1
-	FCB	$2F + 1
-	FCB	$3B + 1
+		FCB	$0B + 1
+		FCB	$17 + 1
+		FCB	$23 + 1
+		FCB	$2F + 1
+		FCB	$3B + 1
 mostbl_VDU_6845_mode_012
-	FCB	$7F,$50,$62,$28,$26,$00,$20,$22,$01,$07,$67,$08
+		FCB	$7F,$50,$62,$28,$26,$00,$20,$22,$01,$07,$67,$08
 mostbl_VDU_6845_mode_3
-	FCB	$7F,$50,$62,$28,$1E,$02,$19,$1B,$01,$09,$67,$09
+		FCB	$7F,$50,$62,$28,$1E,$02,$19,$1B,$01,$09,$67,$09
 mostbl_VDU_6845_mode_45
-	FCB	$3F,$28,$31,$24,$26,$00,$20,$22,$01,$07,$67,$08
+		FCB	$3F,$28,$31,$24,$26,$00,$20,$22,$01,$07,$67,$08
 mostbl_VDU_6845_mode_6
-	FCB	$3F,$28,$31,$24,$1E,$02,$19,$1B,$01,$09,$67,$09
+		FCB	$3F,$28,$31,$24,$1E,$02,$19,$1B,$01,$09,$67,$09
 mostbl_VDU_6845_mode_7
-	FCB	$3F,$28,$33,$24,$1E,$02,$19,$1B,$93,$12,$72,$13
+		FCB	$3F,$28,$33,$24,$1E,$02,$19,$1B,$93,$12,$72,$13
 ;; ----------------------------------------------------------------------------
 ;; VDU ROUTINE VECTOR ADDRESSES !!!!!ADDRESSES!!!!
 mostbl_VDU_ROUTINE_VECTOR_ADDRESSES
-	FDB	x_draw_line_main_right				;	C4AA
-	FDB	x_draw_line_main_up				;	C4AC
+		FDB	x_draw_line_main_right				;	C4AA
+		FDB	x_draw_line_main_up				;	C4AC
 ;; ----------------------------------------------------------------------------
 ;; VDU ROUTINE BRANCH VECTOR ADDRESS LO !!!!!ADDRESSES!!!!
 ;;mostbl_VDU_ROUTINE_BRANCH_VECTOR_ADDRESS_LO
@@ -334,418 +350,428 @@ mostbl_VDU_ROUTINE_VECTOR_ADDRESSES
 ;;mostbl_VDU_ROUTINE_BRANCH_VECTOR_ADDRESS_HI
 ;;	FCB	x_horizontal_scan_module_right / 256, x_horizontal_scan_module_left / 256, x_vertical_scan_module_up / 256, x_vertical_scan_module_dn / 256			;	C4B2
 mostbl_VDU_ROUTINE_BRANCH_VECTOR_ADDRESS
-	FDB	x_horizontal_scan_module_right, x_horizontal_scan_module_left, x_vertical_scan_module_up, x_vertical_scan_module_dn
+		FDB	x_horizontal_scan_module_right, x_horizontal_scan_module_left, x_vertical_scan_module_up, x_vertical_scan_module_dn
 ;; TELETEXT CHARACTER CONVERSION TABLE
 mostbl_TTX_CHAR_CONV
-	FCB	$23,$5F,$60,$23			;	C4B6
+		FCB	$23,$5F,$60,$23			;	C4B6
 ;; SOFT CHARACTER RAM ALLOCATION
 mostbl_SOFT_CHARACTER_RAM_ALLOCATION
-	FCB	$04,$05,$06,$00,$01,$02		;	C4BA
+		FCB	$04,$05,$06,$00,$01,$02		;	C4BA
 
-mc_logo
-	FCB	$03,$0C,$10,$24,$4E,$4E,$8F,$9B
-	FCB	$80,$60,$10,$48,$E4,$E4,$E2,$B2
-	FCB	$91,$51,$50,$20,$10,$0C,$03,$00
-	FCB	$12,$14,$14,$08,$10,$60,$80,$00
-mc_logo_0
-	FCB	$00,$03,$0C,$30,$60,$61,$C3,$C6
-	FCB	$3F,$C0,$20,$70,$F8,$FC,$8C,$03
-	FCB	$F8,$07,$08,$1C,$3E,$7F,$C3,$80
-	FCB	$00,$80,$60,$18,$0C,$0C,$86,$C6
-
-	FCB	$CC,$68,$68,$30,$0C,$03,$00,$00
-	FCB	$01,$00,$00,$00,$00,$C0,$3F,$00
-	FCB	$00,$00,$00,$00,$00,$07,$F8,$00
-	FCB	$66,$2C,$2C,$18,$60,$80,$00,$00
 
 prTODO
-	DEBUGPR2	"TODO HALT: ", 1
-	rts
+		DEBUGPR2	"TODO HALT: ", 1
+		rts
 ;; ----------------------------------------------------------------------------
 mos_VDU_WRCH
-	ldb	sysvar_VDU_Q_LEN		;	C4C0
-	bne	mos_VDU_WRCH_add_to_Q		;	C4C3
-	tim	#$40, zp_vdu_status
+		ldb	sysvar_VDU_Q_LEN		;	C4C0
+		bne	mos_VDU_WRCH_add_to_Q		;	C4C3
+	IF CPU_6809
+		ldb	zp_vdu_status
+		andb	#$40
+	ELSE
+		tim	#$40, zp_vdu_status
+	ENDIF
 ;;	ldb	#$40
-;;	bitb	zp_vdu_status			;	C4C5
-	beq	mos_VDU_WRCH_sk_nocurs
-	jsr	x_start_curs_edit				;	C4C9
-	jsr	x_set_up_write_cursor		;	C4CC
-	bmi	mos_VDU_WRCH_sk_nocurs				;	C4CF
-	cmpa	#$0D				;	C4D1
-	bne	mos_VDU_WRCH_sk_nocurs				;	C4D3
-	jsr	x_cancel_cursor_edit				;	C4D5
+;;	bitb	zp_vdu_status				;	C4C5
+		beq	mos_VDU_WRCH_sk_nocurs
+		jsr	x_start_curs_edit		;	C4C9
+		jsr	x_set_up_write_cursor		;	C4CC
+		bmi	mos_VDU_WRCH_sk_nocurs		;	C4CF
+		cmpa	#$0D				;	C4D1
+		bne	mos_VDU_WRCH_sk_nocurs		;	C4D3
+		jsr	x_cancel_cursor_edit		;	C4D5
 mos_VDU_WRCH_sk_nocurs
-	cmpa	#$7F				;	C4D8
-	beq	x_read_linkaddresses_and_number_of_parameters1;	C4DA
-	cmpa	#$20				;	C4DC
-	blo	x_read_linkaddresses_and_number_of_parameters2;	C4DE
-	tst	zp_vdu_status			;	C4E0
-	bmi	mos_VDU_WRCH_sk_novdu				;	C4E2
-	jsr	render_char				;	C4E4
-	jsr	mos_VDU_9			;	C4E7
+		cmpa	#$7F				;	C4D8
+		beq	x_read_linkaddresses_and_number_of_parameters1;	C4DA
+		cmpa	#$20				;	C4DC
+		blo	x_read_linkaddresses_and_number_of_parameters2;	C4DE
+		tst	zp_vdu_status			;	C4E0
+		bmi	mos_VDU_WRCH_sk_novdu				;	C4E2
+		jsr	render_char				;	C4E4
+		jsr	mos_VDU_9			;	C4E7
 mos_VDU_WRCH_sk_novdu
-	jmp	x_main_exit_routine		;	LC4EA
+		jmp	x_main_exit_routine		;	LC4EA
 ;; ----------------------------------------------------------------------------
 ;; read linkFDBesses and number of parameters???
 x_read_linkaddresses_and_number_of_parameters1
-	lda	#$20				;	C4ED
+		lda	#$20				;	C4ED
 ;; read linkFDBesses and number of parameters???
 x_read_linkaddresses_and_number_of_parameters2
-	tfr	A,B				;	C4EF
-	ldx	#mostbl_vdu_q_lengths
-	lda	B,X
-	aslb
-	ldx	#mostbl_vdu_entry_points
-	ldx	B,X
-	lsrb
-	tsta
-	beq	x_vdu_no_q
-	sta	sysvar_VDU_Q_LEN
-	stx	vduvar_VDU_VEC_JMP
-	tim	#$40, zp_vdu_status
-;;;	ldb	#$40
-;;;	bitb	zp_vdu_status
-	bne	LC52F				; cursor editing in force
-	andcc	#~CC_C
+		tfr	A,B				;	C4EF
+		ldx	#mostbl_vdu_q_lengths
+		lda	B,X
+		aslb
+		ldx	#mostbl_vdu_entry_points
+		ldx	B,X
+		;;lsrb
+		tsta
+		beq	x_vdu_no_q
+		sta	sysvar_VDU_Q_LEN
+		stx	vduvar_VDU_VEC_JMP
+	IF CPU_6809
+		ldb	#$40
+		bitb	zp_vdu_status
+	ELSE
+		tim	#$40, zp_vdu_status
+	ENDIF
+		bne	LC52F				; cursor editing in force
+		CLC
 LC511RTS
-	rts
+		rts
 ;; ----------------------------------------------------------------------------
 ;; B, sysvar_VDU_Q_LEN are 2's complement of number of parameters. **{NETV=>vduvar_Q+5-$100}
 mos_VDU_WRCH_add_to_Q
-	ldx	#vduvar_VDU_Q_END
-	sta	B,X				;	C512
-	incb					;	C515
-	stb	sysvar_VDU_Q_LEN		;	C516
-	bne	LC532				;	C519
-	tim	#$C0, zp_vdu_status
-;;;	lda	zp_vdu_status			;	C51B
-;;;	bita	#$C0
-	bmi	mos_exec_vdu1			; bit 7 set - VDU disabled
-	bne	LC526				; bit 6 set - cursor editing in force
-	jsr	[vduvar_VDU_VEC_JMP]
-	andcc	#~CC_C				;	C524
-	rts					;	C525
+		ldx	#vduvar_VDU_Q_END
+		sta	B,X				;	C512
+		incb					;	C515
+		stb	sysvar_VDU_Q_LEN		;	C516
+		bne	LC532				;	C519
+	IF CPU_6809
+		pshs	B
+		ldb	zp_vdu_status			;	C51B
+		bitb	#$C0
+		puls	B				; TODO get rid of push/pop?
+	ELSE
+		tim	#$C0, zp_vdu_status
+	ENDIF
+		bmi	mos_exec_vdu1			; bit 7 set - VDU disabled
+		bne	LC526				; bit 6 set - cursor editing in force
+		jsr	[vduvar_VDU_VEC_JMP]
+		CLC					;	C524
+		rts					;	C525
 ; ----------------------------------------------------------------------------
-LC526	jsr	x_start_curs_edit				;	C526
-	jsr	x_set_up_write_cursor		;	C529
-	jsr	[vduvar_VDU_VEC_JMP]
-LC52F	jsr	x_cursor_editing_routines	;	C52F
-LC532	andcc	#~CC_C				;	C532
-	rts					;	C533
+LC526		jsr	x_start_curs_edit		;	C526
+		jsr	x_set_up_write_cursor		;	C529
+		jsr	[vduvar_VDU_VEC_JMP]
+LC52F		jsr	x_cursor_editing_routines	;	C52F
+LC532		CLC					;	C532
+		rts					;	C533
 ;; ----------------------------------------------------------------------------
 ;; 1 parameter required;	 
 mos_exec_vdu1
-	TODOSKIP "Printer character skip"		; printer rediretcted here???
+		TODOSKIP "Printer character skip"		; printer rediretcted here???
 ;;	ldb	vduvar_VDU_VEC_JMP		; get top byte of jump
 ;;	cmpb	#$C5				; not used like this any more!
-	bne	LC532				;	C539
+		bne	LC532				;	C539
 mos_VDU_1
-	ldb	zp_vdu_status
-	lsrb
-	bcc	LC511RTS
-	jmp	LE11E				; send to printer
+		ldb	zp_vdu_status
+		lsrb
+		bcc	LC511RTS
+		jmp	LE11E				; send to printer
 ;; ----------------------------------------------------------------------------
 ;; if explicit linkFDBess found, no parameters
 ;x_if_explicit_linkFDBess_found_no_parameters:
 x_vdu_no_q
-	stx	vduvar_VDU_VEC_JMP		;	C545
+		stx	vduvar_VDU_VEC_JMP		;	C545
 
-	; set C if char > 8 and < 13
+		; set C if char > 8 and < 13
 
-	eorb	#$FF
-	cmpb	#$F7
-	eorb	#$FF
-	bcc	LC553
-	cmpb	#$13
+		eorb	#$FF
+		cmpb	#$F7
+		eorb	#$FF
+		bcc	LC553
+		cmpb	#$13
 
-LC553	tst	zp_vdu_status			;	C553
-	bmi	x_reenable_vdu_if_vdu6		;	vdu disabled
-	pshs	CC
-	jsr	[vduvar_VDU_VEC_JMP]
-	puls	CC				;	C55B
-	bcc	LC561				;	C55C
+LC553		tst	zp_vdu_status			;	C553
+		bmi	x_reenable_vdu_if_vdu6		;	vdu disabled
+		pshs	CC
+		jsr	[vduvar_VDU_VEC_JMP]
+		puls	CC				;	C55B
+		bcc	LC561				;	C55C
 ;; main exit routine
 x_main_exit_routine
-	lda	zp_vdu_status			;	C55E
-	lsra					;	C560
-LC561	tim	#$40, zp_vdu_status
-;;;	ldb	#$40
-;;;	bitb	zp_vdu_status
-	beq	LC511RTS			;	C563
+		lda	zp_vdu_status			;VDU status byte
+		lsra					;Carry is set if printer is enabled
+LC561		
+	IF CPU_6809
+		pshs	B
+		ldb	#$40
+		bitb	zp_vdu_status
+		puls	B				; TODO : get rid of push/pull?
+	ELSE
+		tim	#$40, zp_vdu_status
+	ENDIF
+		beq	LC511RTS			;if nmo cursor editing  C511 to exit
 ;; cursor editing routines
 x_cursor_editing_routines
-	jsr	x_start_cursor_edit_qry				;	C565
+		jsr	x_start_cursor_edit_qry		;	C565
 
-x_start_curs_edit				;LC568
-	pshs	A,CC
-	ldx	#$318				;	C56A
-	ldy	#$364				;	C56C
-	jsr	x_exchange_2atY_with_2atX	;	C56E
-	jsr	x_set_up_displayaddress		;	C571
-	ldx	zp_vdu_top_scanline
-	jsr	x_set_cursor_position_X		;	C574
-	lda	zp_vdu_status			;	C577
-	eora	#$02				; toggle scrolling disabled
-	sta	zp_vdu_status			;	C57B
-	puls	A,CC,PC
+x_start_curs_edit					;LC568
+		pshs	A,CC
+		ldx	#$318				;	C56A
+		ldy	#$364				;	C56C
+		jsr	x_exchange_2atY_with_2atX	;	C56E
+		jsr	x_set_up_displayaddress		;	C571
+		ldx	zp_vdu_top_scanline
+		jsr	x_set_cursor_position_X		;	C574
+		lda	zp_vdu_status			;	C577
+		eora	#$02				; toggle scrolling disabled
+		sta	zp_vdu_status			;	C57B
+		puls	A,CC,PC
 
 ;; ----------------------------------------------------------------------------
 x_reenable_vdu_if_vdu6	
-	eorb	#$06
-	bne	LC58Crts
-	lda	#$7F
-	bra	mos_VDU_and_A_vdustatus
+		eorb	#$06
+		bne	LC58Crts
+		lda	#$7F
+		bra	mos_VDU_and_A_vdustatus
 
 ;; check text cursor in use
 x_check_text_cursor_in_use
-	lda	zp_vdu_status
-	anda	#$20
+		lda	zp_vdu_status
+		anda	#$20
 LC58Crts
-	rts					;	C58C
+		rts					;	C58C
 ;; ----------------------------------------------------------------------------
 ;; SET PAGED MODE  VDU 14;  
 mos_VDU_14
-	clr	sysvar_SCREENLINES_SINCE_PAGE	;	C58F
-	lda	#$04				;	C592
-	bra	x_ORA_with_vdu_status				;	C594
+		clr	sysvar_SCREENLINES_SINCE_PAGE	;	C58F
+		lda	#$04				;	C592
+		bra	x_ORA_with_vdu_status				;	C594
 ;; VDU 2 PRINTER ON
 mos_VDU_2
-	TODOSKIP "VDU 2"
-	rts
+		TODOSKIP "VDU 2"
+		rts
 ;	jsr	LE1A2				;	C596
 ;	lda	#$94				;	C599
 ;; no parameters
 mos_VDU_21
-	lda	#$80
+		lda	#$80
 x_ORA_with_vdu_status
-	ora	zp_vdu_status			;	C59D
-	bra	LC5AA				;	C59F
+		ora	zp_vdu_status			;	C59D
+		bra	LC5AA				;	C59F
 ;; No parameters
 mos_VDU_3
-	TODOSKIP "VDU 3"
-	rts
+		TODOSKIP "VDU 3"
+		rts
 ;	jsr	LE1A2				;	C5A1
 ;	lda	#$0A				;	C5A4
 ;; VDU 15 paged mode off	  No parameters
 mos_VDU_15
-	lda	#~$04
+		lda	#~$04
 mos_VDU_and_A_vdustatus
-	anda	zp_vdu_status			;	C5A8
-LC5AA	sta	zp_vdu_status			;	C5AA
+		anda	zp_vdu_status			;	C5A8
+LC5AA		sta	zp_vdu_status			;	C5AA
 LC5ACrts	
-	rts					;	C5AC
+		rts					;	C5AC
 ;; ----------------------------------------------------------------------------
 ;; VDU 4 select Text Cursor  No parameters;  
 mos_VDU_4
-	lda	vduvar_PIXELS_PER_BYTE_MINUS1
-	beq	LC5ACrts
-	jsr	x_crtc_reset_cursor
-	lda	#$DF
-	bra	mos_VDU_and_A_vdustatus
+		lda	vduvar_PIXELS_PER_BYTE_MINUS1
+		beq	LC5ACrts
+		jsr	x_crtc_reset_cursor
+		lda	#$DF
+		bra	mos_VDU_and_A_vdustatus
 ;; VDU 5 set graphics cursor
 mos_VDU_5
-	lda	vduvar_PIXELS_PER_BYTE_MINUS1
-	beq	LC5ACrts
-	lda	#$20
-	jsr	x_crtc_set_cursor
-	bra	x_ORA_with_vdu_status
+		lda	vduvar_PIXELS_PER_BYTE_MINUS1
+		beq	LC5ACrts
+		lda	#$20
+		jsr	x_crtc_set_cursor
+		bra	x_ORA_with_vdu_status
 ;; VDU 8	 CURSOR LEFT	 NO PARAMETERS
 mos_VDU_8
-	jsr	x_check_text_cursor_in_use	;	C5C5
-	bne	x_cursor_left_and_down_with_graphics_cursor_in_use;	C5C8
-	dec	vduvar_TXT_CUR_X		;	C5CA
-	ldb	vduvar_TXT_CUR_X		;	C5CD
-	cmpb	vduvar_TXT_WINDOW_LEFT		;	C5D0
-	bmi	x_execute_wraparound_left_up	;	C5D3
-	ldb	vduvar_6845_CURSOR_ADDR	+ 1	;	C5D5
-	subb	vduvar_BYTES_PER_CHAR		;	C5D9
-	lda	vduvar_6845_CURSOR_ADDR		;	C5DD
-	sbca	#$00				;	C5E0
-	cmpa	vduvar_SCREEN_BOTTOM_HIGH	;	C5E2
-	bhs	LC5EA				;	C5E5
-	adda	vduvar_SCREEN_SIZE_HIGH		;	C5E7
-LC5EA	tfr	D,X				;	C5EA
-	jmp	mos_set_cursor_X		;	C5EB
+		jsr	x_check_text_cursor_in_use	;	C5C5
+		bne	x_cursor_left_and_down_with_graphics_cursor_in_use;	C5C8
+		dec	vduvar_TXT_CUR_X		;	C5CA
+		ldb	vduvar_TXT_CUR_X		;	C5CD
+		cmpb	vduvar_TXT_WINDOW_LEFT		;	C5D0
+		bmi	x_execute_wraparound_left_up	;	C5D3
+		ldb	vduvar_6845_CURSOR_ADDR	+ 1	;	C5D5
+		subb	vduvar_BYTES_PER_CHAR		;	C5D9
+		lda	vduvar_6845_CURSOR_ADDR		;	C5DD
+		sbca	#$00				;	C5E0
+		cmpa	vduvar_SCREEN_BOTTOM_HIGH	;	C5E2
+		bhs	LC5EA				;	C5E5
+		adda	vduvar_SCREEN_SIZE_HIGH		;	C5E7
+LC5EA		tfr	D,X				;	C5EA
+		jmp	mos_set_cursor_X		;	C5EB
 ;; ----------------------------------------------------------------------------
 ;; execute wraparound left-up
 x_execute_wraparound_left_up
-	lda	vduvar_TXT_WINDOW_RIGHT		;	C5EE
-	sta	vduvar_TXT_CUR_X		;	C5F1
+		lda	vduvar_TXT_WINDOW_RIGHT		;	C5EE
+		sta	vduvar_TXT_CUR_X		;	C5F1
 ;; cursor up
 x_cursor_up
-	dec	sysvar_SCREENLINES_SINCE_PAGE	;	C5F4
-	bpl	LC5FC				;	C5F7
-	inc	sysvar_SCREENLINES_SINCE_PAGE	;	C5F9
-LC5FC	ldb	vduvar_TXT_CUR_Y		;	C5FC
-	cmpb	vduvar_TXT_WINDOW_TOP		;	C5FF
-	beq	x_cursor_at_top_of_window	;	C602
-	dec	vduvar_TXT_CUR_Y		;	C604
-	jmp	x_setup_displayaddress_and_cursor_position
+		dec	sysvar_SCREENLINES_SINCE_PAGE	;	C5F4
+		bpl	LC5FC				;	C5F7
+		inc	sysvar_SCREENLINES_SINCE_PAGE	;	C5F9
+LC5FC		ldb	vduvar_TXT_CUR_Y		;	C5FC
+		cmpb	vduvar_TXT_WINDOW_TOP		;	C5FF
+		beq	x_cursor_at_top_of_window	;	C602
+		dec	vduvar_TXT_CUR_Y		;	C604
+		jmp	x_setup_displayaddress_and_cursor_position
 ;; ----------------------------------------------------------------------------
 ;; cursor at top of window
 x_cursor_at_top_of_window
-	andcc	#~CC_C
-	jsr	x_move_text_cursor_to_next_line ;	C60B
-	tim	#$08, zp_vdu_status
-;;;	lda	#$08				;	C60E
-;;;	bita	zp_vdu_status			;	C610
-	bne	LC619				;	C612
-	jsr	x_adjust_screen_RAM_addresses	;	C614
-	bne	LC61C				;	C617
-LC619	jsr	LCDA4				;	C619
-LC61C	jmp	x_clear_a_line_then_setup_displayaddress_and_cursor_position				;	C61C
+		CLC
+		jsr	x_move_text_cursor_to_next_line ;	C60B
+	IF CPU_6809
+		lda	#$08				;	C60E
+		bita	zp_vdu_status			;	C610
+	ELSE
+		tim	#$08, zp_vdu_status
+	ENDIF
+		bne	LC619				;	C612
+		jsr	x_adjust_screen_RAM_addresses	;	C614
+		bne	LC61C				;	C617
+LC619		jsr	LCDA4				;	C619
+LC61C		jmp	x_clear_a_line_then_setup_displayaddress_and_cursor_position				;	C61C
 ;; ----------------------------------------------------------------------------
 ;; cursor left and down with graphics cursor in use
 x_cursor_left_and_down_with_graphics_cursor_in_use
-	clrb				;	C61F
+		clrb				;	C61F
 ;; cursor down with graphics in use; B=2 for vertical or 0 for horizontal 
 x_cursor_down_with_graphics_in_use
-	stb	zp_vdu_wksp + 1			;	C621
-	jsr	x_Check_window_limits		;	C623
-	ldb	zp_vdu_wksp + 1			;	C626
-	ldx	#vduvar_GRA_CUR_INT + 1
-	lda	b,x				;	C629
-	suba	#$08				;	C62C
-	sta	b,x				;	C62E
-	bcc	LC636				;	C631
-	decb
-	dec	b,x				;	C633
-LC636	lda	zp_vdu_wksp			;	C636
-	bne	jmp_cal_ext_coors				;	C638
-	jsr	x_Check_window_limits		;	C63A
-	beq	jmp_cal_ext_coors				;	C63D
-	ldy	#vduvar_GRA_WINDOW_RIGHT + 1
-	ldb	zp_vdu_wksp+1			;	C63F
-	lda	b,y				;	C641
-	cmpb	#$01				;	C644
-	bhs	LC64A				;	C646
-	suba	#$06				;	C648		; CHECK!
-LC64A	sta	b,x				;	C64A
-	dec	b
-	lda	b,y				;	C64D
-	sbca	#$00				;	C650
-	sta	b,x				;	C652
-	incb
-	beq	LC660				;	C656
+		stb	zp_vdu_wksp + 1			;	C621
+		jsr	x_Check_window_limits		;	C623
+		ldb	zp_vdu_wksp + 1			;	C626
+		ldx	#vduvar_GRA_CUR_INT + 1
+		lda	b,x				;	C629
+		suba	#$08				;	C62C
+		sta	b,x				;	C62E
+		bcc	LC636				;	C631
+		decb
+		dec	b,x				;	C633
+LC636		lda	zp_vdu_wksp			;	C636
+		bne	jmp_cal_ext_coors				;	C638
+		jsr	x_Check_window_limits		;	C63A
+		beq	jmp_cal_ext_coors				;	C63D
+		ldy	#vduvar_GRA_WINDOW_RIGHT + 1
+		ldb	zp_vdu_wksp+1			;	C63F
+		lda	b,y				;	C641
+		cmpb	#$01				;	C644
+		bhs	LC64A				;	C646
+		suba	#$06				;	C648		; CHECK!
+LC64A		sta	b,x				;	C64A
+		dec	b
+		lda	b,y				;	C64D
+		sbca	#$00				;	C650
+		sta	b,x				;	C652
+		incb
+		beq	LC660				;	C656
 jmp_cal_ext_coors				; LC658
-	jmp	x_calculate_external_coordinates_from_internal_coordinates;	C658
+		jmp	x_calculate_external_coordinates_from_internal_coordinates;	C658
 ;; ----------------------------------------------------------------------------
 ;; VDU 11 Cursor Up    No Parameters
 mos_VDU_11
-	jsr	x_check_text_cursor_in_use	;	C65B
-	beq	x_cursor_up			;	C65E
-LC660	ldb	#$02				;	C660
-	bra	x_graphic_cursor_up_Beq2	;	C662
+		jsr	x_check_text_cursor_in_use	;	C65B
+		beq	x_cursor_up			;	C65E
+LC660		ldb	#$02				;	C660
+		bra	x_graphic_cursor_up_Beq2	;	C662
 ;; VDU 9 Cursor right	No parameters
 mos_VDU_9
-	lda	zp_vdu_status			;	C664
-	anda	#$20				;	C666
-	bne	x_graphic_cursor_right		;	C668
-	ldb	vduvar_TXT_CUR_X		;	C66A
-	cmpb	vduvar_TXT_WINDOW_RIGHT		;	C66D
-	bhs	x_text_cursor_down_and_right	;	C670
-	inc	vduvar_TXT_CUR_X		;	C672
-	ldx	vduvar_6845_CURSOR_ADDR
-	ldb	vduvar_BYTES_PER_CHAR		;	C678
-	abx
-	jmp	mos_set_cursor_X		;	C681
+		lda	zp_vdu_status			;	C664
+		anda	#$20				;	C666
+		bne	x_graphic_cursor_right		;	C668
+		ldb	vduvar_TXT_CUR_X		;	C66A
+		cmpb	vduvar_TXT_WINDOW_RIGHT		;	C66D
+		bhs	x_text_cursor_down_and_right	;	C670
+		inc	vduvar_TXT_CUR_X		;	C672
+		ldx	vduvar_6845_CURSOR_ADDR
+		ldb	vduvar_BYTES_PER_CHAR		;	C678
+		abx
+		jmp	mos_set_cursor_X		;	C681
 ;; ----------------------------------------------------------------------------
 ;; : text cursor down and right
 x_text_cursor_down_and_right
-	lda	vduvar_TXT_WINDOW_LEFT
-	sta	vduvar_TXT_CUR_X
+		lda	vduvar_TXT_WINDOW_LEFT
+		sta	vduvar_TXT_CUR_X
 ;; : text cursor down
 x_text_cursor_down
-	ANDCC	#~CC_C
-	jsr	x_control_scrolling_in_paged_mode_2
-	ldb	vduvar_TXT_CUR_Y
-	cmpb	vduvar_TXT_WINDOW_BOTTOM
-	bhs	LC69B
-	inc	vduvar_TXT_CUR_Y
-	bra	x_setup_displayaddress_and_cursor_position
-LC69B	jsr	x_move_text_cursor_to_next_line
-	tim	#$08, zp_vdu_status
-;;;	lda	#$08
-;;;	bita	zp_vdu_status
-	bne	LC6A9
-	jsr	x_adjust_screen_RAM_addresses_one_line_scroll
-	bra	x_clear_a_line_then_setup_displayaddress_and_cursor_position
-LC6A9	jsr	x_execute_upward_scroll
+		CLC
+		jsr	x_control_scrolling_in_paged_mode_2
+		ldb	vduvar_TXT_CUR_Y
+		cmpb	vduvar_TXT_WINDOW_BOTTOM
+		bhs	LC69B
+		inc	vduvar_TXT_CUR_Y
+		bra	x_setup_displayaddress_and_cursor_position
+LC69B		jsr	x_move_text_cursor_to_next_line
+	IF CPU_6809
+		lda	#$08
+		bita	zp_vdu_status
+	ELSE
+		tim	#$08, zp_vdu_status
+	ENDIF
+		bne	LC6A9
+		jsr	x_adjust_screen_RAM_addresses_one_line_scroll
+		bra	x_clear_a_line_then_setup_displayaddress_and_cursor_position
+LC6A9		jsr	x_execute_upward_scroll
 x_clear_a_line_then_setup_displayaddress_and_cursor_position
-	jsr	x_clear_a_line
+		jsr	x_clear_a_line
 x_setup_displayaddress_and_cursor_position
-	jsr	x_set_up_displayaddress
-	ldx	zp_vdu_top_scanline
-	jmp	x_set_cursor_position_X
+		jsr	x_set_up_displayaddress
+		ldx	zp_vdu_top_scanline
+		jmp	x_set_cursor_position_X
 
 ;; graphic cursor right
 x_graphic_cursor_right
-	clrb
+		clrb
 ;; graphic cursor up  (B=2)
 x_graphic_cursor_up_Beq2
-	stb	zp_vdu_wksp+1			;	C6B6
-	jsr	x_Check_window_limits		;	C6B8
-	ldb	zp_vdu_wksp+1			;	C6BB
-	ldx	#vduvar_GRA_CUR_INT + 1
-	lda	b,x				;	C6BE
-	adda	#$08				;	C6C1
-	sta	b,x				;	C6C3
-	bcc	LC6CB				;	C6C6
-	decb
-	inc	b,x				;	C6C8
-LC6CB	lda	zp_vdu_wksp			;	C6CB
-	bne	jmp_cal_ext_coors		;	C6CD
-	jsr	x_Check_window_limits		;	C6CF
-	beq	jmp_cal_ext_coors		;	C6D2
-	ldb	zp_vdu_wksp+1			;	C6D4
-	ldy	#vduvar_GRA_WINDOW_LEFT
-	lda	b,x				;	C6D6
-	cmpb	#$01				;	C6D9
-	blo	LC6DF				;	C6DB
-	adda	#$06				;	C6DD
-LC6DF	sta	b,x				;	C6DF
-	decb
-	lda	b,y				;	C6E2
-	adca	#$00				;	C6E5
-	sta	b,x				;	C6E7
-	incb					;	C6EA
-	beq	LC6F5				;	C6EB
-	jmp	x_calculate_external_coordinates_from_internal_coordinates;	C6ED
+		stb	zp_vdu_wksp+1			;	C6B6
+		jsr	x_Check_window_limits		;	C6B8
+		ldb	zp_vdu_wksp+1			;	C6BB
+		ldx	#vduvar_GRA_CUR_INT + 1
+		lda	b,x				;	C6BE
+		adda	#$08				;	C6C1
+		sta	b,x				;	C6C3
+		bcc	LC6CB				;	C6C6
+		decb
+		inc	b,x				;	C6C8
+LC6CB		lda	zp_vdu_wksp			;	C6CB
+		bne	jmp_cal_ext_coors		;	C6CD
+		jsr	x_Check_window_limits		;	C6CF
+		beq	jmp_cal_ext_coors		;	C6D2
+		ldb	zp_vdu_wksp+1			;	C6D4
+		ldy	#vduvar_GRA_WINDOW_LEFT
+		lda	b,x				;	C6D6
+		cmpb	#$01				;	C6D9
+		blo	LC6DF				;	C6DB
+		adda	#$06				;	C6DD
+LC6DF		sta	b,x				;	C6DF
+		decb
+		lda	b,y				;	C6E2
+		adca	#$00				;	C6E5
+		sta	b,x				;	C6E7
+		incb					;	C6EA
+		beq	LC6F5				;	C6EB
+		jmp	x_calculate_external_coordinates_from_internal_coordinates;	C6ED
 ;; ----------------------------------------------------------------------------
 ;; VDU 10  Cursor down	  No parameters
 mos_VDU_10
-	jsr	x_check_text_cursor_in_use	;	C6F0
-	beq	x_text_cursor_down		;	C6F3
-LC6F5	ldb	#$02				;	C6F5
-	jmp	x_cursor_down_with_graphics_in_use;	C6F7
+		jsr	x_check_text_cursor_in_use	;	C6F0
+		beq	x_text_cursor_down		;	C6F3
+LC6F5		ldb	#$02				;	C6F5
+		jmp	x_cursor_down_with_graphics_in_use;	C6F7
 ;; ----------------------------------------------------------------------------
 ;; VDU 28   define text window	      4 parameters; parameters are set up thus ; 0320  P1 left margin ; 0321  P2 bottom margin ; 0322  P3 right margin ; 0323  P4 top margin ; Note that last parameter is always in 0323 
 mos_VDU_28
-	ldb	vduvar_MODE
-	ldx	#mostbl_vdu_window_bottom+1
-	lda	vduvar_VDU_Q_END - 3
-	cmpa	vduvar_VDU_Q_END - 1
-	blo	LC758rts
-	cmpa	b,x
-	bhi	LC758rts
-	lda	vduvar_VDU_Q_END - 2
-	ldx	#mostbl_vdu_window_right
-	cmpa	b,x
-	bhi	LC758rts
-	suba	vduvar_VDU_Q_END - 4
-	bmi	LC758rts
-	jsr	LCA88_newAPI
-	lda	#$08
-	jsr	x_ORA_with_vdu_status
-	ldx	#vduvar_VDU_Q_END - 4
-	ldy	#vduvar_TXT_WINDOW_LEFT
-	jsr	copy4fromXtoY
-	jsr	x_check_text_cursor_in_window_setup_display_addr
-	bcs	mos_VDU_30
+		ldb	vduvar_MODE
+		ldx	#mostbl_vdu_window_bottom+1
+		lda	vduvar_VDU_Q_END - 3
+		cmpa	vduvar_VDU_Q_END - 1
+		blo	LC758rts
+		cmpa	b,x
+		bhi	LC758rts
+		lda	vduvar_VDU_Q_END - 2
+		ldx	#mostbl_vdu_window_right
+		cmpa	b,x
+		bhi	LC758rts
+		suba	vduvar_VDU_Q_END - 4
+		bmi	LC758rts
+		jsr	LCA88_newAPI
+		lda	#$08
+		jsr	x_ORA_with_vdu_status
+		ldx	#vduvar_VDU_Q_END - 4
+		ldy	#vduvar_TXT_WINDOW_LEFT
+		jsr	copy4fromXtoY
+		jsr	x_check_text_cursor_in_window_setup_display_addr
+		bcs	mos_VDU_30
 LC732_set_cursor_position
-	ldx	zp_vdu_top_scanline				; CHECK!
-	jmp	x_set_cursor_position_X
+		ldx	zp_vdu_top_scanline				; CHECK!
+		jmp	x_set_cursor_position_X
 ;; ----------------------------------------------------------------------------
 ;; OSWORD 9    read a pixel; on entry &EF=A=9 ; &F0=X=low byte of parameter blockFDBess ; &F1=Y=high byte of parameter blockFDBess ; PARAMETER BLOCK ; bytes 0,1 X coordinate, bytes 2,3 Y coordinate ; EXIT with result in byte 4 =&FF if point was of screen
 ;mos_OSWORD_9:
@@ -769,239 +795,286 @@ LC732_set_cursor_position
 ;	cpy	#$04				;	C754
 ;	bne	LC74F				;	C756
 LC758rts
-	rts					;	C758
+		rts					;	C758
 ;; ----------------------------------------------------------------------------
 ;; VDU 12  Clear text Screen		  0 parameters;	 
 mos_VDU_12
-	jsr	x_check_text_cursor_in_use
-	bne	x_mos_home_CLG
-	lda	zp_vdu_status
-	anda	#$08
-	lbeq	LCBC1_clear_whole_screen
-LC767	ldb	vduvar_TXT_WINDOW_TOP
-LC76A	stb	vduvar_TXT_CUR_Y
-	jsr	x_clear_a_line
-	ldb	vduvar_TXT_CUR_Y
-	cmpb	vduvar_TXT_WINDOW_BOTTOM
-	incb
-	bcc	LC76A
+		jsr	x_check_text_cursor_in_use
+		bne	x_mos_home_CLG
+		lda	zp_vdu_status
+		anda	#$08
+		lbeq	LCBC1_clear_whole_screen
+LC767		ldb	vduvar_TXT_WINDOW_TOP
+LC76A		stb	vduvar_TXT_CUR_Y
+		jsr	x_clear_a_line
+		ldb	vduvar_TXT_CUR_Y
+		cmpb	vduvar_TXT_WINDOW_BOTTOM
+		incb
+		bcc	LC76A
 ;; VDU 30  Home cursor			  0  parameters
 mos_VDU_30
-	jsr	x_check_text_cursor_in_use
-	beq	LC781
-	jmp	x_home_graphics_cursor
+		jsr	x_check_text_cursor_in_use
+		beq	LC781
+		jmp	x_home_graphics_cursor
 ;; ----------------------------------------------------------------------------
-LC781	clr	vduvar_VDU_Q_END - 1
-	clr	vduvar_VDU_Q_END - 2
+LC781		clr	vduvar_VDU_Q_END - 1
+		clr	vduvar_VDU_Q_END - 2
 ;; VDU 31  Position text cursor		  2  parameters; 0322 = X coordinate ; 0323 = Y coordinate 
 mos_VDU_31
-	jsr	x_check_text_cursor_in_use
-	bne	LC758rts
-	jsr	LC7A8
-	lda	vduvar_VDU_Q_END - 2
-	adda	vduvar_TXT_WINDOW_LEFT
-	sta	vduvar_TXT_CUR_X
-	lda	vduvar_VDU_Q_END - 1
-	adda	vduvar_TXT_WINDOW_TOP
-	sta	vduvar_TXT_CUR_Y
-	jsr	x_check_text_cursor_in_window_setup_display_addr
-	bcc	LC732_set_cursor_position
-LC7A8	ldx	#vduvar_TXT_CUR_X
-	ldy	#vduvar_TEMP_8
-	jmp	x_exchange_2atY_with_2atX
+		jsr	x_check_text_cursor_in_use
+		bne	LC758rts
+		jsr	LC7A8
+		lda	vduvar_VDU_Q_END - 2
+		adda	vduvar_TXT_WINDOW_LEFT
+		sta	vduvar_TXT_CUR_X
+		lda	vduvar_VDU_Q_END - 1
+		adda	vduvar_TXT_WINDOW_TOP
+		sta	vduvar_TXT_CUR_Y
+		jsr	x_check_text_cursor_in_window_setup_display_addr
+		bcc	LC732_set_cursor_position
+LC7A8		ldx	#vduvar_TXT_CUR_X
+		ldy	#vduvar_TEMP_8
+		jmp	x_exchange_2atY_with_2atX
 ;; ----------------------------------------------------------------------------
 ;; VDU  13	  Carriage  Return	  0 parameters
 mos_VDU_13
-	jsr	x_check_text_cursor_in_use	;	C7AF
-	beq	LC7B7				;	C7B2
-	jmp	x_set_graphics_cursor_to_left_hand_column;	C7B4
-LC7B7	jsr	x_cursor_to_window_left				;	C7B7
-	jmp	x_setup_displayaddress_and_cursor_position				;	C7BA
+		jsr	x_check_text_cursor_in_use	;	C7AF
+		beq	LC7B7				;	C7B2
+		jmp	x_set_graphics_cursor_to_left_hand_column;	C7B4
+LC7B7		jsr	x_cursor_to_window_left				;	C7B7
+		jmp	x_setup_displayaddress_and_cursor_position				;	C7BA
 ;; ----------------------------------------------------------------------------
 x_mos_home_CLG						; LC7BD
-	jsr	x_home_graphics_cursor			
+		jsr	x_home_graphics_cursor			
 
 
 ;; VDU 16 clear graphics screen		  0 parameters
 mos_VDU_16
-	lda	vduvar_PIXELS_PER_BYTE_MINUS1		; pixels per byte
-	beq	LC7F8rts				; if 0 current mode has no graphics so exit
-	lda	vduvar_GRA_BACK				; Background graphics colour
-	ldb	vduvar_GRA_PLOT_BACK			; background graphics plot mode (GCOL n)
-	jsr	x_set_colour_masks_newAPI		; set graphics byte mask in &D4/5
-	ldx	#vduvar_GRA_WINDOW_LEFT			; graphics window
-	ldy	#vduvar_TEMP_8				; workspace
-	jsr	copy8fromXtoY				; set(300/7+Y) from (300/7+X)
-	lda	vduvar_GRA_WINDOW_TOP + 1		; graphics window top lo.
-	suba	vduvar_GRA_WINDOW_BOTTOM + 1		; graphics window bottom lo
-	inca						; increment
-	sta	vduvar_GRA_WKSP				; and store in workspace (this is line count)
-1	ldx	#vduvar_TEMP_8 + 4			; right
-	ldy	#vduvar_TEMP_8				; left
-	jsr	x_vdu_clear_gra_line_newAPI		; clear line
-	lda	vduvar_TEMP_8 + 7			; decrement window top in pixels
-	bne	2F					; 
-	dec	vduvar_TEMP_8 + 6			; 
-2	dec	vduvar_TEMP_8 + 7			; 
-	dec	vduvar_GRA_WKSP				; decrement line count
-	bne	1B					; if <>0 then do it again
+		lda	vduvar_PIXELS_PER_BYTE_MINUS1		; pixels per byte
+		beq	LC7F8rts				; if 0 current mode has no graphics so exit
+		lda	vduvar_GRA_BACK				; Background graphics colour
+		ldb	vduvar_GRA_PLOT_BACK			; background graphics plot mode (GCOL n)
+		jsr	x_set_colour_masks_newAPI		; set graphics byte mask in &D4/5
+		ldx	#vduvar_GRA_WINDOW_LEFT			; graphics window
+		ldy	#vduvar_TEMP_8				; workspace
+		jsr	copy8fromXtoY				; set(300/7+Y) from (300/7+X)
+		lda	vduvar_GRA_WINDOW_TOP + 1		; graphics window top lo.
+		suba	vduvar_GRA_WINDOW_BOTTOM + 1		; graphics window bottom lo
+		inca						; increment
+		sta	vduvar_GRA_WKSP				; and store in workspace (this is line count)
+1		ldx	#vduvar_TEMP_8 + 4			; right
+		ldy	#vduvar_TEMP_8				; left
+		jsr	x_vdu_clear_gra_line_newAPI		; clear line
+		lda	vduvar_TEMP_8 + 7			; decrement window top in pixels
+		bne	2F					; 
+		dec	vduvar_TEMP_8 + 6			; 
+2		dec	vduvar_TEMP_8 + 7			; 
+		dec	vduvar_GRA_WKSP				; decrement line count
+		bne	1B					; if <>0 then do it again
 LC7F8rts	rts					; exit
 ;; ----------------------------------------------------------------------------
 ;; COLOUR; parameter in &0323 
 mos_VDU_17	; COLOUR
-	ldb	#$00				;	C7F9
-	bra	LC7FF				;	C7FB
+		ldb	#$00				;	C7F9
+		bra	LC7FF				;	C7FB
 ;; GCOL; parameters in 323,322 
 mos_VDU_18	; GCOL
-	ldb	#$02
-LC7FF	lda	vduvar_VDU_Q_END - 1
-	bpl	LC805
-	incb
-LC805	anda	vduvar_COL_COUNT_MINUS1
-	sta	zp_vdu_wksp
-	lda	vduvar_COL_COUNT_MINUS1
-	beq	LC82B
-	anda	#$07
-	adda	zp_vdu_wksp
-	ldx	#mostbl_2_colour_pixmasks-1
-	lda	a,x
-	ldy	#vduvar_TXT_FORE
-	sta	b,y
-	cmpb	#$02
-	bhs	LC82C
-	lda	vduvar_TXT_FORE
-	coma
-	sta	zp_vdu_txtcolourEOR
-	eora	vduvar_TXT_BACK
-	sta	zp_vdu_txtcolourOR
-LC82B	rts
-LC82C	lda	vduvar_VDU_Q_END - 2
-	ldy	vduvar_GRA_FORE
-	sta	b,y
-	rts
+		ldb	#$02
+LC7FF		lda	vduvar_VDU_Q_END - 1
+		bpl	LC805
+		incb
+LC805		anda	vduvar_COL_COUNT_MINUS1
+		sta	zp_vdu_wksp
+		lda	vduvar_COL_COUNT_MINUS1
+		beq	LC82B
+		anda	#$07
+		adda	zp_vdu_wksp
+		ldx	#mostbl_2_colour_pixmasks-1
+		lda	a,x
+		ldy	#vduvar_TXT_FORE
+		sta	b,y
+		cmpb	#$02
+		bhs	LC82C
+		lda	vduvar_TXT_FORE
+		coma
+		sta	zp_vdu_txtcolourEOR
+		eora	vduvar_TXT_BACK
+		sta	zp_vdu_txtcolourOR
+LC82B		rts
+LC82C		lda	vduvar_VDU_Q_END - 2
+		ldy	vduvar_GRA_FORE
+		sta	b,y
+		rts
 ;; ----------------------------------------------------------------------------
-LC833	lda	#$20				;	C833
-	sta	vduvar_TXT_BACK			;	C835
-	rts					;	C838
+LC833		lda	#$20				;	C833
+		sta	vduvar_TXT_BACK			;	C835
+		rts					;	C838
 ;; ----------------------------------------------------------------------------
 ;; VDU 20	  Restore default colours	  0 parameters;	 
 mos_VDU_20
-	ldb	#$05				;	C839
-	lda	#$00				;	C83B
-	ldx	#vduvar_TXT_FORE
-LC83D	sta	b,x				;	C83D
-	decb					;	C840
-	bpl	LC83D				;	C841
-	ldb	vduvar_COL_COUNT_MINUS1		;	C843
-	beq	LC833				;	C846
-	lda	#$FF				;	C848
-	cmpb	#$0F				;	C84A
-	bne	LC850				;	C84C
-	lda	#$3F				;	C84E
-LC850	sta	vduvar_TXT_FORE			;	C850
-	sta	vduvar_GRA_FORE			;	C853
-	eora	#$FF				;	C856
-	sta	zp_vdu_txtcolourOR		;	C858
-	sta	zp_vdu_txtcolourEOR		;	C85A
-	stb	vduvar_VDU_Q_END - 5		;	C85C
-	cmpb	#$03				;	C85F
-	beq	x_4_colour_mode			;	C861
-	blo	LC885				;	C863
-	stb	vduvar_VDU_Q_END - 4		;	C865
-LC868	jsr	mos_VDU_19			;	C868
-	dec	vduvar_VDU_Q_END - 4		;	C86B
-	dec	vduvar_VDU_Q_END - 5		;	C86E
-	bpl	LC868				;	C871
-	rts					;	C873
+		ldb	#$05				;	C839
+		lda	#$00				;	C83B
+		ldx	#vduvar_TXT_FORE
+LC83D		sta	b,x				;	C83D
+		decb					;	C840
+		bpl	LC83D				;	C841
+		ldb	vduvar_COL_COUNT_MINUS1		;	C843
+		beq	LC833				;	C846
+		lda	#$FF				;	C848
+		cmpb	#$0F				;	C84A
+		bne	LC850				;	C84C
+		lda	#$3F				;	C84E
+LC850		sta	vduvar_TXT_FORE			;	C850
+		sta	vduvar_GRA_FORE			;	C853
+		eora	#$FF				;	C856
+		sta	zp_vdu_txtcolourOR		;	C858
+		sta	zp_vdu_txtcolourEOR		;	C85A
+		stb	vduvar_VDU_Q_END - 5		;	C85C
+		cmpb	#$03				;	C85F
+		beq	x_4_colour_mode			;	C861
+		blo	LC885				;	C863
+		stb	vduvar_VDU_Q_END - 4		;	C865
+LC868		jsr	mos_VDU_19			;	C868
+		dec	vduvar_VDU_Q_END - 4		;	C86B
+		dec	vduvar_VDU_Q_END - 5		;	C86E
+		bpl	LC868				;	C871
+		rts					;	C873
 ;; ----------------------------------------------------------------------------
 ;; 4 colour mode
 x_4_colour_mode
-	ldb	#$07				;	C874
-	stb	vduvar_VDU_Q_END - 4		;	C876
-LC879	jsr	mos_VDU_19			;	C879
-	lsr	vduvar_VDU_Q_END - 4		;	C87C
-	dec	vduvar_VDU_Q_END - 5		;	C87F
-	bpl	LC879				;	C882
-	rts					;	C884
+		ldb	#$07				;	C874
+		stb	vduvar_VDU_Q_END - 4		;	C876
+LC879		jsr	mos_VDU_19			;	C879
+		lsr	vduvar_VDU_Q_END - 4		;	C87C
+		dec	vduvar_VDU_Q_END - 5		;	C87F
+		bpl	LC879				;	C882
+		rts					;	C884
 ; ----------------------------------------------------------------------------
-LC885	ldb	#$07				;	C885
-	jsr	LC88F				;	C887
-	ldb	#$00				;	C88A
-	stb	vduvar_VDU_Q_END - 5;	C88C
-LC88F	stb	vduvar_VDU_Q_END - 4			;	C88F
+LC885		ldb	#$07				;	C885
+		jsr	LC88F				;	C887
+		ldb	#$00				;	C88A
+		stb	vduvar_VDU_Q_END - 5;	C88C
+LC88F		stb	vduvar_VDU_Q_END - 4			;	C88F
 ; VDU 19   define logical colours		  5 parameters; &31F=first parameter logical colour ; &320=second physical colour 
 mos_VDU_19
-	pshs	CC				; save flags
-	SEI					; and disable interrupts
-	ldb	vduvar_VDU_Q_END - 5		; b <= logical colour
-	andb	vduvar_COL_COUNT_MINUS1		; 
-	pshs	B
-	lda	vduvar_VDU_Q_END - 4		; a <= physical colour
-LC89E	anda	#$0F				; 
-	ldx	#vduvar_PALLETTE		;
-	sta	b,x				; store in saved palette TODO: where to store RGB? Don't store?
+		pshs	CC				; save flags
+		SEI					; and disable interrupts
+		ldb	vduvar_VDU_Q_END - 5		; b <= logical colour
+		andb	vduvar_COL_COUNT_MINUS1		; 
+		pshs	B
+		lda	vduvar_VDU_Q_END - 4		; a <= physical colour
+LC89E		anda	#$0F				; 
+		ldx	#vduvar_PALLETTE		;
+		sta	b,x				; store in saved palette TODO: where to store RGB? Don't store?
 
-	ldb	vduvar_COL_COUNT_MINUS1		; a <= colours - 1
-
-	; get left most pixel mask for this mode
-	lda	#$80
-	asrb
-	asrb
-	bcc	1F
-	ora	#$08
-	asrb
-	bcc	1F
-	ora	#$22
-
-1	ldb	vduvar_COL_COUNT_MINUS1			; a <= colours - 1
-	andb	#$07
-	addb	,S+					; get back logical colour from stack
-	ldx	#mostbl_2_colour_pixmasks-1
-	anda	b,x					; palette entry to set
-	sta	sheila_RAMDAC_ADDR_WR
+		ldb	vduvar_COL_COUNT_MINUS1		; a <= colours - 1
 
 
-	lda	vduvar_VDU_Q_END - 4			; a <= physical colour
-	bita	#$10
-	bne	mos_VDU_19_RGB
+	IF MACH_BEEB
+		stb	zp_mos_OS_wksp2			; wksp2 <= colours - 1
+		cmpb	#$03				; compare to 3 
+		;TODO - this is a bit of a kludge
+;	exg	CC,A
+;	eora	#CC_C
+;	exg	A,CC					; swap Carry so its like on a 6502 and C=1 when a >= 3
+		puls	B
+		pshs	CC				; store Carry on the stack
+							;	2 col		4 col		16 col
+LC8AD		rorb					; 
+		ror	zp_mos_OS_wksp2			;
+		bcs	LC8AD				;
+							; b=	$80		$C0		$F0
+		asl	zp_mos_OS_wksp2			; wksp2=X0000000	XX000000	XXXX0000
+							; a <= phys colour
+		ora	zp_mos_OS_wksp2			; a <= LLLLPPPP
+		sta	zp_mos_OS_wksp2
 
-	jsr	onepalent				; normal colour
-	lda	vduvar_VDU_Q_END - 4			; a <= physical colour
-	bita	#$8
-	beq	1F
-	coma						; make flash colour complement
-1	jsr	onepalent
+		clrb
+LC8BA		puls	CC				; get back C,Z for COL_COUNT_MINUS1 <= 3
+		pshs	CC				;	C8BB
+		bne	mos_VDU19_sk1			;	C8BC
+		anda	#$60				;	C8BE
+		beq	LC8CB				;	C8C0
+		cmpa	#$60				;	C8C2
+		beq	LC8CB				;	C8C4
+		lda	zp_mos_OS_wksp2
+		eora	#$60				;	C8C7
+		bne	mos_VDU19_sk1			;	C8C9
+LC8CB		lda	zp_mos_OS_wksp2
+mos_VDU19_sk1
+		jsr	write_pallette_reg				; LC8CC
+		addb	vduvar_COL_COUNT_MINUS1		;	C8D1
+		incb
+		lda	zp_mos_OS_wksp2
+		adda	#$10				;	C8D6
+		sta	zp_mos_OS_wksp2
+		cmpb	#$10				;	C8D9
+		blo	LC8BA				;	C8DB
+		leas	1,S
+		puls	CC,PC				;	C8DE	ENDIF
+	ENDIF
 
-	puls	CC,PC					;	C8DE
+	IF MACH_CHIPKIT
+		; get left most pixel mask for this mode
+		lda	#$80
+		asrb
+		asrb
+		bcc	1F
+		ora	#$08
+		asrb
+		bcc	1F
+		ora	#$22
+
+1		ldb	vduvar_COL_COUNT_MINUS1			; a <= colours - 1
+		andb	#$07
+		addb	,S+					; get back logical colour from stack
+		ldx	#mostbl_2_colour_pixmasks-1
+		anda	b,x					; palette entry to set
+		sta	sheila_RAMDAC_ADDR_WR
+
+
+		lda	vduvar_VDU_Q_END - 4			; a <= physical colour
+		bita	#$10
+		bne	mos_VDU_19_RGB
+
+		jsr	onepalent				; normal colour
+		lda	vduvar_VDU_Q_END - 4			; a <= physical colour
+		bita	#$8
+		beq	1F
+		coma						; make flash colour complement
+1		jsr	onepalent
+
+		puls	CC,PC					;	C8DE
 mos_VDU_19_RGB
-	ldb	#2
-	bita	#$01
-	beq	1F					; if set then do flash only
-	decb
-	inc	sheila_RAMDAC_ADDR_WR
-1	ldx	#vduvar_VDU_Q_END - 3
-	jsr	2F
-	jsr	2F
-	jsr	2F
-	decb
-	bne	1B
-	puls CC,PC
-2	lda	,X+
-	asra
-	asra
-	sta	sheila_RAMDAC_VAL
-	rts
+		ldb	#2
+		bita	#$01
+		beq	1F					; if set then do flash only
+		decb
+		inc	sheila_RAMDAC_ADDR_WR
+1		ldx	#vduvar_VDU_Q_END - 3
+		jsr	2F
+		jsr	2F
+		jsr	2F
+		decb
+		bne	1B
+		puls CC,PC
+2		lda	,X+
+		asra
+		asra
+		sta	sheila_RAMDAC_VAL
+		rts
 onepalent
-	ldb	#3
-	sta	zp_mos_OS_wksp2
-1	clra
-	ror	zp_mos_OS_wksp2
-	bcc	2F
-	deca
-2	sta	sheila_RAMDAC_VAL
-	decb
-	bne	1B
-	rts
+		ldb	#3
+		sta	zp_mos_OS_wksp2
+1		clra
+		ror	zp_mos_OS_wksp2
+		bcc	2F
+		deca
+2		sta	sheila_RAMDAC_VAL
+		decb
+		bne	1B
+		rts
+	ENDIF
 
 ;; ----------------------------------------------------------------------------
 ;; OSWORD 12    WRITE PALLETTE; on entry X=&F0:Y=&F1:YX points to parameter block ; byte 0 = logical colour;  byte 1 physical colour; bytes 2-4=0 
@@ -1015,13 +1088,13 @@ onepalent
 ;; ----------------------------------------------------------------------------
 ;; VDU	  22		  Select Mode	1 parameter; parameter in &323 
 mos_VDU_22
-	lda	vduvar_VDU_Q_END - 1			;	C8EB
-	jmp	mos_VDU_set_mode		;	C8EE
+		lda	vduvar_VDU_Q_END - 1			;	C8EB
+		jmp	mos_VDU_set_mode		;	C8EE
 ;; ----------------------------------------------------------------------------
 ;; VDU 23 Define characters		  9 parameters; parameters are:- ; 31B character to define ; 31C to 323 definition 
 mos_VDU_23
-	TODOSKIP	"VDU 23"
-	rts
+		TODOSKIP	"VDU 23"
+		rts
 ;	lda	vduvar_VDU_Q_END - 9;	C8F1
 ;	cmp	#$20				;	C8F4
 ;	bcc	x_set_CRT_controller		;	C8F6
@@ -1065,170 +1138,170 @@ mos_VDU_23
 ;; ----------------------------------------------------------------------------
 ;; VDU EXTENSION
 x_VDU_EXTENSION
-	lda	vduvar_VDU_Q_END - 5		;	C938
-	CLC					;	C93B
+		lda	vduvar_VDU_Q_END - 5		;	C938
+		CLC					;	C93B
 
 jmp_VDUV					; LC93C
-	jmp	[VDUV]				;	C93C
+		jmp	[VDUV]				;	C93C
 ;; ----------------------------------------------------------------------------
 ;; set CRT controller
 x_set_CRT_controller
-	cmpa	#$01				;	C93F
-	blo	LC958				; VDU 23,0,R,X - set (R)eg to (X) in CRTC
-	bne	jmp_VDUV			;	C943
-	ASSERT "Unexpected in x_set_CRT_controller"
+		cmpa	#$01				;	C93F
+		blo	LC958				; VDU 23,0,R,X - set (R)eg to (X) in CRTC
+		bne	jmp_VDUV			;	C943
+		ASSERT "Unexpected in x_set_CRT_controller"
 ;	jsr	x_check_text_cursor_in_use	;	C945
 ;	bne	LC937				;	C948
 ;	lda	#$20				;	C94A
 ;	ldy	vduvar_VDU_Q_END - 8		;	C94C
 ;	beq	x_crtc_set_cursor		;	C94F
 x_crtc_reset_cursor				; LC951
-	lda	vduvar_CUR_START_PREV		;	C951
+		lda	vduvar_CUR_START_PREV		;	C951
 x_crtc_set_cursor
-	ldb	#$0A				;	C954
-	bra	LC985				;	C956
+		ldb	#$0A				;	C954
+		bra	LC985				;	C956
 LC958
-	lda	vduvar_VDU_Q_END - 7		;	C958
-	ldb	vduvar_VDU_Q_END - 8		;	C95B
+		lda	vduvar_VDU_Q_END - 7		;	C958
+		ldb	vduvar_VDU_Q_END - 8		;	C95B
 mos_set_6845_regBtoA
-	cmpb	#$07				;	C95E
-	blo	LC985				;	C960
-	bne	LC967				;	C962
-	adda	oswksp_VDU_VERTADJ		;	C964
-LC967	cmpb	#$08				;	C967
-	bne	LC972				;	C969
-	tsta					;	C96B
-	bmi	LC972				;	C96D
-	eora	oswksp_VDU_INTERLACE		;	C96F
-LC972	cmpb	#$0A				;	C972
-	bne	LC985				;	C974
-	sta	vduvar_CUR_START_PREV		;	C976
-	tfr	a,b				;	C979
-	lda	zp_vdu_status			;	C97A
-	anda	#$20				;	C97C
-	pshs	CC				;	C97E
-	tfr	b,a				;	C97F
-	ldb	#$0A				;	C980
-	puls	CC				;	C982
-	bne	LC98B				;	C983
-LC985	stb	sheila_CRTC_reg			;	C985
-	sta	sheila_CRTC_rw			;	C988
-LC98B	rts					;	C98B
+		cmpb	#$07				;	C95E
+		blo	LC985				;	C960
+		bne	LC967				;	C962
+		adda	oswksp_VDU_VERTADJ		;	C964
+LC967		cmpb	#$08				;	C967
+		bne	LC972				;	C969
+		tsta					;	C96B
+		bmi	LC972				;	C96D
+		eora	oswksp_VDU_INTERLACE		;	C96F
+LC972		cmpb	#$0A				;	C972
+		bne	LC985				;	C974
+		sta	vduvar_CUR_START_PREV		;	C976
+		tfr	a,b				;	C979
+		lda	zp_vdu_status			;	C97A
+		anda	#$20				;	C97C
+		pshs	CC				;	C97E
+		tfr	b,a				;	C97F
+		ldb	#$0A				;	C980
+		puls	CC				;	C982
+		bne	LC98B				;	C983
+LC985		stb	sheila_CRTC_reg			;	C985
+		sta	sheila_CRTC_rw			;	C988
+LC98B		rts					;	C98B
 ;; ----------------------------------------------------------------------------
 ;; VDU 25	  PLOT			  5 parameters;	 
 mos_VDU_25
-	tst	vduvar_PIXELS_PER_BYTE_MINUS1	;pixels per byte
-	beq	x_VDU_EXTENSION			;if no graphics available go via VDU Extension 
-	jmp	x_PLOT_ROUTINES_ENTER_HERE	;else enter Plot routine at D060
+		tst	vduvar_PIXELS_PER_BYTE_MINUS1	;pixels per byte
+		beq	x_VDU_EXTENSION			;if no graphics available go via VDU Extension 
+		jmp	x_PLOT_ROUTINES_ENTER_HERE	;else enter Plot routine at D060
 ;; ----------------------------------------------------------------------------
 ;; adjust screen RAMFDBesses
 x_adjust_screen_RAM_addresses
-	ldd	vduvar_6845_SCREEN_START	
-	jsr	x_subtract_bytes_per_line_from_D
-	bcc	LC9B3
-	adda	vduvar_SCREEN_SIZE_HIGH
-	bcc	LC9B3
+		ldd	vduvar_6845_SCREEN_START	
+		jsr	x_subtract_bytes_per_line_from_D
+		bcc	LC9B3
+		adda	vduvar_SCREEN_SIZE_HIGH
+		bcc	LC9B3
 x_adjust_screen_RAM_addresses_one_line_scroll	
-	ldd	vduvar_BYTES_PER_ROW
-	addd	vduvar_6845_SCREEN_START
-	bpl	LC9B3
-	suba	vduvar_SCREEN_SIZE_HIGH
-LC9B3	std	vduvar_6845_SCREEN_START
-	tfr	D,X
-	lda	#$0C
-	bra	x_set_6845_screenstart_from_X
+		ldd	vduvar_BYTES_PER_ROW
+		addd	vduvar_6845_SCREEN_START
+		bpl	LC9B3
+		suba	vduvar_SCREEN_SIZE_HIGH
+LC9B3		std	vduvar_6845_SCREEN_START
+		tfr	D,X
+		lda	#$0C
+		bra	x_set_6845_screenstart_from_X
 ;; VDU 26  set default windows		  0 parameters
 mos_VDU_26
-	clra
-	ldb	#$2C
-	ldx	#vduvar_GRA_WINDOW_LEFT
-LC9C1	sta	b,x
-	decb					;	C9C4
-	bpl	LC9C1				;	C9C5
-	lda	vduvar_MODE			;	C9C7
-	m_tax
-	lda	mostbl_vdu_window_right,x	;	C9CA
-	sta	vduvar_TXT_WINDOW_RIGHT		;	C9CD
-	jsr	LCA88_newAPI			;	C9D0
-	lda	mostbl_vdu_window_bottom+1,x	;	C9D3
-	sta	vduvar_TXT_WINDOW_BOTTOM	;	C9D6
-	ldb	#$03				;	C9D9
-	stb	vduvar_VDU_Q_END - 1			;	C9DB
-	incb					;	C9DE
-	stb	vduvar_VDU_Q_END - 3			;	C9DF
-	dec	vduvar_VDU_Q_END - 2			;	C9E2
-	dec	vduvar_VDU_Q_END - 4			;	C9E5
-	jsr	mos_VDU_24			;	C9E8
-	lda	#$F7				;	C9EB
-	jsr	mos_VDU_and_A_vdustatus		;	C9ED
-	ldx	vduvar_6845_SCREEN_START	;	C9F0
+		clra
+		ldb	#$2C
+		ldx	#vduvar_GRA_WINDOW_LEFT
+LC9C1		sta	b,x
+		decb					;	C9C4
+		bpl	LC9C1				;	C9C5
+		lda	vduvar_MODE			;	C9C7
+		m_tax
+		lda	mostbl_vdu_window_right,x	;	C9CA
+		sta	vduvar_TXT_WINDOW_RIGHT		;	C9CD
+		jsr	LCA88_newAPI			;	C9D0
+		lda	mostbl_vdu_window_bottom+1,x	;	C9D3
+		sta	vduvar_TXT_WINDOW_BOTTOM	;	C9D6
+		ldb	#$03				;	C9D9
+		stb	vduvar_VDU_Q_END - 1			;	C9DB
+		incb					;	C9DE
+		stb	vduvar_VDU_Q_END - 3			;	C9DF
+		dec	vduvar_VDU_Q_END - 2			;	C9E2
+		dec	vduvar_VDU_Q_END - 4			;	C9E5
+		jsr	mos_VDU_24			;	C9E8
+		lda	#$F7				;	C9EB
+		jsr	mos_VDU_and_A_vdustatus		;	C9ED
+		ldx	vduvar_6845_SCREEN_START	;	C9F0
 mos_set_cursor_X
-	stx	vduvar_6845_CURSOR_ADDR		;	C9F6
-	cmpx	#$8000
-	blo	x_set_cursor_position_X
-	pshs	D
-	tfr	X,D
-	suba	vduvar_SCREEN_SIZE_HIGH
-	tfr	D,X
-	puls	D
+		stx	vduvar_6845_CURSOR_ADDR		;	C9F6
+		cmpx	#$8000
+		blo	x_set_cursor_position_X
+		pshs	D
+		tfr	X,D
+		suba	vduvar_SCREEN_SIZE_HIGH
+		tfr	D,X
+		puls	D
 ;; set cursor position
 x_set_cursor_position_X
-	stx	zp_vdu_top_scanline
-	ldx	vduvar_6845_CURSOR_ADDR
-	lda	#$0E
+		stx	zp_vdu_top_scanline
+		ldx	vduvar_6845_CURSOR_ADDR
+		lda	#$0E
 x_set_6845_screenstart_from_X			; LCA0E
-	ldb	vduvar_MODE
-	cmpb	#$07
-	bhs	LCA27
-	exg	X,D
-	lsra
-	rorb
-	lsra
-	rorb
-	lsra
-	rorb
-	exg	X,D
-	bra	mos_stx_6845rA			;	CA24
+		ldb	vduvar_MODE
+		cmpb	#$07
+		bhs	LCA27
+		exg	X,D
+		lsra
+		rorb
+		lsra
+		rorb
+		lsra
+		rorb
+		exg	X,D
+		bra	mos_stx_6845rA			;	CA24
 ;; ----------------------------------------------------------------------------
-LCA27	
-	exg	X,D
-	suba	#$74				;	CA27
-	eora	#$20				;	CA29
-	exg	D,X
+LCA27		
+		exg	X,D
+		suba	#$74				;	CA27
+		eora	#$20				;	CA29
+		exg	D,X
 mos_stx_6845rA
-	pshs	X
-	ldb	,S+
-	std	sheila_CRTC_reg
-	inca
-	ldb	,S+
-	std	sheila_CRTC_reg
-	puls	PC				;	CA38
+		pshs	X
+		ldb	,S+
+		std	sheila_CRTC_reg
+		inca
+		ldb	,S+
+		std	sheila_CRTC_reg
+		puls	PC				;	CA38
 
 db_endian_vdu_q_swap
-	***********************************************
-	* BODGE: endianness swap for VDU drivers      *
-	* This is subject to change                   *
-	*                                             *
-	* workspace vars are all in big endian        *
-	* Q is in little endian so swap all the bytes *
-	* Y contain number of 16 bit params at end of *
-	* Q to swap				      *
-	***********************************************
-	ldx	#vduvar_VDU_Q_END
-1	ldd	,--X
-	exg	A,B
-	std	,X
-	leay	-1,Y
-	bne	1B
-	rts
+		***********************************************
+		* BODGE: endianness swap for VDU drivers      *
+		* This is subject to change                   *
+		*                                             *
+		* workspace vars are all in big endian        *
+		* Q is in little endian so swap all the bytes *
+		* Y contain number of 16 bit params at end of *
+		* Q to swap				      *
+		***********************************************
+		ldx	#vduvar_VDU_Q_END
+1		ldd	,--X
+		exg	A,B
+		std	,X
+		leay	-1,Y
+		bne	1B
+		rts
 
 
 ;; ----------------------------------------------------------------------------
 ;; VDU 24 Define graphics window		  8 parameters; &31C/D Left margin ; &31E/F Bottom margin ; &320/1 Right margin ; &322/3 Top margin 
 mos_VDU_24
 
-	ldy	#4
-	jsr	db_endian_vdu_q_swap
+		ldy	#4
+		jsr	db_endian_vdu_q_swap
 
 * temporary equs to make things clearer
 vduvar_VDU_Q_24_LEFT	equ	vduvar_VDU_Q_END - 8
@@ -1239,59 +1312,59 @@ vduvar_TMP_CURSAVE	equ	vduvar_TEMP_8
 vudvar_TMP_XY		equ	vduvar_TEMP_8 + 4
 
 
-	jsr	x_exchange_310_with_328		; save current cursor value at vduvar_TEMP_8
-	ldx	#vduvar_VDU_Q_24_LEFT
-	ldy	#vudvar_TMP_XY
-	jsr	x_coords_to_width_height	; calculate new width/height at TMP_XY
-	ora	vudvar_TMP_XY			; A already contains to byte of height, or with top byte of width
-	bmi	x_exchange_310_with_328		; if either negative, quit
-	ldx	#vduvar_VDU_Q_24_RIGHT
-	jsr	x_set_up_and_adjust_coords_atX
-	ldx	#vduvar_VDU_Q_24_LEFT
-	jsr	x_set_up_and_adjust_coords_atX
-	lda	vduvar_VDU_Q_24_BOTTOM
-	ora	vduvar_VDU_Q_24_TOP
-	bmi	x_exchange_310_with_328		; if top or bottom -ve
-	lda	vduvar_VDU_Q_24_TOP
-	bne	x_exchange_310_with_328		; if top internal coords > 255
-	LDX_B	vduvar_MODE			; screen mode
-	lda	vduvar_VDU_Q_24_RIGHT		; right margin hi
-	sta	zp_vdu_wksp			; store it
-	lda	vduvar_VDU_Q_24_RIGHT + 1	; right margin lo
-	lsr	zp_vdu_wksp			; /2
-	rora					; A=A/2
-	lsr	zp_vdu_wksp			; /2
-	bne	x_exchange_310_with_328		; exchange 310/3 with 328/3 - its too big!
-	rora					; A=A/2
-	lsra					; A=A/2
-	cmpa	mostbl_vdu_window_right,x	; text window right hand margin maximum
-	beq	LCA7A				; if equal CA7A
-	bpl	x_exchange_310_with_328		; exchange 310/3 with 328/3
-LCA7A	ldy	#vduvar_GRA_WINDOW_LEFT
-	ldx	#vduvar_VDU_Q_END - 8
-	jsr	copy8fromXtoY			; save updated data
+		jsr	x_exchange_310_with_328		; save current cursor value at vduvar_TEMP_8
+		ldx	#vduvar_VDU_Q_24_LEFT
+		ldy	#vudvar_TMP_XY
+		jsr	x_coords_to_width_height	; calculate new width/height at TMP_XY
+		ora	vudvar_TMP_XY			; A already contains to byte of height, or with top byte of width
+		bmi	x_exchange_310_with_328		; if either negative, quit
+		ldx	#vduvar_VDU_Q_24_RIGHT
+		jsr	x_set_up_and_adjust_coords_atX
+		ldx	#vduvar_VDU_Q_24_LEFT
+		jsr	x_set_up_and_adjust_coords_atX
+		lda	vduvar_VDU_Q_24_BOTTOM
+		ora	vduvar_VDU_Q_24_TOP
+		bmi	x_exchange_310_with_328		; if top or bottom -ve
+		lda	vduvar_VDU_Q_24_TOP
+		bne	x_exchange_310_with_328		; if top internal coords > 255
+		LDX_B	vduvar_MODE			; screen mode
+		lda	vduvar_VDU_Q_24_RIGHT		; right margin hi
+		sta	zp_vdu_wksp			; store it
+		lda	vduvar_VDU_Q_24_RIGHT + 1	; right margin lo
+		lsr	zp_vdu_wksp			; /2
+		rora					; A=A/2
+		lsr	zp_vdu_wksp			; /2
+		bne	x_exchange_310_with_328		; exchange 310/3 with 328/3 - its too big!
+		rora					; A=A/2
+		lsra					; A=A/2
+		cmpa	mostbl_vdu_window_right,x	; text window right hand margin maximum
+		beq	LCA7A				; if equal CA7A
+		bpl	x_exchange_310_with_328		; exchange 310/3 with 328/3
+LCA7A		ldy	#vduvar_GRA_WINDOW_LEFT
+		ldx	#vduvar_VDU_Q_END - 8
+		jsr	copy8fromXtoY			; save updated data
 
 x_exchange_310_with_328
-	ldx	#vduvar_GRA_CUR_EXT		; ==$310
-	ldy	#vduvar_TEMP_8			; ==$328
-	jmp	x_exchange_4atY_with_4atX
+		ldx	#vduvar_GRA_CUR_EXT		; ==$310
+		ldy	#vduvar_TEMP_8			; ==$328
+		jmp	x_exchange_4atY_with_4atX
 
 ;; ----------------------------------------------------------------------------
 LCA88_newAPI
-	; old API (y == window width in chars - 1)
-	; new API (a == window width in chars - 1)
-	inca
-	ldb	vduvar_BYTES_PER_CHAR
-	mul
-	std	vduvar_TXT_WINDOW_WIDTH_BYTES
-LCAA1	rts					;	CAA1
+		; old API (y == window width in chars - 1)
+		; new API (a == window width in chars - 1)
+		inca
+		ldb	vduvar_BYTES_PER_CHAR
+		mul
+		std	vduvar_TXT_WINDOW_WIDTH_BYTES
+LCAA1		rts					;	CAA1
 ;; ----------------------------------------------------------------------------
 ;; VDU 29  Set graphics origin			  4 parameters;	 
 mos_VDU_29
-	ldx	#vduvar_VDU_Q_END - 4
-	ldy	#vduvar_GRA_ORG_EXT
-	jsr	copy4fromXtoY
-	jmp	x_calculate_external_coordinates_from_internal_coordinates
+		ldx	#vduvar_VDU_Q_END - 4
+		ldy	#vduvar_GRA_ORG_EXT
+		jsr	copy4fromXtoY
+		jmp	x_calculate_external_coordinates_from_internal_coordinates
 ;; ----------------------------------------------------------------------------
 ;; VDU 32  (&7F)	  Delete			  0 parameters
 mos_VDU_127					; LCAAC
@@ -1315,179 +1388,207 @@ LCAC7		lda	#$7F				;for graphics cursor
 ;; ----------------------------------------------------------------------------
 ;; control scrolling in paged mode
 x_control_scrolling_in_paged_mode		; LCAE0
-	jsr	x_zero_paged_mode_counter
+		jsr	x_zero_paged_mode_counter
 x_control_scrolling_in_paged_mode_2
-	jsr	mos_OSBYTE_118
-	bcc	LCAEA
-	bmi	x_control_scrolling_in_paged_mode
-LCAEA	lda	zp_vdu_status
-	eora	#$04
-	anda	#$46
-	bne	LCB1Crts
-	lda	sysvar_SCREENLINES_SINCE_PAGE
-	bmi	LCB19
-	lda	vduvar_TXT_CUR_Y
-	cmpa	vduvar_TXT_WINDOW_BOTTOM
-	blo	LCB19
-	lsra
-	lsra
-	orcc	#CC_C
-	adca	sysvar_SCREENLINES_SINCE_PAGE
-	adca	vduvar_TXT_WINDOW_TOP
-	cmpa	vduvar_TXT_WINDOW_BOTTOM
-	blo	LCB19
-	andcc	#~CC_C
-LCB0E	jsr	mos_OSBYTE_118
-	orcc	#CC_C
-	bpl	LCB0E
+		jsr	mos_OSBYTE_118
+		bcc	LCAEA
+		bmi	x_control_scrolling_in_paged_mode
+LCAEA		lda	zp_vdu_status
+		eora	#$04
+		anda	#$46
+		bne	LCB1Crts
+		lda	sysvar_SCREENLINES_SINCE_PAGE
+		bmi	LCB19
+		lda	vduvar_TXT_CUR_Y
+		cmpa	vduvar_TXT_WINDOW_BOTTOM
+		blo	LCB19
+		lsra
+		lsra
+		SEC
+		adca	sysvar_SCREENLINES_SINCE_PAGE
+		adca	vduvar_TXT_WINDOW_TOP
+		cmpa	vduvar_TXT_WINDOW_BOTTOM
+		blo	LCB19
+		CLC
+LCB0E		jsr	mos_OSBYTE_118
+		SEC
+		bpl	LCB0E
 ;; zero paged mode  counter
 x_zero_paged_mode_counter
-	lda	#$FF				;	CB14
-	sta	sysvar_SCREENLINES_SINCE_PAGE	;	CB16
-LCB19	inc	sysvar_SCREENLINES_SINCE_PAGE	;	CB19
+		lda	#$FF				;	CB14
+		sta	sysvar_SCREENLINES_SINCE_PAGE	;	CB16
+LCB19		inc	sysvar_SCREENLINES_SINCE_PAGE	;	CB19
 LCB1Crts
-	rts					;	CB1C
+		rts					;	CB1C
 ;; ----------------------------------------------------------------------------
 ;; Set vdu vars to 0, called with mode in A
 mos_VDU_init					; LCB1D
-	pshs	A				;	CB1D
-	ldx	#$7F				;	CB1E
-	lda	#$00				;	CB20
-	sta	zp_vdu_status			;	CB22
+		pshs	A				;	CB1D
+		ldb	#$7F				;	CB1E
+		clra				;	CB20
+		sta	zp_vdu_status			;	CB22
+		ldx	#vduvars_start
 ; clear vdu vars block
-1	sta	vduvars_start-1,x		;	CB24
-	leax	-1,x				;	CB27
-	bne	1B				;	CB28
-	jsr	mos_OSBYTE_20			;	CB2A
-	puls	A				;	CB2D
-	ldb	#$7F				;	CB2E
-	stb	vduvar_MO7_CUR_CHAR		;	CB30
+1		sta	,X+				;	CB24
+		decb
+		bne	1B				;	CB28
+		clr	zp_mos_OSBW_X
+		jsr	mos_OSBYTE_20			;	CB2A
+		puls	A				;	CB2D
+		ldb	#$7F				;	CB2E
+		stb	vduvar_MO7_CUR_CHAR		;	CB30
 ;; ??? Set mode ???
 mos_VDU_set_mode
-	tst	sysvar_RAM_AVAIL		;	CB33
-	bmi	mos_VDU_set_mode_gt16Ksk	;	CB36
-	ora	#$04				;	CB38
-;; Skip if > 16k memory available
-mos_VDU_set_mode_gt16Ksk
-	anda	#$07
-	sta	vduvar_MODE
-	ldx	#mostbl_VDU_mode_colours_m1
-	ldb	a,x
-	stb	vduvar_COL_COUNT_MINUS1
-	ldx	#mostbl_VDU_bytes_per_char
-	ldb	a,x
-	stb	vduvar_BYTES_PER_CHAR
-	ldx	#mostbl_VDU_pixels_per_byte_m1
-	ldb	a,x
-	stb	vduvar_PIXELS_PER_BYTE_MINUS1
-	bne	mos_VDU_set_mode_bmsk1
-	ldb	#$07
-	;; bytes per pixel 1 => 8?
+		; TODO remove this
+;;	tst	sysvar_RAM_AVAIL		;	CB33
+;;	bmi	mos_VDU_set_mode_gt16Ksk	;	CB36
+;;	ora	#$04				;	CB38
+;;;; Skip if > 16k memory available
+;;mos_VDU_set_mode_gt16Ksk
+		anda	#$07
+	IF MACH_CHIPKIT
+		; TODO - remove this bodge for chipkit mk1 (no mode 7!) see also mos_OSBYTE_133
+		cmpa	#7
+		bne	1F
+		lda	#6
+1		
+	ENDIF
+		sta	vduvar_MODE
+		ldx	#mostbl_VDU_mode_colours_m1
+		ldb	a,x
+		stb	vduvar_COL_COUNT_MINUS1
+		ldx	#mostbl_VDU_bytes_per_char
+		ldb	a,x
+		stb	vduvar_BYTES_PER_CHAR
+		ldx	#mostbl_VDU_pixels_per_byte_m1
+		ldb	a,x
+		stb	vduvar_PIXELS_PER_BYTE_MINUS1
+		bne	mos_VDU_set_mode_bmsk1
+		ldb	#$07
+		;; bytes per pixel 1 => 8?
 mos_VDU_set_mode_bmsk1
-	aslb
-	ldx	#mostbl_VDU_pix_mask_16colour - 1
-	lda	b,x;	CB58	
-	sta	vduvar_RIGHTMOST_PIX_MASK	;	CB5B
-	;; shunt bitmask to leftmost
-1	asla
-	bpl	1B				;	CB5F
-	sta	vduvar_LEFTMOST_PIX_MASK	;	CB61
-	ldx	#mostbl_VDU_mode_size
-	lda	vduvar_MODE
-	ldb	a,x
-	stb	vduvar_MODE_SIZE
-	clra
-	tfr	D,X
-;;;	lda	mostbl_VDU_hwscroll_offb2,x
-;;;	jsr	mos_poke_SYSVIA_orb
-;;;	lda	mostbl_VDU_hwscroll_offb1,x
-;;;	jsr	mos_poke_SYSVIA_orb		;	CB6D
-	lda	mostbl_VDU_hwscroll_offs,x
-	sta	SHEILA_MEMC_SCROFF
-	lda	mostbl_VDU_screensize_h,x	;	CB76
-	sta	vduvar_SCREEN_SIZE_HIGH		;	CB79
-	lda	mostbl_VDU_screebot_h,x		;	CB7C
-	sta	vduvar_SCREEN_BOTTOM_HIGH	;	CB7F
+		aslb
+		ldx	#mostbl_VDU_pix_mask_16colour - 1
+		lda	b,x;	CB58	
+		sta	vduvar_RIGHTMOST_PIX_MASK	;	CB5B
+		;; shunt bitmask to leftmost
+1		asla
+		bpl	1B				;	CB5F
+		sta	vduvar_LEFTMOST_PIX_MASK	;	CB61
+		ldx	#mostbl_VDU_mode_size
+		lda	vduvar_MODE
+		ldb	a,x
+		stb	vduvar_MODE_SIZE
+		clra
+		tfr	D,X
+	IF MACH_BEEB
+		lda	mostbl_VDU_hwscroll_offb2,x
+		jsr	mos_poke_SYSVIA_orb
+		lda	mostbl_VDU_hwscroll_offb1,x
+		jsr	mos_poke_SYSVIA_orb		;	CB6D
+	ENDIF
+	IF MACH_CHIPKIT
+		lda	mostbl_VDU_hwscroll_offs,x
+		sta	SHEILA_MEMC_SCROFF
+	ENDIF
+		lda	mostbl_VDU_screensize_h,x	;	CB76
+		sta	vduvar_SCREEN_SIZE_HIGH		;	CB79
+		lda	mostbl_VDU_screebot_h,x		;	CB7C
+		sta	vduvar_SCREEN_BOTTOM_HIGH	;	CB7F
 ;; A=((y+2)^7)>>1; 0=>2; 1=>2; 2=>1; 3=>1; 4=>0
 ;;	lda	vduvar_MODE_SIZE		;	CB82
-	addb	#$02				;	CB83
-	eorb	#$07				;	CB85
-	lsrb					;	CB87
-	clra
-	tfr	D,X
-	stb	vduvar_BYTES_PER_ROW
-	lda	mostbl_VDU_bytes_per_row_low,x
-	sta	vduvar_BYTES_PER_ROW + 1
-	lda	#$43				;	CB9B
+		addb	#$02				;	CB83
+		eorb	#$07				;	CB85
+		lsrb					;	CB87
+		clra
+		tfr	D,X
+		stb	vduvar_BYTES_PER_ROW
+		lda	mostbl_VDU_bytes_per_row_low,x
+		sta	vduvar_BYTES_PER_ROW + 1
+		lda	#$43				;	CB9B
 
-	; Setup RAMDAC / VIDC stuff
-	lda	#$FF
-	sta	sheila_RAMDAC_PIXMASK
+	IF MACH_CHIPKIT
+		; Setup RAMDAC / VIDC stuff
+		lda	#$FF
+		sta	sheila_RAMDAC_PIXMASK
 
-	ldb	vduvar_COL_COUNT_MINUS1		; a <= colours - 1
+		ldb	vduvar_COL_COUNT_MINUS1		; a <= colours - 1
 
-	; get left most pixel mask for this mode
-	lda	#$80
-	asrb
-	asrb
-	bcc	1F
-	ora	#$08
-	asrb
-	bcc	1F
-	ora	#$22
-1	; a now contains a left most pixel mask
+		; get left most pixel mask for this mode
+		lda	#$80
+		asrb
+		asrb
+		bcc	1F
+		ora	#$08
+		asrb
+		bcc	1F
+		ora	#$22
+1		; a now contains a left most pixel mask
 
-	; store in RAMDAC pixel mask (TODO: move to MODE change/boot?)
-	sta	sheila_VIDULA_pixand
+		; store in RAMDAC pixel mask (TODO: move to MODE change/boot?)
+		sta	sheila_VIDULA_pixand
+	ENDIF
 
-	jsr	mos_VDU_and_A_vdustatus		;	CB9D
-	lda	vduvar_MODE			;	CBA0
-	ldx	#mostbl_VDU_VIDPROC_CTL_by_mode
-	lda	a,x				;	CBA3
-	jsr	mos_VIDPROC_set_CTL		;	CBA6
-	pshs	CC				;	CBA9
-	; Send commands from table for current mode size to 6845
+		jsr	mos_VDU_and_A_vdustatus		;	CB9D
+		lda	vduvar_MODE			;	CBA0
+		ldx	#mostbl_VDU_VIDPROC_CTL_by_mode
+		lda	a,x				;	CBA3
+		jsr	mos_VIDPROC_set_CTL		;	CBA6
+		pshs	CC				;	CBA9
+		; Send commands from table for current mode size to 6845
 mos_send6845
-	SEI			; interrupts off
-	ldx	#mostbl_VDU_ptr_end_6845tab
-	ldb	vduvar_MODE_SIZE
-	ldb	b,x
-	ldx	#mostbl_VDU_6845_mode_012
-	abx
-	ldb	#$0B				
+		SEI			; interrupts off
+		ldx	#mostbl_VDU_ptr_end_6845tab
+		ldb	vduvar_MODE_SIZE
+		ldb	b,x
+		ldx	#mostbl_VDU_6845_mode_012
+		abx
+		ldb	#$0B				
 mos_send6845lp					; LCBB0
-	lda	,-x				;	CBB0
-	jsr	mos_set_6845_regBtoA		;	CBB3
-	decb					;	CBB7
-	bpl	mos_send6845lp			;	CBB8
-	puls	CC				; interrupts back
-	jsr	mos_VDU_20			; default logical colours
-	jsr	mos_VDU_26			; default windows
+		lda	,-x				;	CBB0
+		jsr	mos_set_6845_regBtoA		;	CBB3
+		decb					;	CBB7
+		bpl	mos_send6845lp			;	CBB8
+		puls	CC				; interrupts back
+		jsr	mos_VDU_20			; default logical colours
+		jsr	mos_VDU_26			; default windows
 LCBC1_clear_whole_screen
-	lda	vduvar_SCREEN_BOTTOM_HIGH
-	sta	vduvar_6845_SCREEN_START
-	clrb
-	tfr	D,X
-	stx	vduvar_6845_SCREEN_START
-	jsr	mos_set_cursor_X		;	CBCC
-	lda	#$0C				;	CBCF
-	jsr	mos_stx_6845rA			;	CBD1
+		lda	vduvar_SCREEN_BOTTOM_HIGH
+		sta	vduvar_6845_SCREEN_START
+		clrb
+		tfr	D,X
+		stx	vduvar_6845_SCREEN_START
+		jsr	mos_set_cursor_X		;	CBCC
+		lda	#$0C				;	CBCF
+		jsr	mos_stx_6845rA			;	CBD1
 ;;	lda	vduvar_TXT_BACK			;	CBD4
-	ldb	vduvar_MODE_SIZE		;	CBD7
+		ldb	vduvar_MODE_SIZE		;	CBD7
 ;;;	aslb
-	clr	sysvar_SCREENLINES_SINCE_PAGE	;	CBE7
-	clr	vduvar_TXT_CUR_X		;	CBEA
-	clr	vduvar_TXT_CUR_Y		;	CBED
-	ldx	#mostbl_VDU_screensize_h
-	pshsw
-	lde	B,X				; get # bytes to clear (high in E)
-	clrf
-	;decw
-	ldx	vduvar_6845_SCREEN_START
-	ldy	#vduvar_TXT_BACK
-	tfm	Y,X+
-	pulsW
-	rts
+		clr	sysvar_SCREENLINES_SINCE_PAGE	;	CBE7
+		clr	vduvar_TXT_CUR_X		;	CBEA
+		clr	vduvar_TXT_CUR_Y		;	CBED
+		ldx	#mostbl_VDU_screensize_h
+	IF CPU_6809
+		; TODO: make this quicker?
+		lda	B,X				; get # bytes to clear (high in A)
+		clrb
+		tfr	D,Y
+		lda	vduvar_TXT_BACK
+		ldx	vduvar_6845_SCREEN_START
+1		sta	,X+
+		leay	-1,Y
+		bne	1B
+	ELSE
+		pshsw
+		lde	B,X				; get # bytes to clear (high in E)
+		clrf
+		;decw
+		ldx	vduvar_6845_SCREEN_START
+		ldy	#vduvar_TXT_BACK
+		tfm	Y,X+
+		pulsw
+	ENDIF
+		rts
 ;;;	ldx	#mostbl_VDU_cls_vecjmp
 ;;;	jmp	[b,x]
 ;; ----------------------------------------------------------------------------
@@ -1544,84 +1645,84 @@ LCBC1_clear_whole_screen
 ;; subtract bytes per line from X/A
 ; note new API, address in D instead of X/A and carry flag is opposite sense
 x_subtract_bytes_per_line_from_D
-	subd	vduvar_BYTES_PER_ROW
-	cmpa	vduvar_SCREEN_BOTTOM_HIGH
-LCD06	rts					;	CD06
+		subd	vduvar_BYTES_PER_ROW
+		cmpa	vduvar_SCREEN_BOTTOM_HIGH
+LCD06		rts					;	CD06
 ; ----------------------------------------------------------------------------
 ; OSBYTE 20		  Explode characters;  
 mos_OSBYTE_20
-	lda	#$0F				;	CD07
-	sta	vduvar_EXPLODE_FLAGS		;	CD09
-	lda	#$0C				;	CD0C
-	ldb	#$06				;	CD0E
-	ldy	#vduvar_FONT_LOC32_63
-LCD10	sta	b,y
-	decb
-	bpl	LCD10				;	CD14
+		lda	#$0F				;	CD07
+		sta	vduvar_EXPLODE_FLAGS		;	CD09
+		lda	#$0C				;	CD0C
+		ldb	#$06				;	CD0E
+		ldy	#vduvar_FONT_LOC32_63
+LCD10		sta	b,y
+		decb
+		bpl	LCD10				;	CD14
 ;	tfr	X,D
-	ldb	zp_mos_OSBW_X
-	cmpb	#$07				;	CD16
-	bhs	LCD1C				;	CD18
-	ldb	#$06				;	CD1A
-LCD1C	stb	sysvar_EXPLODESTATUS		;	CD1C
-	lda	sysvar_PRI_OSHWM		;	CD1F
-	ldb	#$00				;	CD22
-	ldx	#mostbl_SOFT_CHARACTER_RAM_ALLOCATION
-	ldy	#vduvar_FONT_LOC32_63
-LCD24	cmpb	sysvar_EXPLODESTATUS		;	CD24
-	bhs	LCD34				;	CD27
-	pshs	b
-	ldb	b,x				;	CD29
-	sta	b,y				;	CD2C
-	inca					;	CD2F
-	puls	b
-	incb					;	CD31
-	bne	LCD24				;	CD32
-LCD34	sta	sysvar_CUR_OSHWM		;	CD34
-	beq	LCD06				;	CD38
-	ldb	#SERVICE_11_FONT_BANG		;	CD3A
-	jmp	mos_OSBYTE_143_b_cmd_x_param
+		ldb	zp_mos_OSBW_X
+		cmpb	#$07				;	CD16
+		blo	LCD1C				;	CD18
+		ldb	#$06				;	CD1A
+LCD1C		stb	sysvar_EXPLODESTATUS		;	CD1C
+		lda	sysvar_PRI_OSHWM		;	CD1F
+		ldb	#$00				;	CD22
+		ldx	#mostbl_SOFT_CHARACTER_RAM_ALLOCATION
+		ldy	#vduvar_FONT_LOC32_63
+LCD24		cmpb	sysvar_EXPLODESTATUS		;	CD24
+		bhs	LCD34				;	CD27
+		pshs	b
+		ldb	b,x				;	CD29
+		sta	b,y				;	CD2C
+		inca					;	CD2F
+		puls	b
+		incb					;	CD31
+		bne	LCD24				;	CD32
+LCD34		sta	sysvar_CUR_OSHWM		;	CD34
+		beq	LCD06				;	CD38
+		ldb	#SERVICE_11_FONT_BANG		;	CD3A
+		jmp	mos_OSBYTE_143_b_cmd_x_param
 						;	CD3C
 ;; ----------------------------------------------------------------------------
 ;; :move text cursor to next line (direction up/down depends on CC_C)
 x_move_text_cursor_to_next_line
-	lda	zp_vdu_status
-	bita	#$02
-	bne	LCD47				; scrolling disabled
-	bita	#$40
-	beq	LCD65rts			; curor editing
-LCD47	ldb	vduvar_TXT_WINDOW_BOTTOM	; if carry set on entry get TOP else get BOTTOM
-	bcc	LCD4F				
-	ldb	vduvar_TXT_WINDOW_TOP		
-LCD4F	bita	#$40
-	bne	LCD59				; if cursor editing
-	stb	vduvar_TXT_CUR_Y		
-	leas	2,S				; skip return and setup address and cursor
-	jmp	x_setup_displayaddress_and_cursor_position
+		lda	zp_vdu_status
+		bita	#$02
+		bne	LCD47				; scrolling disabled
+		bita	#$40
+		beq	LCD65rts			; curor editing
+LCD47		ldb	vduvar_TXT_WINDOW_BOTTOM	; if carry set on entry get TOP else get BOTTOM
+		bcc	LCD4F				
+		ldb	vduvar_TXT_WINDOW_TOP		
+LCD4F		bita	#$40
+		bne	LCD59				; if cursor editing
+		stb	vduvar_TXT_CUR_Y		
+		leas	2,S				; skip return and setup address and cursor
+		jmp	x_setup_displayaddress_and_cursor_position
 ;; ----------------------------------------------------------------------------
-LCD59	pshs	CC				;	CD59
-	cmpb	vduvar_TEXT_IN_CUR_Y		;	CD5A
-	beq	1F				;	CD5D
-	puls	CC				;	CD5F
-	bcc	LCD66				;	CD60
-	dec	vduvar_TEXT_IN_CUR_Y		;	CD62
+LCD59		pshs	CC				;	CD59
+		cmpb	vduvar_TEXT_IN_CUR_Y		;	CD5A
+		beq	1F				;	CD5D
+		puls	CC				;	CD5F
+		bcc	LCD66				;	CD60
+		dec	vduvar_TEXT_IN_CUR_Y		;	CD62
 LCD65rts
-	rts
-1	puls	CC,PC
+		rts
+1		puls	CC,PC
 ;; ----------------------------------------------------------------------------
-LCD66	inc	vduvar_TEXT_IN_CUR_Y		;	CD66
-	rts					;	CD69
+LCD66		inc	vduvar_TEXT_IN_CUR_Y		;	CD66
+		rts					;	CD69
 ;; ----------------------------------------------------------------------------
 ;; set up write cursor
 x_set_up_write_cursor
-	pshs	A,B,CC,X
-	ldb	vduvar_BYTES_PER_CHAR
-	decb
-	ldx	zp_vdu_top_scanline
-	bne	LCD8F				; it's not MO.7
-	lda	vduvar_GRA_WKSP+8
-	sta	,X				; restore original MO.7 character?
-	puls	A,B,CC,X,PC
+		pshs	A,B,CC,X
+		ldb	vduvar_BYTES_PER_CHAR
+		decb
+		ldx	zp_vdu_top_scanline
+		bne	LCD8F				; it's not MO.7
+		lda	vduvar_GRA_WKSP+8
+		sta	,X				; restore original MO.7 character?
+		puls	A,B,CC,X,PC
 
 ;;	php					;	CD6A
 ;;	pha					;	CD6B
@@ -1636,84 +1737,84 @@ x_set_up_write_cursor
 ;;LCD79:	rts					;	CD79
 ;; ----------------------------------------------------------------------------
 x_start_cursor_edit_qry	
-	pshs	A,B,CC,X
-	ldx	zp_vdu_top_scanline
-	ldb	vduvar_BYTES_PER_CHAR			;bytes per character
-	decb						;
-	bne	LCD8F					;if not mode 7
-	lda	,x					;get cursor from top scan line
-	sta	vduvar_GRA_WKSP+8			;store it
-	lda	vduvar_MO7_CUR_CHAR			;mode 7 write cursor character
-	sta	,x					;store it at scan line
-	puls	A,B,CC,X,PC				;and exit
+		pshs	A,B,CC,X
+		ldx	zp_vdu_top_scanline
+		ldb	vduvar_BYTES_PER_CHAR			;bytes per character
+		decb						;
+		bne	LCD8F					;if not mode 7
+		lda	,x					;get cursor from top scan line
+		sta	vduvar_GRA_WKSP+8			;store it
+		lda	vduvar_MO7_CUR_CHAR			;mode 7 write cursor character
+		sta	,x					;store it at scan line
+		puls	A,B,CC,X,PC				;and exit
 
 ;; ----------------------------------------------------------------------------
-LCD8F	lda	#$FF					;A=&FF =cursor
-	cmpb	#$1F					;except in mode 2 (Y=&1F)
-	bne	x_produce_white_block_write_cursor	;if not CD97
-	lda	#$3F					;load cursor byte mask
+LCD8F		lda	#$FF					;A=&FF =cursor
+		cmpb	#$1F					;except in mode 2 (Y=&1F)
+		bne	x_produce_white_block_write_cursor	;if not CD97
+		lda	#$3F					;load cursor byte mask
 ;; produce white block write cursor
 x_produce_white_block_write_cursor
-	sta	zp_vdu_wksp			;	CD97
-1	lda	,x				;	CD99
-	eora	zp_vdu_wksp			;	CD9B
-	sta	,x+				;	CD9D
-	decb					;	CD9F
-	bpl	1B				;	CDA0
+		sta	zp_vdu_wksp			;	CD97
+1		lda	,x				;	CD99
+		eora	zp_vdu_wksp			;	CD9B
+		sta	,x+				;	CD9D
+		decb					;	CD9F
+		bpl	1B				;	CDA0
 ;;;	bmi	LCD77				;	CDA2
-	puls	A,B,CC,X,PC
+		puls	A,B,CC,X,PC
 
 
 
 LCDA4
-	jsr	x_exchange_TXTCUR_wksp_doublertsifwindowempty ; also saves height in wksp+4
-	lda	vduvar_TXT_WINDOW_BOTTOM	;	CDA7
-	sta	vduvar_TXT_CUR_Y		;	CDAA
-	jsr	x_set_up_displayaddress	;	CDAD
-LCDB0	jsr	x_subtract_bytes_per_line_from_D;	CDB0
-	bcc	LCDB8				;	CDB3
-	adda	vduvar_SCREEN_SIZE_HIGH		;	CDB5
-LCDB8	std	zp_vdu_wksp			;	CDB8
-	sta	zp_vdu_wksp+2			;	CDBC
-	bcs	LCDC6				;	CDBE
-LCDC0	jsr	LCE73				;	CDC0
-	bra	LCDCE
+		jsr	x_exchange_TXTCUR_wksp_doublertsifwindowempty ; also saves height in wksp+4
+		lda	vduvar_TXT_WINDOW_BOTTOM	;	CDA7
+		sta	vduvar_TXT_CUR_Y		;	CDAA
+		jsr	x_set_up_displayaddress	;	CDAD
+LCDB0		jsr	x_subtract_bytes_per_line_from_D;	CDB0
+		bcc	LCDB8				;	CDB3
+		adda	vduvar_SCREEN_SIZE_HIGH		;	CDB5
+LCDB8		std	zp_vdu_wksp			;	CDB8
+		sta	zp_vdu_wksp+2			;	CDBC
+		bcs	LCDC6				;	CDBE
+LCDC0		jsr	LCE73				;	CDC0
+		bra	LCDCE
 ;; ----------------------------------------------------------------------------
-LCDC6	jsr	x_subtract_bytes_per_line_from_D;	CDC6
-	bcs	LCDC0				;	CDC9
-	jsr	x_copy_routines			;	CDCB
-LCDCE	lda	zp_vdu_wksp+2			;	CDCE
-	ldb	zp_vdu_wksp+1			;	CDD0
-	std	zp_vdu_top_scanline		;	CDD2
-	dec	zp_vdu_wksp+4
-	bne	LCDB0
+LCDC6		jsr	x_subtract_bytes_per_line_from_D;	CDC6
+		bcs	LCDC0				;	CDC9
+		jsr	x_copy_routines			;	CDCB
+LCDCE		lda	zp_vdu_wksp+2			;	CDCE
+		ldb	zp_vdu_wksp+1			;	CDD0
+		std	zp_vdu_top_scanline		;	CDD2
+		dec	zp_vdu_wksp+4
+		bne	LCDB0
 
 x_exchange_TXT_CUR_with_BITMAP_READ		; LCDDA
-	ldx	#vduvar_TEMP_8
-	ldy	#vduvar_TXT_CUR_X
+		ldx	#vduvar_TEMP_8
+		ldy	#vduvar_TXT_CUR_X
 x_exchange_2atY_with_2atX			; LCDDE
-	ldb	#$02				;	CDDE TODO: this is a straigh 16 bit copy do something better?
-	bra	x_exchange_B_atY_with_B_atX	;	CDE0
+		ldb	#$02				;	CDDE TODO: this is a straigh 16 bit copy do something better?
+		bra	x_exchange_B_atY_with_B_atX	;	CDE0
 x_exg4atGRACURINTwithGRACURINTOLD			; LCDE2
-	ldx	#vduvar_GRA_CUR_INT		;	CDE2
+		ldx	#vduvar_GRA_CUR_INT		;	CDE2
 x_exg4atGRACURINTOLDwithX				; LCDE4
-	ldy	#vduvar_GRA_CUR_INT_OLD		;	CDE4
+		ldy	#vduvar_GRA_CUR_INT_OLD		;	CDE4
 x_exchange_4atY_with_4atX
-	ldb	#$04				;	CDE6
+		ldb	#$04				;	CDE6
 ;; exchange (300/300+A)+Y with (300/300+A)+X
 x_exchange_B_atY_with_B_atX
-	stb	zp_vdu_wksp			;	CDE8
-LCDEA	lda	,x
-	ldb	,y
-	sta	,y+
-	stb	,x+
-	dec	zp_vdu_wksp			;	CDFA
-	bne	LCDEA				;	CDFC
-	rts					;	CDFE
+		stb	zp_vdu_wksp			;	CDE8
+LCDEA		lda	,x
+		ldb	,y
+		sta	,y+
+		stb	,x+
+		dec	zp_vdu_wksp			;	CDFA
+		bne	LCDEA				;	CDFC
+		rts					;	CDFE
 ;; ----------------------------------------------------------------------------
 ;; execute upward scroll;  
 x_execute_upward_scroll
-	TODO	"x_execute_upward_scroll"
+		TODO	"x_execute_upward_scroll"
 ;	jsr	x_exchange_TXTCUR_wksp_doublertsifwindowempty				;	CDFF
 ;	ldy	vduvar_TXT_WINDOW_TOP		;	CE02
 ;	sty	vduvar_TXT_CUR_Y		;	CE05
@@ -1741,30 +1842,30 @@ x_execute_upward_scroll
 ;	beq	x_exchange_TXT_CUR_with_BITMAP_READ				;	CE36
 ;; copy routines
 x_copy_routines
-	ldd	vduvar_TXT_WINDOW_WIDTH_BYTES
-	ldx	zp_vdu_wksp
-	ldy	zp_vdu_top_scanline
-1	lda	,x+
-	sta	,y+
-	subd	#1
-	bne	1B
-	rts					;	CE5A
+		ldd	vduvar_TXT_WINDOW_WIDTH_BYTES
+		ldx	zp_vdu_wksp
+		ldy	zp_vdu_top_scanline
+1		lda	,x+
+		sta	,y+
+		subd	#1
+		bne	1B
+		rts					;	CE5A
 ;; ----------------------------------------------------------------------------
 x_exchange_TXTCUR_wksp_doublertsifwindowempty	
-	jsr	x_exchange_TXT_CUR_with_BITMAP_READ
-	lda	vduvar_TXT_WINDOW_BOTTOM	;	CE5F
-	suba	vduvar_TXT_WINDOW_TOP		;	CE62
-	sta	zp_vdu_wksp+4			;	CE65
-	bne	x_cursor_to_window_left				;	CE67
-	leas	2,S
-	jmp	x_exchange_TXT_CUR_with_BITMAP_READ	; if no text window pull return address, put back cursor and exit parent subroutine
+		jsr	x_exchange_TXT_CUR_with_BITMAP_READ
+		lda	vduvar_TXT_WINDOW_BOTTOM	;	CE5F
+		suba	vduvar_TXT_WINDOW_TOP		;	CE62
+		sta	zp_vdu_wksp+4			;	CE65
+		bne	x_cursor_to_window_left				;	CE67
+		leas	2,S
+		jmp	x_exchange_TXT_CUR_with_BITMAP_READ	; if no text window pull return address, put back cursor and exit parent subroutine
 ;; ----------------------------------------------------------------------------
 x_cursor_to_window_left	
-	lda	vduvar_TXT_WINDOW_LEFT		
-	bra	LCEE3_sta_TXT_CUR_X_setC_rts
+		lda	vduvar_TXT_WINDOW_LEFT		
+		bra	LCEE3_sta_TXT_CUR_X_setC_rts
 
 LCE73
-	TODO "LCE73"
+		TODO "LCE73"
 ;LCE73:	lda	zp_vdu_wksp			;	CE73 TODO copy lines of text - scroll window?
 ;	pha					;	CE75
 ;	sec					;	CE76
@@ -1799,48 +1900,49 @@ LCE73
 ;; ----------------------------------------------------------------------------
 ;; clear a line
 x_clear_a_line
-	lda	vduvar_TXT_CUR_X
-	pshs	A
-	jsr	x_cursor_to_window_left
-	jsr	x_set_up_displayaddress
-	lda	vduvar_TXT_WINDOW_RIGHT
-	suba	vduvar_TXT_WINDOW_LEFT
-	sta	zp_vdu_wksp+2
-	ldx	zp_vdu_top_scanline
-	lda	vduvar_TXT_BACK	
-LCEBF	ldb	vduvar_BYTES_PER_CHAR
-LCEC5	sta	,X+
-	decb
-	bne	LCEC5
-	cmpx	#$8000
-	blo	LCEDA
-	lda	vduvar_SCREEN_SIZE_HIGH
-	nega
-	clrb
-	leax	D,X
-LCEDA	dec	zp_vdu_wksp+2
-	bpl	LCEBF
-	stx	zp_vdu_top_scanline
-	puls	A
+		lda	vduvar_TXT_CUR_X
+		pshs	A
+		jsr	x_cursor_to_window_left
+		jsr	x_set_up_displayaddress
+		lda	vduvar_TXT_WINDOW_RIGHT
+		suba	vduvar_TXT_WINDOW_LEFT
+		sta	zp_vdu_wksp+2
+		ldx	zp_vdu_top_scanline
+		lda	vduvar_TXT_BACK	
+LCEBF		ldb	vduvar_BYTES_PER_CHAR
+LCEC5		sta	,X+
+		decb
+		bne	LCEC5
+		cmpx	#$8000
+		blo	LCEDA
+		lda	vduvar_SCREEN_SIZE_HIGH
+		nega
+		clrb
+		leax	D,X
+		lda	vduvar_TXT_BACK
+LCEDA		dec	zp_vdu_wksp+2
+		bpl	LCEBF
+		stx	zp_vdu_top_scanline
+		puls	A
 LCEE3_sta_TXT_CUR_X_setC_rts	
-	sta	vduvar_TXT_CUR_X
+		sta	vduvar_TXT_CUR_X
 LCEE6_setC_rts
-	orcc	#CC_C
-	rts
+		SEC
+		rts
 ;; ----------------------------------------------------------------------------
 x_check_text_cursor_in_window_setup_display_addr
-	ldb	vduvar_TXT_CUR_X
-	cmpb	vduvar_TXT_WINDOW_LEFT
-	bmi	LCEE6_setC_rts
-	cmpb	vduvar_TXT_WINDOW_RIGHT
-	beq	LCEF7
-	bpl	LCEE6_setC_rts
-LCEF7	ldb	vduvar_TXT_CUR_Y
-	cmpb	vduvar_TXT_WINDOW_TOP
-	bmi	LCEE6_setC_rts
-	cmpb	vduvar_TXT_WINDOW_BOTTOM
-	beq	x_set_up_displayaddress
-	bpl	LCEE6_setC_rts
+		ldb	vduvar_TXT_CUR_X
+		cmpb	vduvar_TXT_WINDOW_LEFT
+		bmi	LCEE6_setC_rts
+		cmpb	vduvar_TXT_WINDOW_RIGHT
+		beq	LCEF7
+		bpl	LCEE6_setC_rts
+LCEF7		ldb	vduvar_TXT_CUR_Y
+		cmpb	vduvar_TXT_WINDOW_TOP
+		bmi	LCEE6_setC_rts
+		cmpb	vduvar_TXT_WINDOW_BOTTOM
+		beq	x_set_up_displayaddress
+		bpl	LCEE6_setC_rts
 ;; set up displayaddressess
 ; 
 ; Mode 0: (0319)*640+(0318)* 8 		0
@@ -1859,41 +1961,41 @@ LCEF7	ldb	vduvar_TXT_CUR_Y
  ;subtracted to wraparound the screen. X/A, D8/9 are then set from this
 
 x_set_up_displayaddress
-	lda	vduvar_TXT_CUR_Y
-	ldb	vduvar_MODE_SIZE
-	cmpb	#4
-	beq	x_set_up_displayaddress_mo7
-	cmpb	#2
-	bhs	x_set_up_displayaddress_320
-	ldb	#160
-	mul
-	aslb
-	rola
+		lda	vduvar_TXT_CUR_Y
+		ldb	vduvar_MODE_SIZE
+		cmpb	#4
+		beq	x_set_up_displayaddress_mo7
+		cmpb	#2
+		bhs	x_set_up_displayaddress_320
+		ldb	#160
+		mul
+		aslb
+		rola
 x_set_up_displayaddress_sk1
-	aslb
-	rola
+		aslb
+		rola
 x_set_up_displayaddress_sk2
-	addd	vduvar_6845_SCREEN_START
-	std	zp_vdu_top_scanline
-	lda	vduvar_TXT_CUR_X
-	ldb	vduvar_BYTES_PER_CHAR
-	mul
-	addd	zp_vdu_top_scanline
-	std	vduvar_6845_CURSOR_ADDR
-	bpl	x_set_up_displayaddress_nowrap
-	suba	vduvar_SCREEN_SIZE_HIGH
+		addd	vduvar_6845_SCREEN_START
+		std	zp_vdu_top_scanline
+		lda	vduvar_TXT_CUR_X
+		ldb	vduvar_BYTES_PER_CHAR
+		mul
+		addd	zp_vdu_top_scanline
+		std	vduvar_6845_CURSOR_ADDR
+		bpl	x_set_up_displayaddress_nowrap
+		suba	vduvar_SCREEN_SIZE_HIGH
 x_set_up_displayaddress_nowrap
-	std	zp_vdu_top_scanline
+		std	zp_vdu_top_scanline
 
-	rts
+		rts
 x_set_up_displayaddress_320
-	ldb	#160
-	mul
-	bra	x_set_up_displayaddress_sk1
+		ldb	#160
+		mul
+		bra	x_set_up_displayaddress_sk1
 x_set_up_displayaddress_mo7
-	ldb	#40
-	mul
-	bra	x_set_up_displayaddress_sk2
+		ldb	#40
+		mul
+		bra	x_set_up_displayaddress_sk2
 
 
 
@@ -1952,7 +2054,7 @@ x_set_up_displayaddress_mo7
 ;; ----------------------------------------------------------------------------
 ;; Graphics cursor display routine
 x_Graphics_cursor_display_routine
-	TODO "x_Graphics_cursor_display_routine"
+		TODO "x_Graphics_cursor_display_routine"
 ;	ldx	vduvar_GRA_FORE			;	CF5D
 ;	ldy	vduvar_GRA_PLOT_FORE		;	CF60
 x_plot_char_gra_mode				; LCF63
@@ -1989,32 +2091,32 @@ x_plot_char_gra_mode				; LCF63
 ;; ----------------------------------------------------------------------------
 ;; home graphics cursor
 x_home_graphics_cursor
-	ldx	#vduvar_GRA_WINDOW_TOP
-	ldy	#vduvar_GRA_CUR_INT + 2
-	jsr	copy2fromXtoY
+		ldx	#vduvar_GRA_WINDOW_TOP
+		ldy	#vduvar_GRA_CUR_INT + 2
+		jsr	copy2fromXtoY
 ;; set graphics cursor to left hand column
 x_set_graphics_cursor_to_left_hand_column
-	ldx	#vduvar_GRA_WINDOW_LEFT
-	ldy	#vduvar_GRA_CUR_INT
-	jsr	copy2fromXtoY
-	jmp	x_calculate_external_coordinates_from_internal_coordinates
+		ldx	#vduvar_GRA_WINDOW_LEFT
+		ldy	#vduvar_GRA_CUR_INT
+		jsr	copy2fromXtoY
+		jmp	x_calculate_external_coordinates_from_internal_coordinates
 ;; ----------------------------------------------------------------------------
 render_char
-	ldb	vduvar_COL_COUNT_MINUS1
-	beq	x_convert_teletext_characters
-	jsr	x_calc_pattern_addr_for_given_char
+		ldb	vduvar_COL_COUNT_MINUS1
+		beq	x_convert_teletext_characters
+		jsr	x_calc_pattern_addr_for_given_char
 LCFBF_renderchar2
-	lda	zp_vdu_status			;	CFC2
-	anda	#$20				;	CFC4
-	bne	x_Graphics_cursor_display_routine;	CFC6
-	ldx	zp_vdu_wksp + 4
+		lda	zp_vdu_status			;	CFC2
+		anda	#$20				;	CFC4
+		bne	x_Graphics_cursor_display_routine;	CFC6
+		ldx	zp_vdu_wksp + 4
 render_logo2
-	ldb	#7
-	ldy	zp_vdu_top_scanline
-	lda	vduvar_COL_COUNT_MINUS1		;	CFBF
-	cmpa	#$03				;	CFCA
-	beq	render_char_4colour		;	CFCC
-	lbhi	render_char_16colour		;	CFCE
+		ldb	#7
+		ldy	zp_vdu_top_scanline
+		lda	vduvar_COL_COUNT_MINUS1		;	CFBF
+		cmpa	#$03				;	CFCA
+		beq	render_char_4colour		;	CFCC
+		lbhi	render_char_16colour		;	CFCE
 *LCFD0	lda	B,X						;4+1		2
 *	ora	zp_vdu_txtcolourOR				;4		2
 *	eora	zp_vdu_txtcolourEOR				;4		2
@@ -2024,130 +2126,130 @@ render_logo2
 *								;23		11
 *								;x8=184
 
-	ldd	,X++						;5+1		2
-	ora	zp_vdu_txtcolourOR				;4		2
-	eora	zp_vdu_txtcolourEOR				;4		2
-	orb	zp_vdu_txtcolourOR				;4		2
-	eorb	zp_vdu_txtcolourEOR				;4		2
-	std	,Y++						;5+1		2
+		ldd	,X++						;5+1		2
+		ora	zp_vdu_txtcolourOR				;4		2
+		eora	zp_vdu_txtcolourEOR				;4		2
+		orb	zp_vdu_txtcolourOR				;4		2
+		eorb	zp_vdu_txtcolourEOR				;4		2
+		std	,Y++						;5+1		2
 
-	ldd	,X++						;5+1		2
-	ora	zp_vdu_txtcolourOR				;4		2
-	eora	zp_vdu_txtcolourEOR				;4		2
-	orb	zp_vdu_txtcolourOR				;4		2
-	eorb	zp_vdu_txtcolourEOR				;4		2
-	std	,Y++						;5+1		2
+		ldd	,X++						;5+1		2
+		ora	zp_vdu_txtcolourOR				;4		2
+		eora	zp_vdu_txtcolourEOR				;4		2
+		orb	zp_vdu_txtcolourOR				;4		2
+		eorb	zp_vdu_txtcolourEOR				;4		2
+		std	,Y++						;5+1		2
 
-	ldd	,X++						;5+1		2
-	ora	zp_vdu_txtcolourOR				;4		2
-	eora	zp_vdu_txtcolourEOR				;4		2
-	orb	zp_vdu_txtcolourOR				;4		2
-	eorb	zp_vdu_txtcolourEOR				;4		2
-	std	,Y++						;5+1		2
+		ldd	,X++						;5+1		2
+		ora	zp_vdu_txtcolourOR				;4		2
+		eora	zp_vdu_txtcolourEOR				;4		2
+		orb	zp_vdu_txtcolourOR				;4		2
+		eorb	zp_vdu_txtcolourEOR				;4		2
+		std	,Y++						;5+1		2
 
-	ldd	,X++						;5+1		2
-	ora	zp_vdu_txtcolourOR				;4		2
-	eora	zp_vdu_txtcolourEOR				;4		2
-	orb	zp_vdu_txtcolourOR				;4		2
-	eorb	zp_vdu_txtcolourEOR				;4		2
-	std	,Y++						;5+1		2
+		ldd	,X++						;5+1		2
+		ora	zp_vdu_txtcolourOR				;4		2
+		eora	zp_vdu_txtcolourEOR				;4		2
+		orb	zp_vdu_txtcolourOR				;4		2
+		eorb	zp_vdu_txtcolourEOR				;4		2
+		std	,Y++						;5+1		2
 
-	rts					;	CFDB
+		rts					;	CFDB
 render_logox4
-	jsr	render_logox2
+		jsr	render_logox2
 render_logox2
-	jsr	render_logo
+		jsr	render_logo
 render_logo
-	pshs	X
-	jsr	render_logo2
-	jsr	mos_VDU_9
-	puls	X
-	leax	8,X
-	rts
+		pshs	X
+		jsr	render_logo2
+		jsr	mos_VDU_9
+		puls	X
+		leax	8,X
+		rts
 ;; ----------------------------------------------------------------------------
 ;; convert teletext characters; mode 7 
 x_convert_teletext_characters
-	ldb	#$02
-	ldx	#mostbl_TTX_CHAR_CONV
-LCFDE	cmpa	B,X
-	beq	LCFE9				;	CFE1
-	decb					;	CFE3
-	bpl	LCFDE				;	CFE4
-LCFE6	sta	[zp_vdu_top_scanline]
-	rts					;	CFE8
+		ldb	#$02
+		ldx	#mostbl_TTX_CHAR_CONV
+LCFDE		cmpa	B,X
+		beq	LCFE9				;	CFE1
+		decb					;	CFE3
+		bpl	LCFDE				;	CFE4
+LCFE6		sta	[zp_vdu_top_scanline]
+		rts					;	CFE8
 ;; ----------------------------------------------------------------------------
-LCFE9	incb
-	lda	B,X
-	decb
-	bra	LCFE6
+LCFE9		incb
+		lda	B,X
+		decb
+		bra	LCFE6
 ;; four colour modes
 render_char_4colour
-	pshs	U
-	ldu	#mostbl_byte_mask_4col
+		pshs	U
+		ldu	#mostbl_byte_mask_4col
 1
-	lda	b,x
-	lsra
-	lsra
-	lsra
-	lsra
-	lda	a,U
-	ora	zp_vdu_txtcolourOR
-	eora	zp_vdu_txtcolourEOR
-	sta	b,y
-	lda	b,x
-	addb	#8
-	anda	#$0F
-	lda	a,U
-	ora	zp_vdu_txtcolourOR
-	eora	zp_vdu_txtcolourEOR
-	sta	b,y
-	subb	#9
-	bpl	1B
+		lda	b,x
+		lsra
+		lsra
+		lsra
+		lsra
+		lda	a,U
+		ora	zp_vdu_txtcolourOR
+		eora	zp_vdu_txtcolourEOR
+		sta	b,y
+		lda	b,x
+		addb	#8
+		anda	#$0F
+		lda	a,U
+		ora	zp_vdu_txtcolourOR
+		eora	zp_vdu_txtcolourEOR
+		sta	b,y
+		subb	#9
+		bpl	1B
 LD017rts
-	puls	U
-	rts
+		puls	U
+		rts
 ;; ----------------------------------------------------------------------------
-LD018	subb	#$21
-	bmi	LD017rts				;	D01B
-	bra	rc16csk1
+LD018		subb	#$21
+		bmi	LD017rts				;	D01B
+		bra	rc16csk1
 ;; 16 COLOUR MODES
 render_char_16colour
-	pshs	U
-	ldu	#mostbl_byte_mask_16col
+		pshs	U
+		ldu	#mostbl_byte_mask_16col
 rc16csk1
-	lda	B,X
-	sta	zp_vdu_wksp+2
-	orcc	#CC_C
-LD023	lda	#0				; cant use clra here as we need the carry set
-	rol	zp_vdu_wksp+2
-	beq	LD018
-	rola
-	asl	zp_vdu_wksp+2
-	rola
-	lda	A,U
-	ora	zp_vdu_txtcolourOR
-	eora	zp_vdu_txtcolourEOR
-	sta	B,y
-	addb	#$08
-	bra	LD023
+		lda	B,X
+		sta	zp_vdu_wksp+2
+		SEC
+LD023		lda	#0				; cant use clra here as we need the carry set
+		rol	zp_vdu_wksp+2
+		beq	LD018
+		rola
+		asl	zp_vdu_wksp+2
+		rola
+		lda	A,U
+		ora	zp_vdu_txtcolourOR
+		eora	zp_vdu_txtcolourEOR
+		sta	B,y
+		addb	#$08
+		bra	LD023
 
 x_calc_pattern_addr_for_given_char
-	pshs	D,X
-	ldb	#8				; 2	2
-	mul					; 1	11
-	stb	zp_vdu_wksp + 5			; 2	4		a contains "char defs page offset"
-	ldx	#mostbl_VDU_pix_mask_2colour	; 3	3		convert to a bit mask
-	ldb	a,x				; 2	5
-	bitb	vduvar_EXPLODE_FLAGS		; 3	5		check if that bit is set in explosion bitmask
-	bne	x_cpa_sk_exploded		; 2	3		if it is use that address
-	adda	#(mostbl_chardefs/256) - 1	; 2	2		space is at 32 remember!
-1	sta	zp_vdu_wksp + 4			; 2	6		store whole address
+		pshs	D,X
+		ldb	#8				; 2	2
+		mul					; 1	11
+		stb	zp_vdu_wksp + 5			; 2	4		a contains "char defs page offset"
+		ldx	#mostbl_VDU_pix_mask_2colour	; 3	3		convert to a bit mask
+		ldb	a,x				; 2	5
+		bitb	vduvar_EXPLODE_FLAGS		; 3	5		check if that bit is set in explosion bitmask
+		bne	x_cpa_sk_exploded		; 2	3		if it is use that address
+		adda	#(mostbl_chardefs/256) - 1	; 2	2		space is at 32 remember!
+1		sta	zp_vdu_wksp + 4			; 2	6		store whole address
 						; 19	41
-	puls	D,X,PC
+		puls	D,X,PC
 x_cpa_sk_exploded
-	ldx	#vduvar_EXPLODE_FLAGS
-	lda	a,x				;	get explode address from table
-	bra	1B
+		ldx	#vduvar_EXPLODE_FLAGS
+		lda	a,x				;	get explode address from table
+		bra	1B
 
 ;	asl	a				;	D03E	1	2
 ;	rol	a				;	D03F	1	2
@@ -2185,91 +2287,91 @@ vduvar_VDU_Q_PLT_Y	equ vduvar_VDU_Q_END - 2
 
 x_PLOT_ROUTINES_ENTER_HERE
 
-	; swap coordinates endiannes
-	ldy	#2
-	jsr	db_endian_vdu_q_swap			; - if removed reinstate LDX below!
+		; swap coordinates endiannes
+		ldy	#2
+		jsr	db_endian_vdu_q_swap			; - if removed reinstate LDX below!
 
 ;;	ldx	#vduvar_VDU_Q_PLT_X			; X=&20 - DB: already set up by endiannes swap
-	jsr	x_set_up_and_adjust_coords_atX_2	; translate xoordinates
-	lda	vduvar_VDU_Q_PLT_CODE			; get plot type
-	cmpa	#$04					; if its 4
-	lbeq	mos_PLOT_MOVE_absolute			; D0D9 move absolute
-	ldb	#$05					; Y=5
-	anda	#$03					; mask only bits 0 and 1
-	beq	LD080					; if result is 0 then its a move (multiple of 8)
-	lsra						; else move bit 0 int C
-	bcs	x_graphics_colour_wanted		; if set then D078 graphics colour required
-	decb						; Y=4
-	bra	LD080					; logic inverse colour must be wanted
+		jsr	x_set_up_and_adjust_coords_atX_2	; translate xoordinates
+		lda	vduvar_VDU_Q_PLT_CODE			; get plot type
+		cmpa	#$04					; if its 4
+		lbeq	mos_PLOT_MOVE_absolute			; D0D9 move absolute
+		ldb	#$05					; Y=5
+		anda	#$03					; mask only bits 0 and 1
+		beq	LD080					; if result is 0 then its a move (multiple of 8)
+		lsra						; else move bit 0 int C
+		bcs	x_graphics_colour_wanted		; if set then D078 graphics colour required
+		decb						; Y=4
+		bra	LD080					; logic inverse colour must be wanted
 ;; graphics colour wanted
 x_graphics_colour_wanted
-	m_tax						; X=A if A=0 its a foreground colour 1 its background
-	ldb	vduvar_GRA_PLOT_FORE,x			; get fore or background graphics PLOT mode
-	lda	vduvar_GRA_FORE,x			; get fore or background graphics colour
+		m_tax						; X=A if A=0 its a foreground colour 1 its background
+		ldb	vduvar_GRA_PLOT_FORE,x			; get fore or background graphics PLOT mode
+		lda	vduvar_GRA_FORE,x			; get fore or background graphics colour
 ;;;	tax						; X=A
-LD080	jsr	x_set_colour_masks_newAPI		; set up colour masks in D4/5
-	lda	vduvar_VDU_Q_PLT_CODE			; get plot type
-	lbmi	x_VDU_EXTENSION				; if &80-&FF then D0AB type not implemented
-	asla						; bit 7=bit 6
-	bpl	x_analyse_first_parameter_in_0to63_range; if bit 6 is 0 then plot type is 0-63 so D0C6
-	anda	#$F0					; else mask out lower nybble
-	asla						; shift old bit 6 into C bit old 5 into bit 7
-	beq	mos_PLOT_A_SINGLE_POINT			; if 0 then type 64-71 was called single point plot
+LD080		jsr	x_set_colour_masks_newAPI		; set up colour masks in D4/5
+		lda	vduvar_VDU_Q_PLT_CODE			; get plot type
+		lbmi	x_VDU_EXTENSION				; if &80-&FF then D0AB type not implemented
+		asla						; bit 7=bit 6
+		bpl	x_analyse_first_parameter_in_0to63_range; if bit 6 is 0 then plot type is 0-63 so D0C6
+		anda	#$F0					; else mask out lower nybble
+		asla						; shift old bit 6 into C bit old 5 into bit 7
+		beq	mos_PLOT_A_SINGLE_POINT			; if 0 then type 64-71 was called single point plot
 							; goto D0D6
-	eora	#$40					; if bit 6 NOT set type &80-&87 fill triangle
-	lbeq	mos_PLOT_Fill_triangle_routine		; so D0A8
-	pshs	A					; else push A
-	jsr	x_copyplotcoordsexttoGRACURINT					; copy 0320/3 to 0324/7 setting XY in current graphics
+		eora	#$40					; if bit 6 NOT set type &80-&87 fill triangle
+		lbeq	mos_PLOT_Fill_triangle_routine		; so D0A8
+		pshs	A					; else push A
+		jsr	x_copyplotcoordsexttoGRACURINT					; copy 0320/3 to 0324/7 setting XY in current graphics
 							; coordinates
-	puls	A					; get back A
-	eora	#$60					; if BITS 6 and 5 NOT SET type 72-79 lateral fill 
-	beq	LD0AE					; so D0AE
-	cmpa	#$40					; if type 88-95 horizontal line blanking
-	lbne	x_VDU_EXTENSION				; so D0AB
+		puls	A					; get back A
+		eora	#$60					; if BITS 6 and 5 NOT SET type 72-79 lateral fill 
+		beq	LD0AE					; so D0AE
+		cmpa	#$40					; if type 88-95 horizontal line blanking
+		lbne	x_VDU_EXTENSION				; so D0AB
 
-	lda	#$02					; else A=2
-	sta	zp_vdu_wksp+2				; store it
-	jmp	plot_filhorz_back_qry			; and jump to D506 type not implemented ??? DB: I think is fill line in background colour!
+		lda	#$02					; else A=2
+		sta	zp_vdu_wksp+2				; store it
+		jmp	plot_filhorz_back_qry			; and jump to D506 type not implemented ??? DB: I think is fill line in background colour!
 ;; ----------------------------------------------------------------------------
-LD0AE	sta	zp_vdu_wksp+2				;	D0AE
-	jmp	mos_LATERAL_FILL_ROUTINE		;	D0B0
+LD0AE		sta	zp_vdu_wksp+2				;	D0AE
+		jmp	mos_LATERAL_FILL_ROUTINE		;	D0B0
 ;; ----------------------------------------------------------------------------
 ;; :set colour masks; graphics plot mode in B ; colour in A
 * was plot mode in Y, colour in X
 x_set_colour_masks_newAPI
-	ldx	#0
-	abx
-	pshs	A
-	ora	mostbl_GCOL_options_proc,X	;	D0B4
-	eora	mostbl_GCOL_options_proc+1,X	;	D0B7
-	sta	zp_vdu_gracolourOR		;	D0BA
-	puls	A
-	ora	mostbl_VDU_mode_colours_m1+7,X	;	D0BD
-	eora	mostbl_GCOL_options_proc+4,X	;	D0C0
-	sta	zp_vdu_gracolourEOR		;	D0C3
-	rts					;	D0C5
+		ldx	#0
+		abx
+		pshs	A
+		ora	mostbl_GCOL_options_proc,X	;	D0B4
+		eora	mostbl_GCOL_options_proc+1,X	;	D0B7
+		sta	zp_vdu_gracolourOR		;	D0BA
+		puls	A
+		ora	mostbl_VDU_mode_colours_m1+7,X	;	D0BD
+		eora	mostbl_GCOL_options_proc+4,X	;	D0C0
+		sta	zp_vdu_gracolourEOR		;	D0C3
+		rts					;	D0C5
 ;; ----------------------------------------------------------------------------
 ;; analyse first parameter in 0-63 range;  
 x_analyse_first_parameter_in_0to63_range
-	asla					;shift left again
-	lbmi	x_VDU_EXTENSION			;if -ve options are in range 32-63 not implemented
-	asla					;shift left twice more
-	asla					;
-	bpl	1F				;if still +ve type is 0-7 or 16-23 so D0D0
-	jsr	x_PLOT_grpixmask_ckbounds	;else display a point
-1	jsr	x_mos_draw_line	;perform calculations
-	jmp	mos_PLOT_MOVE_absolute		;
+		asla					;shift left again
+		lbmi	x_VDU_EXTENSION			;if -ve options are in range 32-63 not implemented
+		asla					;shift left twice more
+		asla					;
+		bpl	1F				;if still +ve type is 0-7 or 16-23 so D0D0
+		jsr	x_PLOT_grpixmask_ckbounds	;else display a point
+1		jsr	x_mos_draw_line	;perform calculations
+		jmp	mos_PLOT_MOVE_absolute		;
 ;; ----------------------------------------------------------------------------
 ;; PLOT A SINGLE POINT
 mos_PLOT_A_SINGLE_POINT					; LD0D6
-	jsr	x_PLOT_grpixmask_ckbounds		; plot the point
+		jsr	x_PLOT_grpixmask_ckbounds		; plot the point
 mos_PLOT_MOVE_absolute					; LD0D9
-	jsr	x_exg4atGRACURINTwithGRACURINTOLD	; save the old cursor
+		jsr	x_exg4atGRACURINTwithGRACURINTOLD	; save the old cursor
 x_copyplotcoordsexttoGRACURINT				; LD0DC
-	ldy	#vduvar_GRA_CUR_INT			;	D0DC
+		ldy	#vduvar_GRA_CUR_INT			;	D0DC
 x_copyplotcoordsexttoY					; LD0DE
-	ldx	#vduvar_VDU_Q_PLT_X			;	D0DE
-	jmp	copy4fromXtoY				;	D0E0
+		ldx	#vduvar_VDU_Q_PLT_X			;	D0DE
+		jmp	copy4fromXtoY				;	D0E0
 ;; ----------------------------------------------------------------------------
 ;LD0E3:	ldx	#$24				;	D0E3
 ;	jsr	x__check_in_window_bounds_setup_screen_addr_atX				;	D0E5
@@ -2277,139 +2379,139 @@ x_copyplotcoordsexttoY					; LD0DE
 ;	rts					;	D0EA
 ;; ----------------------------------------------------------------------------
 x_PLOT_grpixmask_ckbounds
-	jsr	x__check_in_window_bounds_setup_screen_addr	;	D0EB
-	bne	LD103rts				;	D0EE
+		jsr	x__check_in_window_bounds_setup_screen_addr	;	D0EB
+		bne	LD103rts				;	D0EE
 x_mos_vdu_gra_drawpixels_in_grpixmask		; LD0F0
-	ldb	vduvar_GRA_CUR_CELL_LINE	;	D0F0
-	;; new API check LD0F3 
+		ldb	vduvar_GRA_CUR_CELL_LINE	;	D0F0
+		;; new API check LD0F3 
 x_mos_vdu_gra_drawpixels_in_grpixmask_cell_line_in_B ; LD0F3 
-	ldx	zp_vdu_gra_char_cell
-	abx
-	lda	zp_vdu_grpixmask		;	D0F3
-	anda	zp_vdu_gracolourOR		;	D0F5
-	ora	,x				;	D0F7
-	sta	zp_vdu_wksp			;	D0F9
-	lda	zp_vdu_gracolourEOR		;	D0FB
-	anda	zp_vdu_grpixmask		;	D0FD
-	eora	zp_vdu_wksp			;	D0FF
-	sta	,x				;	D101
+		ldx	zp_vdu_gra_char_cell
+		abx
+		lda	zp_vdu_grpixmask		;	D0F3
+		anda	zp_vdu_gracolourOR		;	D0F5
+		ora	,x				;	D0F7
+		sta	zp_vdu_wksp			;	D0F9
+		lda	zp_vdu_gracolourEOR		;	D0FB
+		anda	zp_vdu_grpixmask		;	D0FD
+		eora	zp_vdu_wksp			;	D0FF
+		sta	,x				;	D101
 LD103rts
-	rts					;	D103
+		rts					;	D103
 ;; ----------------------------------------------------------------------------
 
 x_mos_vdu_gra_drawpixel_whole_byte
-	pshs	A
-	ldx	zp_vdu_gra_char_cell
-	abx
-	lda	,X				; LD104
-	ora	zp_vdu_gracolourOR
-	eora	zp_vdu_gracolourEOR
-	sta	,X
-	puls	A,PC
+		pshs	A
+		ldx	zp_vdu_gra_char_cell
+		abx
+		lda	,X				; LD104
+		ora	zp_vdu_gracolourOR
+		eora	zp_vdu_gracolourEOR
+		sta	,X
+		puls	A,PC
 ;; ----------------------------------------------------------------------------
 ;; Check window limits;	
-	; returns A = %0000TBRL where any bit means (T)op(B)ottom(R)ight(L)eft bounds
+		; returns A = %0000TBRL where any bit means (T)op(B)ottom(R)ight(L)eft bounds
 x_Check_window_limits
-	ldx	#vduvar_GRA_CUR_INT		;	D10D
+		ldx	#vduvar_GRA_CUR_INT		;	D10D
 x_Check_window_limits_atX
-	clr	zp_vdu_wksp			;	D111
-	ldy	#vduvar_GRA_WINDOW + 2		;	D113 - bottom
-	jsr	x_cursor_and_margins_check	;	D115	; check Y against BOTTOM/TOP
-	andcc	#~CC_C				; TODO: remove - unnecessary?
-	asl	zp_vdu_wksp			;	D118
-	asl	zp_vdu_wksp			;	D11A
-	leax	-2,X
-	leay	-2,Y
-	jsr	x_cursor_and_margins_check	;	D120
-	leax	2,X
-	lda	zp_vdu_wksp			;	D125
-	rts					;	D127
+		clr	zp_vdu_wksp			;	D111
+		ldy	#vduvar_GRA_WINDOW + 2		;	D113 - bottom
+		jsr	x_cursor_and_margins_check	;	D115	; check Y against BOTTOM/TOP
+		CLC					; TODO: remove - unnecessary?
+		asl	zp_vdu_wksp			;	D118
+		asl	zp_vdu_wksp			;	D11A
+		leax	-2,X
+		leay	-2,Y
+		jsr	x_cursor_and_margins_check	;	D120
+		leax	2,X
+		lda	zp_vdu_wksp			;	D125
+		rts					;	D127
 ;; ----------------------------------------------------------------------------
 ;; cursor and margins check;  
-	; API: X is coords to check
-	; return 1 if (2,X) < (0,Y)
-	; return 2 if (2,X) >=(4,Y)
-	; return is in zp_vdu_wksp which is 0 on entry
+		; API: X is coords to check
+		; return 1 if (2,X) < (0,Y)
+		; return 2 if (2,X) >=(4,Y)
+		; return is in zp_vdu_wksp which is 0 on entry
 x_cursor_and_margins_check 			
-	ldd	2,x				;	D128
-	cmpd	0,y				;	D12B
-	bmi	LD146				;	D134
-	ldd	4,y				;	D136
-	cmpd	2,x				;	D139
-	bpl	LD148				;	D142
-	inc	zp_vdu_wksp			;	D144
-LD146	inc	zp_vdu_wksp			;	D146
-LD148	rts					;	D148
+		ldd	2,x				;	D128
+		cmpd	0,y				;	D12B
+		bmi	LD146				;	D134
+		ldd	4,y				;	D136
+		cmpd	2,x				;	D139
+		bpl	LD148				;	D142
+		inc	zp_vdu_wksp			;	D144
+LD146		inc	zp_vdu_wksp			;	D146
+LD148		rts					;	D148
 ;; ----------------------------------------------------------------------------
 ;; set up and adjust positional data
 x_set_up_and_adjust_coords_atX				; LD149
-	lda	#$FF					;A=&FF
-	bne	1F					;then &D150
+		lda	#$FF					;A=&FF
+		bne	1F					;then &D150
 x_set_up_and_adjust_coords_atX_2			; LD14D
-	lda	vduvar_VDU_Q_END - 5			;get first parameter in plot;	D14D
-1	sta	zp_vdu_wksp				;store in &DA
-	ldy	#vduvar_GRA_WINDOW_BOTTOM		;Y=302
-	jsr	x_gra_coord_ext2int			;set up vertical coordinates/2
-	jsr	signeddivby2atxplus2			;/2 again to convert 1023 to 0-255 for internal use
+		lda	vduvar_VDU_Q_END - 5			;get first parameter in plot;	D14D
+1		sta	zp_vdu_wksp				;store in &DA
+		ldy	#vduvar_GRA_WINDOW_BOTTOM		;Y=302
+		jsr	x_gra_coord_ext2int			;set up vertical coordinates/2
+		jsr	signeddivby2atxplus2			;/2 again to convert 1023 to 0-255 for internal use
 							;this is why minimum vertical plot separation is 4
-	ldy	#vduvar_GRA_WINDOW_LEFT			;Y=0
-	leax	-2,X					;X=X-2
-	jsr	x_gra_coord_ext2int			;set up horiz. coordinates/2 this is OK for mode0,4
-	ldb	vduvar_PIXELS_PER_BYTE_MINUS1		;get number of pixels/byte (-1)
-	cmpb	#$03					;if Y=3 (modes 1 and 5)
-	beq	1F					;D16D
-	bhs	2F					;for modes 0 & 4 this is 7 so D170
-	jsr	signeddivby2atxplus2			;for other modes divide by 2 twice
+		ldy	#vduvar_GRA_WINDOW_LEFT			;Y=0
+		leax	-2,X					;X=X-2
+		jsr	x_gra_coord_ext2int			;set up horiz. coordinates/2 this is OK for mode0,4
+		ldb	vduvar_PIXELS_PER_BYTE_MINUS1		;get number of pixels/byte (-1)
+		cmpb	#$03					;if Y=3 (modes 1 and 5)
+		beq	1F					;D16D
+		bhs	2F					;for modes 0 & 4 this is 7 so D170
+		jsr	signeddivby2atxplus2			;for other modes divide by 2 twice
 
-1	jsr	signeddivby2atxplus2			;divide by 2
-2	lda	vduvar_MODE_SIZE			;get screen display type
-	bne	signeddivby2atxplus2			;if not 0 (modes 3-7) divide by 2 again
-	rts						;and exit
+1		jsr	signeddivby2atxplus2			;divide by 2
+2		lda	vduvar_MODE_SIZE			;get screen display type
+		bne	signeddivby2atxplus2			;if not 0 (modes 3-7) divide by 2 again
+		rts						;and exit
 ;; ----------------------------------------------------------------------------
 ;; calculate external coordinates in internal format; 
 ; on entry 	X is usually &31E or &320  
 ;		Y is vduvar_GRA_WINDOW_BOTTOM or vduvar_GRA_WINDOW_LEFT for vert/horz calc  
 x_gra_coord_ext2int				; LD176
-	andcc	#~CC_C
-	lda	zp_vdu_wksp			;get &DA
-	anda	#$04				;if bit 2=0
-	beq	1F				;then D186 to calculate relative coordinates
-	ldd	2,x				;else get coordinate 
-	bra	2F				;	D184
-1	ldd	2,x				;get coordinate 
-	addd	$10,y				;add cursor position
-2	std	$10,y				;save new cursor 
-	addd	$C,y				;add graphics origin
-	std	2,x
+		CLC
+		lda	zp_vdu_wksp			;get &DA
+		anda	#$04				;if bit 2=0
+		beq	1F				;then D186 to calculate relative coordinates
+		ldd	2,x				;else get coordinate 
+		bra	2F				;	D184
+1		ldd	2,x				;get coordinate 
+		addd	$10,y				;add cursor position
+2		std	$10,y				;save new cursor 
+		addd	$C,y				;add graphics origin
+		std	2,x
 signeddivby2atxplus2				; LD1AD
-	asr	2,x				; DB: change to ASR - TODO: check
-	ror	3,x
-	rts
+		asr	2,x				; DB: change to ASR - TODO: check
+		ror	3,x
+		rts
 ;; ----------------------------------------------------------------------------
 ;; calculate external coordinates from internal coordinates
 x_calculate_external_coordinates_from_internal_coordinates ; TODO: speed up by loading X with address of coords instead of offset?
-	ldy	#vduvar_GRA_CUR_EXT
-	jsr	copy4fromGRA_CUR_INTtoY
-	ldx	#$02
-	ldb	#$02
-	jsr	LD1D5
-	ldx	#$00
-	ldb	#$04
-	lda	vduvar_PIXELS_PER_BYTE_MINUS1
-LD1CB	decb
-	lsra
-	bne	LD1CB
-	lda	vduvar_MODE_SIZE
-	beq	LD1D5
-	incb
-LD1D5	asl	vduvar_GRA_CUR_EXT,x
-	rol	vduvar_GRA_CUR_EXT+1,x
-	decb
-	bne	LD1D5
-	ldd	vduvar_GRA_CUR_EXT,x
-	subd	vduvar_GRA_ORG_EXT,x
-	std	vduvar_GRA_CUR_EXT,x
-	rts
+		ldy	#vduvar_GRA_CUR_EXT
+		jsr	copy4fromGRA_CUR_INTtoY
+		ldx	#$02
+		ldb	#$02
+		jsr	LD1D5
+		ldx	#$00
+		ldb	#$04
+		lda	vduvar_PIXELS_PER_BYTE_MINUS1
+LD1CB		decb
+		lsra
+		bne	LD1CB
+		lda	vduvar_MODE_SIZE
+		beq	LD1D5
+		incb
+LD1D5		asl	vduvar_GRA_CUR_EXT,x
+		rol	vduvar_GRA_CUR_EXT+1,x
+		decb
+		bne	LD1D5
+		ldd	vduvar_GRA_CUR_EXT,x
+		subd	vduvar_GRA_ORG_EXT,x
+		std	vduvar_GRA_CUR_EXT,x
+		rts
 ;; ----------------------------------------------------------------------------
 ;; compare X and Y PLOT spans
 
@@ -2428,378 +2530,382 @@ zp_vdu_wksp_draw_sav	equ	zp_vdu_wksp+6		; DB: new used to save single byte regis
 vduvar_GRA_WKSP_jmp	equ	vduvar_GRA_WKSP+2	; code to draw pixels?
 
 x_mos_draw_line
-	jsr	x_PLOTXYsubGRACURStoTEMP8		; get line width/height
-	lda	vduvar_TEMP_draw_H			; eor top bytes of height
-	eora	vduvar_TEMP_draw_W			; and width
-	bmi	LD207					; if differing signs
-	ldd	vduvar_TEMP_draw_W			; compare width to height
-	subd	vduvar_TEMP_draw_H			; NOTE: swapped sense here for differing C flag behaviour TODO: check!
-	jmp	LD214					;
+		jsr	x_PLOTXYsubGRACURStoTEMP8		; get line width/height
+		lda	vduvar_TEMP_draw_H			; eor top bytes of height
+		eora	vduvar_TEMP_draw_W			; and width
+		bmi	LD207					; if differing signs
+		ldd	vduvar_TEMP_draw_W			; compare width to height
+		subd	vduvar_TEMP_draw_H			; NOTE: swapped sense here for differing C flag behaviour TODO: check!
+		jmp	LD214					;
 ; ----------------------------------------------------------------------------
-LD207	ldd	vduvar_TEMP_draw_W			;	D207
-	addd	vduvar_TEMP_draw_H			;	D20B
-LD214	rora						;	D214
-	ldb	#$00					;	D215
-	eora	vduvar_TEMP_draw_H			;	D217
-	bpl	LD21E					;	D21A
-	ldb	#$02					;	D21C
-LD21E	stb	zp_vdu_wksp_draw_slope				;	D21E
-	ldx	#mostbl_VDU_ROUTINE_VECTOR_ADDRESSES
-	ldx	B,X
-	stx	vduvar_VDU_VEC_JMP			;	D229
-	ldx	#vduvar_TEMP_8
-	tst	B,X
-	bpl	LD235					; test direction
-	ldx	#vduvar_GRA_CUR_INT			; start drawing from current cursor
-	bra	LD237
-LD235	ldx	#vduvar_VDU_Q_PLT_X			; start from plot point and work back
-LD237	STX_B	zp_vdu_wksp_draw_start			; 
-	ldy	#vduvar_TEMP_draw_XY			;	D239
-	jsr	copy4fromXtoY				;	D23B
-	ldb	zp_vdu_wksp_draw_start			;	D23E
-	eorb	#$04					;	D240
-	stb	zp_vdu_wksp_draw_stop			;	D242
-	orb	zp_vdu_wksp_draw_slope			;	D244
-	lda	#$3					; point at page 3
-	tfr	D,X					;	D246
-	jsr	copy2fromXto330				;	D247
-	lda	vduvar_VDU_Q_PLT_CODE			;	D24A
-	anda	#$10					;	D24D
-	asla						;	D24F
-	asla						;	D250
-	asla						;	D251
-	sta	zp_vdu_wksp_draw_flags			;	D252
-	ldx	#vduvar_TEMP_draw_XY			;	D254
-	jsr	x_Check_window_limits_atX		;	D256
-	sta	zp_vdu_wksp+2				;	D259
-	beq	LD263					;	D25B
-	lda	#$40					;	D25D
-	ora	zp_vdu_wksp_draw_flags			;	D25F
-	sta	zp_vdu_wksp_draw_flags			;	D261
-LD263	ldb	zp_vdu_wksp_draw_stop			;	D263
-	lda	#3					; 		TODO: page 3 bodge
-	tfr	D,X
-	jsr	x_Check_window_limits_atX		;	D265
-	bita	zp_vdu_wksp+2				;	D268
-	beq	1F					;	D26A
-	rts						; if both start and stop out of bounds POH
+LD207		ldd	vduvar_TEMP_draw_W			;	D207
+		addd	vduvar_TEMP_draw_H			;	D20B
+LD214		rora						;	D214
+		ldb	#$00					;	D215
+		eora	vduvar_TEMP_draw_H			;	D217
+		bpl	LD21E					;	D21A
+		ldb	#$02					;	D21C
+LD21E		stb	zp_vdu_wksp_draw_slope				;	D21E
+		ldx	#mostbl_VDU_ROUTINE_VECTOR_ADDRESSES
+		ldx	B,X
+		stx	vduvar_VDU_VEC_JMP			;	D229
+		ldx	#vduvar_TEMP_8
+		tst	B,X
+		bpl	LD235					; test direction
+		ldx	#vduvar_GRA_CUR_INT			; start drawing from current cursor
+		bra	LD237
+LD235		ldx	#vduvar_VDU_Q_PLT_X			; start from plot point and work back
+LD237		STX_B	zp_vdu_wksp_draw_start			; 
+		ldy	#vduvar_TEMP_draw_XY			;	D239
+		jsr	copy4fromXtoY				;	D23B
+		ldb	zp_vdu_wksp_draw_start			;	D23E
+		eorb	#$04					;	D240
+		stb	zp_vdu_wksp_draw_stop			;	D242
+		orb	zp_vdu_wksp_draw_slope			;	D244
+		lda	#$3					; point at page 3
+		tfr	D,X					;	D246
+		jsr	copy2fromXto330				;	D247
+		lda	vduvar_VDU_Q_PLT_CODE			;	D24A
+		anda	#$10					;	D24D
+		asla						;	D24F
+		asla						;	D250
+		asla						;	D251
+		sta	zp_vdu_wksp_draw_flags			;	D252
+		ldx	#vduvar_TEMP_draw_XY			;	D254
+		jsr	x_Check_window_limits_atX		;	D256
+		sta	zp_vdu_wksp+2				;	D259
+		beq	LD263					;	D25B
+		lda	#$40					;	D25D
+		ora	zp_vdu_wksp_draw_flags			;	D25F
+		sta	zp_vdu_wksp_draw_flags			;	D261
+LD263		ldb	zp_vdu_wksp_draw_stop			;	D263
+		lda	#3					; 		TODO: page 3 bodge
+		tfr	D,X
+		jsr	x_Check_window_limits_atX		;	D265
+		bita	zp_vdu_wksp+2				;	D268
+		beq	1F					;	D26A
+		rts						; if both start and stop out of bounds POH
 ;; ----------------------------------------------------------------------------
-1	ldb	zp_vdu_wksp_draw_slope			; LD26D
-	beq	1F					; depending on slope
-	lsra						; shift top bound flag into right bound flag
-	lsra						;
-1	anda	#$02					; check right bound (or top) flag
-	beq	1F					;	D275
+1		ldb	zp_vdu_wksp_draw_slope			; LD26D
+		beq	1F					; depending on slope
+		lsra						; shift top bound flag into right bound flag
+		lsra						;
+1		anda	#$02					; check right bound (or top) flag
+		beq	1F					;	D275
 ;;;	txa						;	D277
-	orb	#$04					; == 6 or 4 depending on slope
-	lda	#3
-	tfr	D,X
+		orb	#$04					; == 6 or 4 depending on slope
+		lda	#3
+		tfr	D,X
 ;;;	tax						;	D27A
-	jsr	copy2fromXto330				; copy right (or top) bound into vduvar_GRA_WKSP
-1	jsr	LD42C				;	D27E
-	ldb	zp_vdu_wksp_draw_slope			;	D281
-	eorb	#$02				;	D283
-	stb	zp_vdu_wksp_draw_sav
+		jsr	copy2fromXto330				; copy right (or top) bound into vduvar_GRA_WKSP
+1		jsr	LD42C				;	D27E
+		ldb	zp_vdu_wksp_draw_slope			;	D281
+		eorb	#$02				;	D283
+		stb	zp_vdu_wksp_draw_sav
 ;;;	tax					;	D285
 ;;;	tay					;	D286
-	lda	vduvar_TEMP_draw_W		; check for with width / height -ve
-	eora	vduvar_TEMP_draw_H		;	D28A
-	bpl	LD290				;	D28D
-	incb					;	D28F
-LD290	ldx	#mostbl_VDU_ROUTINE_BRANCH_VECTOR_ADDRESS
-	aslb
-	ldx	B,X
-	asrb
-	stx	vduvar_GRA_WKSP_jmp		;	D293
-	lda	#$7F				;	D29C
-	sta	vduvar_GRA_WKSP+4		;	D29E
-	lda	#$40
-	bita	zp_vdu_wksp_draw_flags		;	D2A1
-	tfr	B,A				; TODO: check!
-	bne	LD2CE				;	D2A3
-	ldx	#mostbl_VDU_mode_size+7
-	ldb	B,X				; 4, 0, 6 or 2 depending on B
+		lda	vduvar_TEMP_draw_W		; check for with width / height -ve
+		eora	vduvar_TEMP_draw_H		;	D28A
+		bpl	LD290				;	D28D
+		incb					;	D28F
+LD290		ldx	#mostbl_VDU_ROUTINE_BRANCH_VECTOR_ADDRESS
+		aslb
+		ldx	B,X
+		asrb
+		stx	vduvar_GRA_WKSP_jmp		;	D293
+		lda	#$7F				;	D29C
+		sta	vduvar_GRA_WKSP+4		;	D29E
+		lda	#$40
+		bita	zp_vdu_wksp_draw_flags		;	D2A1
+		tfr	B,A				; TODO: check!
+		bne	LD2CE				;	D2A3
+		ldx	#mostbl_VDU_mode_size+7
+		ldb	B,X				; 4, 0, 6 or 2 depending on B
 ;	tax					;	D2A8
-	ldx	#vduvar_GRA_WINDOW_LEFT
-	ldd	B,X				; 	D2AA
-	LDY_B	zp_vdu_wksp_draw_sav
-	subd	vduvar_TEMP_draw_XY,Y
+		ldx	#vduvar_GRA_WINDOW_LEFT
+		ldd	B,X				; 	D2AA
+		LDY_B	zp_vdu_wksp_draw_sav
+		subd	vduvar_TEMP_draw_XY,Y
 ;;;	sbc	vduvar_TEMP_8+4,y		;	D2AD
 ;;;	sta	zp_vdu_wksp			;	D2B0
 ;;;	lda	vduvar_GRA_WINDOW_LEFT+1,x	;	D2B2
 ;;;	sbc	vduvar_TEMP_8+5,y		;	D2B5
 ;;;	ldy	zp_vdu_wksp			;	D2B8
 ;;;	tax					;	D2BA
-	bpl	LD2C0				;	D2BB
-	jsr	x_negation_routine_newAPI	;	D2BD
+		bpl	LD2C0				;	D2BB
+		jsr	x_negation_routine_newAPI	;	D2BD
 LD2C0
 ;;;	tax					;	D2C0
 ;;;	iny					;	D2C1
 ;;;	bne	LD2C5				;	D2C2
 ;;;	inx					;	D2C4
 ;LD2C5:	txa					;	D2C5
-	addd	#1
-	tsta
-	beq	LD2CA					;	D2C6
-	ldb	#$00					;	D2C8
-LD2CA	stb	zp_vdu_wksp_draw_start			;	D2CA
-	beq	LD2D7					;	D2CC
-LD2CE	
+		addd	#1
+		tsta
+		beq	LD2CA					;	D2C6
+		ldb	#$00					;	D2C8
+LD2CA		stb	zp_vdu_wksp_draw_start			;	D2CA
+		beq	LD2D7					;	D2CC
+LD2CE		
 ;;;	txa						;	D2CE
-	lsra						;	D2CF
-	rora						;	D2D0
-	ora	#$02					;	D2D1
-	eora	zp_vdu_wksp_draw_slope			;	D2D3
-	sta	zp_vdu_wksp_draw_slope			;	D2D5
-LD2D7	ldx	#vduvar_TEMP_draw_XY			;	D2D7
-	jsr	x_setup_screen_addr_from_intcoords_atX	;	D2D9
-	ldx	zp_vdu_wksp_draw_X_save
-	leax	-1,X
+		lsra						;	D2CF
+		rora						;	D2D0
+		ora	#$02					;	D2D1
+		eora	zp_vdu_wksp_draw_slope			;	D2D3
+		sta	zp_vdu_wksp_draw_slope			;	D2D5
+LD2D7		ldx	#vduvar_TEMP_draw_XY			;	D2D7
+		jsr	x_setup_screen_addr_from_intcoords_atX	;	D2D9
+		ldx	zp_vdu_wksp_draw_X_save
+		leax	-1,X
 x_drawline_loop						; LD2E3
-	lda	zp_vdu_wksp_draw_flags			;	D2E3
-	beq	LD306					;	D2E5
-	bpl	LD2F9					;	D2E7
-	tst	vduvar_GRA_WKSP+4			;	D2E9
-	bpl	LD2F3					;	D2EC
-	dec	vduvar_GRA_WKSP+4			;	D2EE
-	bne	LD316					;	D2F1
-LD2F3	inc	vduvar_GRA_WKSP+4			;	D2F3
-	asla						;	D2F6
-	bpl	LD306					;	D2F7
-LD2F9	stx	zp_vdu_wksp_draw_X_save
-	ldx	#vduvar_TEMP_draw_XY			;	D2FB
-	jsr	x__check_in_window_bounds_setup_screen_addr_atX				;	D2FD
+		lda	zp_vdu_wksp_draw_flags			;	D2E3
+		beq	LD306					;	D2E5
+		bpl	LD2F9					;	D2E7
+		tst	vduvar_GRA_WKSP+4			;	D2E9
+		bpl	LD2F3					;	D2EC
+		dec	vduvar_GRA_WKSP+4			;	D2EE
+		bne	LD316					;	D2F1
+LD2F3		inc	vduvar_GRA_WKSP+4			;	D2F3
+		asla						;	D2F6
+		bpl	LD306					;	D2F7
+LD2F9		stx	zp_vdu_wksp_draw_X_save
+		ldx	#vduvar_TEMP_draw_XY			;	D2FB
+		jsr	x__check_in_window_bounds_setup_screen_addr_atX				;	D2FD
 ;;;	ldx	zp_vdu_wksp_draw_X_save			;	D300
-	tsta						;	D302
-	bne	LD316					;	D304
-LD306	lda	zp_vdu_grpixmask			;	D306
-	anda	zp_vdu_gracolourOR			;	D308
+		tsta						;	D302
+		bne	LD316					;	D304
+LD306		lda	zp_vdu_grpixmask			;	D306
+		anda	zp_vdu_gracolourOR			;	D308
 
 
-	ldb	vduvar_GRA_CUR_CELL_LINE
-	ldx	zp_vdu_gra_char_cell
-	abx
-	ora	,X
-	;;;	ora	(zp_vdu_gra_char_cell),y	;	D30A
-	sta	zp_vdu_wksp			;	D30C
-	lda	zp_vdu_gracolourEOR		;	D30E
-	anda	zp_vdu_grpixmask		;	D310
-	eora	zp_vdu_wksp			;	D312
-	sta	,X
-	;;;	sta	(zp_vdu_gra_char_cell),y	;	D314
+		ldb	vduvar_GRA_CUR_CELL_LINE
+		ldx	zp_vdu_gra_char_cell
+		abx
+		ora	,X
+		;;;	ora	(zp_vdu_gra_char_cell),y	;	D30A
+		sta	zp_vdu_wksp			;	D30C
+		lda	zp_vdu_gracolourEOR		;	D30E
+		anda	zp_vdu_grpixmask		;	D310
+		eora	zp_vdu_wksp			;	D312
+		sta	,X
+		;;;	sta	(zp_vdu_gra_char_cell),y	;	D314
 LD316
 ;;;	sec					;	D316
-	ldd	vduvar_GRA_WKSP+5		;	D317
-	subd	vduvar_GRA_WKSP+7		;	D31A
-	stb	vduvar_GRA_WKSP+6		;	D31D
+		ldd	vduvar_GRA_WKSP+5		;	D317
+		subd	vduvar_GRA_WKSP+7		;	D31A
+		stb	vduvar_GRA_WKSP+6		;	D31D
 ;;;	lda	vduvar_GRA_WKSP+6		;	D320
 ;;;	sbc	vduvar_GRA_WKSP+8		;	D323
-	bcc	LD339				;	D326
-	sta	zp_vdu_wksp			;	D328
-	ldb	vduvar_GRA_WKSP+6		;	D32A
-	addb	vduvar_GRA_WKSP+10		;	D32D
-	stb	vduvar_GRA_WKSP+6		;	D330
-	lda	zp_vdu_wksp			;	D333
-	adca	vduvar_GRA_WKSP+9		;	D335
-	SEC					;	D338
-LD339	sta	vduvar_GRA_WKSP+5		;	D339
-	pshs	CC				;	D33C
-	bcc	LD348				;	D33D
-	jmp	[vduvar_GRA_WKSP_jmp]		;	D33F
+		bcc	LD339				;	D326
+		sta	zp_vdu_wksp			;	D328
+		ldb	vduvar_GRA_WKSP+6		;	D32A
+		addb	vduvar_GRA_WKSP+10		;	D32D
+		stb	vduvar_GRA_WKSP+6		;	D330
+		lda	zp_vdu_wksp			;	D333
+		adca	vduvar_GRA_WKSP+9		;	D335
+		SEC					;	D338
+LD339		sta	vduvar_GRA_WKSP+5		;	D339
+		pshs	CC				;	D33C
+		bcc	LD348				;	D33D
+		jmp	[vduvar_GRA_WKSP_jmp]		;	D33F
 ;; ----------------------------------------------------------------------------
 ;; vertical scan module 1
 x_vertical_scan_module_up			; LD342
-	dec	vduvar_GRA_CUR_CELL_LINE	;	D342
-	bpl	LD348				;	D343
-	jsr	x_move_display_point_up_a_line	;	D345
-LD348	jmp	[vduvar_VDU_VEC_JMP]		;	D348
+		dec	vduvar_GRA_CUR_CELL_LINE	;	D342
+		bpl	LD348				;	D343
+		jsr	x_move_display_point_up_a_line	;	D345
+LD348		jmp	[vduvar_VDU_VEC_JMP]		;	D348
 ;; ----------------------------------------------------------------------------
 ;; vertical scan module 2
 x_vertical_scan_module_dn			; LD34B
-	inc	vduvar_GRA_CUR_CELL_LINE
-	ldb	vduvar_GRA_CUR_CELL_LINE	; increment cell line counter
-	cmpb	#$08				; if overflowed
-	bne	LD348				; add a line's worth to pointer
-	ldd	zp_vdu_gra_char_cell		;
-	addd	vduvar_BYTES_PER_ROW		;
-	std	zp_vdu_gra_char_cell		;
-	bpl	LD363				;
-	suba	vduvar_SCREEN_SIZE_HIGH		; if we got here wrap screen
-	sta	zp_vdu_gra_char_cell		; 
-LD363	clr	vduvar_GRA_CUR_CELL_LINE
-	jmp	[vduvar_VDU_VEC_JMP]
+		inc	vduvar_GRA_CUR_CELL_LINE
+		ldb	vduvar_GRA_CUR_CELL_LINE	; increment cell line counter
+		cmpb	#$08				; if overflowed
+		bne	LD348				; add a line's worth to pointer
+		ldd	zp_vdu_gra_char_cell		;
+		addd	vduvar_BYTES_PER_ROW		;
+		std	zp_vdu_gra_char_cell		;
+		bpl	LD363				;
+		suba	vduvar_SCREEN_SIZE_HIGH		; if we got here wrap screen
+		sta	zp_vdu_gra_char_cell		; 
+LD363		clr	vduvar_GRA_CUR_CELL_LINE
+		jmp	[vduvar_VDU_VEC_JMP]
 ;; ----------------------------------------------------------------------------
 ;; horizontal scan module 1
 x_horizontal_scan_module_right			; LD36A
-	lsr	zp_vdu_grpixmask		;	D36A
-	bcc	LD348				;	D36C
-	jsr	x_move_display_move_right_to_next_cell				;	D36E
-	jmp	[vduvar_VDU_VEC_JMP]		;	D371
+		lsr	zp_vdu_grpixmask		;	D36A
+		bcc	LD348				;	D36C
+		jsr	x_move_display_move_right_to_next_cell				;	D36E
+		jmp	[vduvar_VDU_VEC_JMP]		;	D371
 ;; ----------------------------------------------------------------------------
 ;; horizontal scan module 2
 x_horizontal_scan_module_left				; LD374
-	asl	zp_vdu_grpixmask		;	D374
-	bcc	LD348				;	D376
-	jsr	x_move_display_move_left_to_next_cell				;	D378
-	jmp	[vduvar_VDU_VEC_JMP]		;	D37B
+		asl	zp_vdu_grpixmask		;	D374
+		bcc	LD348				;	D376
+		jsr	x_move_display_move_left_to_next_cell				;	D378
+		jmp	[vduvar_VDU_VEC_JMP]		;	D37B
 
 
 ;; ----------------------------------------------------------------------------
 x_draw_line_main_up				; LD37D
-	dec	vduvar_GRA_CUR_CELL_LINE	;	D37E
-	bpl	1F				;	D37F
-	jsr	x_move_display_point_up_a_line	;	D381
-	bra	1F				;	D384
+		dec	vduvar_GRA_CUR_CELL_LINE	;	D37E
+		bpl	1F				;	D37F
+		jsr	x_move_display_point_up_a_line	;	D381
+		bra	1F				;	D384
 x_draw_line_main_right				; LD386
-	lsr	zp_vdu_grpixmask		;	D386
-	bcc	1F				;	D388
-	jsr	x_move_display_move_right_to_next_cell				;	D38A
-1	puls	CC				;	D38D
-	ldx	zp_vdu_wksp_draw_X_save
-	leax	1,X
-	stx	zp_vdu_wksp_draw_X_save
-	beq	LD39Frts				;	D393
-LD395	lda	#$40
-	bita	zp_vdu_wksp_draw_flags		;	D395
-	bne	LD3A0				;	D397
-	lbcc	x_drawline_loop				;	D399
-	dec	zp_vdu_wksp_draw_start			;	D39B
-	lbne	x_drawline_loop				;	D39D
+		lsr	zp_vdu_grpixmask		;	D386
+		bcc	1F				;	D388
+		jsr	x_move_display_move_right_to_next_cell				;	D38A
+1		puls	CC				;	D38D
+		ldx	zp_vdu_wksp_draw_X_save
+		leax	1,X
+		stx	zp_vdu_wksp_draw_X_save
+		beq	LD39Frts				;	D393
+LD395		lda	#$40
+		bita	zp_vdu_wksp_draw_flags		;	D395
+		bne	LD3A0				;	D397
+		lbcc	x_drawline_loop				;	D399
+		dec	zp_vdu_wksp_draw_start			;	D39B
+		lbne	x_drawline_loop				;	D39D
 LD39Frts
-	rts					;	D39F
+		rts					;	D39F
 ;; ----------------------------------------------------------------------------
-LD3A0	lda	zp_vdu_wksp_draw_slope			;	D3A0
-	ldx	#vduvar_TEMP_draw_XY
-	anda	#$02				;	D3A4
-	bcs	LD3C2				;	D3A7
-	tst	zp_vdu_wksp_draw_slope		;	D3A9
-	bmi	LD3B7				;	D3AB
-	ldy	A,X
-	leay	1,y
-	sty	A,X
+LD3A0		lda	zp_vdu_wksp_draw_slope			;	D3A0
+		ldx	#vduvar_TEMP_draw_XY
+		anda	#$02				;	D3A4
+		bcs	LD3C2				;	D3A7
+		tst	zp_vdu_wksp_draw_slope		;	D3A9
+		bmi	LD3B7				;	D3AB
+		ldy	A,X
+		leay	1,y
+		sty	A,X
 ;	inc	vduvar_TEMP_8+4,x		;	D3AD
 ;	bne	LD3C2				;	D3B0
 ;	inc	vduvar_TEMP_8+5,x		;	D3B2
 ;	bcc	LD3C2				;	D3B5
-	bra	LD3C2
-LD3B7	
-	ldy	A,X
-	leay	-1,y
-	sty	A,X
+		bra	LD3C2
+LD3B7		
+		ldy	A,X
+		leay	-1,y
+		sty	A,X
 
 ;;;	lda	vduvar_TEMP_8+4,x		;	D3B7
 ;;;	bne	LD3BF				;	D3BA
 ;;;	dec	vduvar_TEMP_8+5,x		;	D3BC
 ;;;LD3BF:	dec	vduvar_TEMP_8+4,x	;	D3BF
 
-LD3C2	eora	#$02				;	D3C3
-	ldy	A,X
-	leay	1,Y
-	sty	A,X
+LD3C2		eora	#$02				;	D3C3
+		ldy	A,X
+		leay	1,Y
+		sty	A,X
 ;;;	inc	vduvar_TEMP_8+4,x		;	D3C6
 ;;;	bne	LD3CE				;	D3C9
 ;;;	inc	vduvar_TEMP_8+5,x		;	D3CB
 ;;;LD3CE:	ldx	zp_vdu_wksp+2		;	D3CE
-	jmp	x_drawline_loop				;	D3D0
+		jmp	x_drawline_loop				;	D3D0
 ;; ----------------------------------------------------------------------------
 ;; move display point up a line
 x_move_display_point_up_a_line
-	ldd	zp_vdu_gra_char_cell
-	subd	vduvar_BYTES_PER_ROW
-	cmpa	vduvar_SCREEN_BOTTOM_HIGH
-	bhs	1F
-	adda	vduvar_SCREEN_SIZE_HIGH		; wrap!
-1	std	zp_vdu_gra_char_cell
-	ldb	#7
-	stb	vduvar_GRA_CUR_CELL_LINE
-	rts
+		ldd	zp_vdu_gra_char_cell
+		subd	vduvar_BYTES_PER_ROW
+		cmpa	vduvar_SCREEN_BOTTOM_HIGH
+		bhs	1F
+		adda	vduvar_SCREEN_SIZE_HIGH		; wrap!
+1		std	zp_vdu_gra_char_cell
+		ldb	#7
+		stb	vduvar_GRA_CUR_CELL_LINE
+		rts
 ;; ----------------------------------------------------------------------------
-	;TODO: use index register instead?
+		;TODO: use index register instead?
 x_move_display_move_right_to_next_cell			; LD3ED
-	lda	vduvar_LEFTMOST_PIX_MASK	;	D3ED
-	sta	zp_vdu_grpixmask		;	D3F0
-	ldd	zp_vdu_gra_char_cell		;	D3F2
-	addd	#8				; DB: note changed from 7 (was expecting C set on entry)
-	std	zp_vdu_gra_char_cell		;	D3F6
-	rts					;	D3FC
+		lda	vduvar_LEFTMOST_PIX_MASK	;	D3ED
+		sta	zp_vdu_grpixmask		;	D3F0
+		ldd	zp_vdu_gra_char_cell		;	D3F2
+		addd	#8				; DB: note changed from 7 (was expecting C set on entry)
+		std	zp_vdu_gra_char_cell		;	D3F6
+		rts					;	D3FC
 ;; ----------------------------------------------------------------------------
 x_move_display_move_left_to_next_cell
-	lda	vduvar_RIGHTMOST_PIX_MASK	;	D3FD
-	sta	zp_vdu_grpixmask		;	D400
-	ldd	zp_vdu_gra_char_cell
-	subd	#8
-	std	zp_vdu_gra_char_cell
-	rts
+		lda	vduvar_RIGHTMOST_PIX_MASK	;	D3FD
+		sta	zp_vdu_grpixmask		;	D400
+		ldd	zp_vdu_gra_char_cell
+		subd	#8
+		std	zp_vdu_gra_char_cell
+		rts
 ;; ----------------------------------------------------------------------------
 ;; :: coordinate subtraction
 x_PLOTXYsubGRACURStoTEMP8
-	ldy	#vduvar_TEMP_8
-	ldx	#vduvar_VDU_Q_PLT_X
+		ldy	#vduvar_TEMP_8
+		ldx	#vduvar_VDU_Q_PLT_X
 x_coords_to_width_height			; LD411
-	jsr	1F				
-1	ldd	4,x
-	subd	,x++
-	std	,y++
-	rts					;	D42B
+		jsr	1F				
+1		ldd	4,x
+		subd	,x++
+		std	,y++
+		rts					;	D42B
 ;; ----------------------------------------------------------------------------
 
 ; fix out of bounds at start
 ; on entry 	X = 306 or 304 depending on slope
 ; 		Y = zp_vdu_wksp+2 (332)
 
-LD42C	lda	zp_vdu_wksp_draw_slope		; depending on slope
-	bne	LD437				;
-	ldx	#vduvar_TEMP_draw_W		;
-	ldy	#vduvar_TEMP_draw_H		;
-	jsr	x_exchange_2atY_with_2atX	; swap width / height
-LD437	ldx	#vduvar_TEMP_draw_W		;
-	ldy	#vduvar_GRA_WKSP+7		;
-	jsr	copy4fromXtoY			; save W
-	LDX_B	zp_vdu_wksp_draw_slope		;	D43F
-	ldd	vduvar_GRA_WKSP
-	subd	vduvar_TEMP_draw_XY,X		; subtract 
-	bmi	LD453				;	D44E
-	jsr	x_negation_routine_newAPI	;	D450
-LD453	std	zp_vdu_wksp_draw_X_save
-	ldx	#vduvar_GRA_WKSP + 5		;	D457
-LD459	jsr	2F				;	D459
-	lsra					;	D45C
-	rorb					;	D461
-	std	0,X
-	leax	-2,X
-2	ldd	2,X				;	D467
-	bpl	1F				;	D46D
-	jsr	x_negation_routine_newAPI	;	D46F
-	std	2,X
-1	rts					;	D47B
+LD42C		lda	zp_vdu_wksp_draw_slope		; depending on slope
+		bne	LD437				;
+		ldx	#vduvar_TEMP_draw_W		;
+		ldy	#vduvar_TEMP_draw_H		;
+		jsr	x_exchange_2atY_with_2atX	; swap width / height
+LD437		ldx	#vduvar_TEMP_draw_W		;
+		ldy	#vduvar_GRA_WKSP+7		;
+		jsr	copy4fromXtoY			; save W
+		LDX_B	zp_vdu_wksp_draw_slope		;	D43F
+		ldd	vduvar_GRA_WKSP
+		subd	vduvar_TEMP_draw_XY,X		; subtract 
+		bmi	LD453				;	D44E
+		jsr	x_negation_routine_newAPI	;	D450
+LD453		std	zp_vdu_wksp_draw_X_save
+		ldx	#vduvar_GRA_WKSP + 5		;	D457
+LD459		jsr	2F				;	D459
+		lsra					;	D45C
+		rorb					;	D461
+		std	0,X
+		leax	-2,X
+2		ldd	2,X				;	D467
+		bpl	1F				;	D46D
+		jsr	x_negation_routine_newAPI	;	D46F
+		std	2,X
+1		rts					;	D47B
 ;; ----------------------------------------------------------------------------
 copy8fromXtoY
-	ldb	#$08				; LD47C
-	bra	x_copy_B_bytes_from_XtoY
+		ldb	#$08				; LD47C
+		bra	x_copy_B_bytes_from_XtoY
 copy2fromXto330					; LD480
-	ldy	#vduvar_GRA_WKSP
+		ldy	#vduvar_GRA_WKSP
 copy2fromXtoY					; LD482
-	ldb	#$02				
-	bra	x_copy_B_bytes_from_XtoY
+		ldb	#$02				
+		bra	x_copy_B_bytes_from_XtoY
 copy4from324to328
-	ldy	#vduvar_TEMP_8		; LD486
+		ldy	#vduvar_TEMP_8		; LD486
 copy4fromGRA_CUR_INTtoY
-	ldx	#vduvar_GRA_CUR_INT		; LD488
+		ldx	#vduvar_GRA_CUR_INT		; LD488
 copy4fromXtoY
-	ldb	#$04				; LD48A
+		ldb	#$04				; LD48A
 x_copy_B_bytes_from_XtoY			; LDF8C
-	lda	,x+
-	sta	,y+
-	decb
-	bne	x_copy_B_bytes_from_XtoY
-	rts
+		lda	,x+
+		sta	,y+
+		decb
+		bne	x_copy_B_bytes_from_XtoY
+		rts
 ;; ----------------------------------------------------------------------------
 ;; negation routine
 x_negation_routine_newAPI
-	coma					; TODO CHECK!
-	comb
-	addd	#1
-	rts
+	IF CPU_6809
+		coma					; TODO CHECK!
+		comb
+		addd	#1
+	ELSE
+		negd
+	ENDIF
+		rts
 
 ;	pha					;	D49B
 ;	tya					;	D49C
@@ -2827,7 +2933,7 @@ x_negation_routine_newAPI
 ;; ----------------------------------------------------------------------------
 ;; LATERAL FILL ROUTINE
 mos_LATERAL_FILL_ROUTINE
-	TODO "mos_LATERAL_FILL_ROUTINE"
+		TODO "mos_LATERAL_FILL_ROUTINE"
 ;	jsr	LD4AA				;	D4BF
 ;	and	zp_vdu_grpixmask		;	D4C2
 ;	bne	LD4B9				;	D4C4
@@ -2861,7 +2967,7 @@ mos_LATERAL_FILL_ROUTINE
 ;	ldx	#$24				;	D501
 ;	jsr	x_exchange_300_3Y_with_300_3X	;	D503
 plot_filhorz_back_qry				; LD506
-	TODO	"plot_filhorz_back_qry - plot fill back?"
+		TODO	"plot_filhorz_back_qry - plot fill back?"
 ;	jsr	LD4AA				;	D506
 ;	ldx	#$04				;	D509
 ;	jsr	LD592				;	D50B
@@ -2992,7 +3098,7 @@ plot_filhorz_back_qry				; LD506
 ;; ----------------------------------------------------------------------------
 ;; PLOT Fill triangle routine
 mos_PLOT_Fill_triangle_routine
-	TODO "mos_PLOT_Fill_triangle_routine"
+		TODO "mos_PLOT_Fill_triangle_routine"
 ;	ldx	#$20				;	D5EA
 ;	ldy	#$3E				;	D5EC
 ;	jsr	copy8fromXtoY				;	D5EE
@@ -3034,14 +3140,14 @@ mos_PLOT_Fill_triangle_routine
 ;; ----------------------------------------------------------------------------
 ;; OSBYTE 134  Read cursor position
 mos_OSBYTE_134
-	clra
-	ldb	vduvar_TXT_CUR_X		;	D647
-	subb	vduvar_TXT_WINDOW_LEFT		;	D64B
-	tfr	D,X
-	ldb	vduvar_TXT_CUR_Y		;	D64F
-	subb	vduvar_TXT_WINDOW_TOP		;	D653
-	tfr	D,Y
-LD657	rts					;	D657
+		clra
+		ldb	vduvar_TXT_CUR_X		;	D647
+		subb	vduvar_TXT_WINDOW_LEFT		;	D64B
+		tfr	D,X
+		ldb	vduvar_TXT_CUR_Y		;	D64F
+		subb	vduvar_TXT_WINDOW_TOP		;	D653
+		tfr	D,Y
+LD657		rts					;	D657
 ;; ----------------------------------------------------------------------------
 ;LD658:	php					;	D658
 ;	ldx	#$20				;	D659
@@ -3084,94 +3190,94 @@ LD657	rts					;	D657
 *****************************************************
 
 x_vdu_clear_gra_line_newAPI				; 	LD6A6
-	stx	zp_vdu_wksp+4				;	check left < right, if not swap em
-	ldd	,X
-	cmpd	,Y
-	blo	1F
-	exg	X,Y
-	stx	zp_vdu_wksp+4				; note: now using 4,6 instead of 4,5
-1	sty	zp_vdu_wksp+6				; 
-	ldd	0,y					; right on stack, we're going to use it to count down...
-	pshs	D
-	ldx	zp_vdu_wksp+6				; check right bound
-	jsr	x_Check_window_limits_atX		;
-	beq	1F					;
+		stx	zp_vdu_wksp+4				;	check left < right, if not swap em
+		ldd	,X
+		cmpd	,Y
+		blo	1F
+		exg	X,Y
+		stx	zp_vdu_wksp+4				; note: now using 4,6 instead of 4,5
+1		sty	zp_vdu_wksp+6				; 
+		ldd	0,y					; right on stack, we're going to use it to count down...
+		pshs	D
+		ldx	zp_vdu_wksp+6				; check right bound
+		jsr	x_Check_window_limits_atX		;
+		beq	1F					;
 
-	cmpa	#$02					; check for bounds broken == right
-	bne	3F					; if it's any other bound we're off the screen, skip this line
-	ldd	vduvar_GRA_WINDOW_RIGHT			;
-	std	0,X					; reset right bound to right edge of window/screen 
-1	jsr	x_setup_screen_addr_from_intcoords_atX	; setup the screen address pointer
-	ldx	zp_vdu_wksp+4				; check left pointer bounds
-	jsr	x_Check_window_limits_atX		;
-	lsra						; shift right, Left broken into carry rest in A
-	bne	3F					; if anything other than left we're off the screen, skip line
-	bcc	1F					; if not C then left bound ok
-	ldx	#vduvar_GRA_WINDOW_LEFT			;
-1	ldd	[zp_vdu_wksp+6]				; subtract left coord (or window left if bounds broken) from right 
-	subd	,x					; to get width
-	std	zp_vdu_wksp+2				; store here
-	clra
-LD6FE	asla						; shift left one
-	ora	zp_vdu_grpixmask			; copy in another right most pixel to A
-	ldb	zp_vdu_wksp+3				; decrement width counter
-	bne	LD719					;
-	dec	zp_vdu_wksp+2				;
-	bpl	LD719					;
-	sta	zp_vdu_grpixmask			; we're at the left of the line, plot pixels in current pixel mask
-	jsr	x_mos_vdu_gra_drawpixels_in_grpixmask
-3	puls	D		
-	std	[zp_vdu_wksp+6]				; restore right bound
-	rts						; done
+		cmpa	#$02					; check for bounds broken == right
+		bne	3F					; if it's any other bound we're off the screen, skip this line
+		ldd	vduvar_GRA_WINDOW_RIGHT			;
+		std	0,X					; reset right bound to right edge of window/screen 
+1		jsr	x_setup_screen_addr_from_intcoords_atX	; setup the screen address pointer
+		ldx	zp_vdu_wksp+4				; check left pointer bounds
+		jsr	x_Check_window_limits_atX		;
+		lsra						; shift right, Left broken into carry rest in A
+		bne	3F					; if anything other than left we're off the screen, skip line
+		bcc	1F					; if not C then left bound ok
+		ldx	#vduvar_GRA_WINDOW_LEFT			;
+1		ldd	[zp_vdu_wksp+6]				; subtract left coord (or window left if bounds broken) from right 
+		subd	,x					; to get width
+		std	zp_vdu_wksp+2				; store here
+		clra
+LD6FE		asla						; shift left one
+		ora	zp_vdu_grpixmask			; copy in another right most pixel to A
+		ldb	zp_vdu_wksp+3				; decrement width counter
+		bne	LD719					;
+		dec	zp_vdu_wksp+2				;
+		bpl	LD719					;
+		sta	zp_vdu_grpixmask			; we're at the left of the line, plot pixels in current pixel mask
+		jsr	x_mos_vdu_gra_drawpixels_in_grpixmask
+3		puls	D		
+		std	[zp_vdu_wksp+6]				; restore right bound
+		rts						; done
 ;; ----------------------------------------------------------------------------
-LD719	dec	zp_vdu_wksp+3				; decrement width counter
-	tsta						; see if we've filled up A with pixel mask bits
-	bpl	LD6FE					; if not try another pixel
-	sta	zp_vdu_grpixmask			; store the pixel mask
-	jsr	x_mos_vdu_gra_drawpixels_in_grpixmask 	; and plot
-	lda	zp_vdu_wksp+3				; get low byte of width counter
-	inca						; increment it
-	bne	LD72A					;
-	inc	zp_vdu_wksp+2				; and high byte if needed
-LD72A	pshs	A					; store updated low byte on stack
-	lsr	zp_vdu_wksp+2				; divide by width low by two
-	rora						; divide A by two
-	ldb	vduvar_PIXELS_PER_BYTE_MINUS1		; get pixels per byte
-	cmpb	#$03					; 
-	beq	LD73B					;
-	bcs	LD73E					;
-	lsr	zp_vdu_wksp+2				;
-	rora						;
-LD73B	lsr	zp_vdu_wksp+2				;
-	lsra						; 
-LD73E	ldb	vduvar_GRA_CUR_CELL_LINE		;
-	tsta						;
-	beq	LD753					;	D742
-LD744	subb	#$08					;	D746
-	bcc	LD74D					;	D749
-	dec	zp_vdu_gra_char_cell + 0		;	D74B
-LD74D	jsr	x_mos_vdu_gra_drawpixel_whole_byte
-	deca						;	D750
-	bne	LD744					;	D751
+LD719		dec	zp_vdu_wksp+3				; decrement width counter
+		tsta						; see if we've filled up A with pixel mask bits
+		bpl	LD6FE					; if not try another pixel
+		sta	zp_vdu_grpixmask			; store the pixel mask
+		jsr	x_mos_vdu_gra_drawpixels_in_grpixmask 	; and plot
+		lda	zp_vdu_wksp+3				; get low byte of width counter
+		inca						; increment it
+		bne	LD72A					;
+		inc	zp_vdu_wksp+2				; and high byte if needed
+LD72A		pshs	A					; store updated low byte on stack
+		lsr	zp_vdu_wksp+2				; divide by width low by two
+		rora						; divide A by two
+		ldb	vduvar_PIXELS_PER_BYTE_MINUS1		; get pixels per byte
+		cmpb	#$03					; 
+		beq	LD73B					;
+		bcs	LD73E					;
+		lsr	zp_vdu_wksp+2				;
+		rora						;
+LD73B		lsr	zp_vdu_wksp+2				;
+		lsra						; 
+LD73E		ldb	vduvar_GRA_CUR_CELL_LINE		;
+		tsta						;
+		beq	LD753					;	D742
+LD744		subb	#$08					;	D746
+		bcc	LD74D					;	D749
+		dec	zp_vdu_gra_char_cell + 0		;	D74B
+LD74D		jsr	x_mos_vdu_gra_drawpixel_whole_byte
+		deca						;	D750
+		bne	LD744					;	D751
 
 
 LD753
-	puls	A				;	D753
-	anda	vduvar_PIXELS_PER_BYTE_MINUS1	;	D754
-	beq	3B				;	D757
-	pshs	B
-	clrb					;	D75A
-LD75C	aslb					;	D75C
-	orb	vduvar_RIGHTMOST_PIX_MASK	;	D75D
-	deca					;	D760
-	bne	LD75C				;	D761
-	stb	zp_vdu_grpixmask		;	D763
-	puls	B
-	subb	#$08				;	D767
-	bcc	LD76E				;	D76A
-	dec	zp_vdu_gra_char_cell		;	D76C
-LD76E	jsr	x_mos_vdu_gra_drawpixels_in_grpixmask_cell_line_in_B				;	D76E
-	jmp	3B				;	D771
+		puls	A				;	D753
+		anda	vduvar_PIXELS_PER_BYTE_MINUS1	;	D754
+		beq	3B				;	D757
+		pshs	B
+		clrb					;	D75A
+LD75C		aslb					;	D75C
+		orb	vduvar_RIGHTMOST_PIX_MASK	;	D75D
+		deca					;	D760
+		bne	LD75C				;	D761
+		stb	zp_vdu_grpixmask		;	D763
+		puls	B
+		subb	#$08				;	D767
+		bcc	LD76E				;	D76A
+		dec	zp_vdu_gra_char_cell		;	D76C
+LD76E		jsr	x_mos_vdu_gra_drawpixels_in_grpixmask_cell_line_in_B				;	D76E
+		jmp	3B				;	D771
 ;; ----------------------------------------------------------------------------
 ;LD774:	inc	vduvar_TXT_WINDOW_LEFT,x	;	D774
 ;	bne	LD77C				;	D777
@@ -3207,10 +3313,10 @@ LD76E	jsr	x_mos_vdu_gra_drawpixels_in_grpixmask_cell_line_in_B				;	D76E
 ;; ----------------------------------------------------------------------------
 ;; OSBYTE 135  Read character at text cursor position
 mos_OSBYTE_135
-	tst	vduvar_COL_COUNT_MINUS1			;	D7C2
-	bne	LD7DC					;	D7C5
-	lda	[zp_vdu_top_scanline]			;	D7C7
-	jsr	x_convert_teletext_characters						; TODO - check this is right!
+		tst	vduvar_COL_COUNT_MINUS1			;	D7C2
+		bne	LD7DC					;	D7C5
+		lda	[zp_vdu_top_scanline]			;	D7C7
+		jsr	x_convert_teletext_characters						; TODO - check this is right!
 ;;;	ldy	#$02					;	D7C9
 ;;;LD7CB	cmpa	mostbl_TTX_CHAR_CONV+1,y		;	D7CB
 ;;;	bne	LD7D4					;	D7CE
@@ -3219,75 +3325,76 @@ mos_OSBYTE_135
 ;;;LD7D4	dey						;	D7D4
 ;;;	bpl	LD7CB					;	D7D5
 mos_OSBYTE_135_YeqMODE_XeqArts
-	LDY_B	vduvar_MODE				;	D7D7
-	m_tax						;	D7DA
-	rts						;	D7DB
+		LDY_B	vduvar_MODE				;	D7D7
+		m_tax						;	D7DA
+		rts						;	D7DB
 ;; ----------------------------------------------------------------------------
-LD7DC	jsr	x_set_up_pattern_copy			;set up copy of the pattern bytes at text cursor
-	lda	#$20					;X=&20
-	ldx	#vduvar_TEMP_8
-	sta	zp_vdu_wksp				;store current char
-	bra	1F
+LD7DC		jsr	x_set_up_pattern_copy		;set up copy of the pattern bytes at text cursor
+		lda	#$20				;X=&20
+		ldx	#vduvar_TEMP_8
+		sta	zp_vdu_wksp			;store current char
+		bra	1F
 mos_OSBYTE_135_lp1					; LD7E1
-;;;	txa					;A=&20
+;;;	txa						;A=&20
 ;;;	pha						;Save it
-	lda	zp_vdu_wksp
-1	jsr	x_calc_pattern_addr_for_given_char	;get pattern address for code in A
-	ldy	zp_vdu_wksp + 4
+		lda	zp_vdu_wksp
+1		jsr	x_calc_pattern_addr_for_given_char	;get pattern address for code in A
+		ldy	zp_vdu_wksp + 4
 ;;;	pla						;get back A
 ;;;	tax						;and X
-LD7E8	ldb	#$07					;Y=7
-LD7EA	lda	B,X					;get byte in pattern copy
-	cmpa	B,Y					;check against pattern source
-	bne	LD7F9					;if not the same D7F9
-	decb						;else Y=Y-1
-	bpl	LD7EA					;and if +ve D7EA
-	lda	zp_vdu_wksp
-	cmpa	#$7F					;is X=&7F (delete)
-	bne	mos_OSBYTE_135_YeqMODE_XeqArts		;if not D7D7
-LD7F9	inc	zp_vdu_wksp				;else X=X+1
-	beq	mos_OSBYTE_135_YeqMODE_XeqArts		; past 255 give up return A = 0
-	leay	8,Y
-	tfr	Y,D
-	tstb
+LD7E8		ldb	#$07				;Y=7
+LD7EA		lda	B,X				;get byte in pattern copy
+		cmpa	B,Y				;check against pattern source
+		bne	LD7F9				;if not the same D7F9
+		decb					;else Y=Y-1
+		bpl	LD7EA				;and if +ve D7EA
+		lda	zp_vdu_wksp
+		cmpa	#$7F				;is X=&7F (delete)
+		bne	mos_OSBYTE_135_YeqMODE_XeqArts	;if not D7D7
+LD7F9		clra
+		inc	zp_vdu_wksp			;else X=X+1
+		beq	mos_OSBYTE_135_YeqMODE_XeqArts	; past 255 give up return A = 0
+		leay	8,Y
+		tfr	Y,D
+		tstb
 ;	lda	zp_vdu_wksp+4				;get byte lo address
 ;	clc						;clear carry
 ;	adc	#$08					;add 8
 ;	sta	zp_vdu_wksp+4				;store it
-	bne	LD7E8					;and go back to check next character if <>0
-	bra	mos_OSBYTE_135_lp1			; recalc char pointer (may be into redeffed chars)
+		bne	LD7E8					;and go back to check next character if <>0
+		bra	mos_OSBYTE_135_lp1			; recalc char pointer (may be into redeffed chars)
 ;; set up pattern copy
 x_set_up_pattern_copy
-	ldb	#$07				; Y=7
-	ldx	zp_vdu_top_scanline
-	ldy	#vduvar_TEMP_8
-LD80A	stb	zp_vdu_wksp			; &DA=Y
-	lda	#$01				; A=1 - this will rol out and signal end of loop
-	sta	zp_vdu_wksp_draw_flags		; &DB=A
-LD810	lda	vduvar_LEFTMOST_PIX_MASK	; A=left colour mask
-	sta	zp_vdu_wksp+2			; store an &DC
-	lda	B,X				; get a byte from current text character
-	eora	vduvar_TXT_BACK			; EOR with text background colour
-	CLC					; clear carry
-LD81B	bita	zp_vdu_wksp+2			; and check bits of colour mask
-	beq	LD820				; if result =0 then D820
-	SEC					; else set carry
-LD820	rol	zp_vdu_wksp_draw_flags		; &DB=&DB+Carry
-	bcs	LD82E				; if carry now set (bit 7 DB originally set) D82E
-	lsr	zp_vdu_wksp+2			; else  &DC=&DC/2 - roll screen bits right
-	bcc	LD81B				; if carry clear D81B - keep going for this mask
+		ldb	#$07				; Y=7
+		ldx	zp_vdu_top_scanline
+		ldy	#vduvar_TEMP_8
+LD80A		stb	zp_vdu_wksp			; &DA=Y
+		lda	#$01				; A=1 - this will rol out and signal end of loop
+		sta	zp_vdu_wksp_draw_flags		; &DB=A
+LD810		lda	vduvar_LEFTMOST_PIX_MASK	; A=left colour mask
+		sta	zp_vdu_wksp+2			; store an &DC
+		lda	B,X				; get a byte from current text character
+		eora	vduvar_TXT_BACK			; EOR with text background colour
+		CLC					; clear carry
+LD81B		bita	zp_vdu_wksp+2			; and check bits of colour mask
+		beq	LD820				; if result =0 then D820
+		SEC					; else set carry
+LD820		rol	zp_vdu_wksp_draw_flags		; &DB=&DB+Carry
+		bcs	LD82E				; if carry now set (bit 7 DB originally set) D82E
+		lsr	zp_vdu_wksp+2			; else  &DC=&DC/2 - roll screen bits right
+		bcc	LD81B				; if carry clear D81B - keep going for this mask
 ;;;	tya					; A=Y
 ;;;	adc	#$07				; ADD ( (7+carry)
 ;;;	tay					; Y=A
-	addb	#8
-	bra	LD810				; 
+		addb	#8
+		bra	LD810				; 
 
-LD82E	ldb	zp_vdu_wksp			; read modified values into Y and A
-	lda	zp_vdu_wksp_draw_flags		; 
-	sta	B,y				; store copy
-	decb					; and do it again
-	bpl	LD80A				; until 8 bytes copied
-	rts					; exit
+LD82E		ldb	zp_vdu_wksp			; read modified values into Y and A
+		lda	zp_vdu_wksp_draw_flags		; 
+		sta	B,y				; store copy
+		decb					; and do it again
+		bpl	LD80A				; until 8 bytes copied
+		rts					; exit
 ;; ----------------------------------------------------------------------------
 ;; pixel reading
 ;x_pixel_reading:
@@ -3313,138 +3420,160 @@ LD82E	ldb	zp_vdu_wksp			; read modified values into Y and A
 ;; ----------------------------------------------------------------------------
 ;LD85A:	lda	#$FF				;	D85A
 LD85Crts
-	rts					;	D85C
+		rts					;	D85C
 ;; ----------------------------------------------------------------------------
 ;; : check for window violations and set up screen address
 x__check_in_window_bounds_setup_screen_addr
-	ldx	#vduvar_VDU_Q_END - 4		;	D85D
+		ldx	#vduvar_VDU_Q_END - 4		;	D85D
 x__check_in_window_bounds_setup_screen_addr_atX
-	jsr	x_Check_window_limits_atX	;	D85F
-	bne	LD85Crts				;	D862
+		jsr	x_Check_window_limits_atX	;	D85F
+		bne	LD85Crts				;	D862
 x_setup_screen_addr_from_intcoords_atX	
-	lda	3,X				; get y coord
-	eora	#$FF				;	D867
-	tfr	A,B				; todo speed this up by using D and MUL?
-	anda	#$07				;	D86A
-	sta	vduvar_GRA_CUR_CELL_LINE	;	D86C
-	andb	#$F8
-	lda	#640/8
-	mul
-	tst	vduvar_MODE_SIZE		;	D87C
-	beq	LD884				;	D87F
-	lsra
-	rorb
-LD884	addd	vduvar_6845_SCREEN_START	;	D884
-	std	zp_vdu_gra_char_cell		;	D887
-	ldd	,X
-	pshs	D
-	andb	vduvar_PIXELS_PER_BYTE_MINUS1	
-	addb	vduvar_PIXELS_PER_BYTE_MINUS1	
-	ldy	#mostbl_VDU_pix_mask_16colour - 1
-	lda	b,y	
-	sta	zp_vdu_grpixmask		
-	ldb	vduvar_PIXELS_PER_BYTE_MINUS1	;	D8A6
-	cmpb	#$03				;	D8A9
-	puls	D
-	beq	LD8B2				;	4 pixels per byte
-	bhs	LD8B5				;	8 pixels per byte
+		lda	3,X				; get y coord
+		eora	#$FF				;	D867
+		tfr	A,B				; todo speed this up by using D and MUL?
+		anda	#$07				;	D86A
+		sta	vduvar_GRA_CUR_CELL_LINE	;	D86C
+		andb	#$F8
+		lda	#640/8
+		mul
+		tst	vduvar_MODE_SIZE		;	D87C
+		beq	LD884				;	D87F
+		lsra
+		rorb
+LD884		addd	vduvar_6845_SCREEN_START	;	D884
+		std	zp_vdu_gra_char_cell		;	D887
+		ldd	,X
+		pshs	D
+		andb	vduvar_PIXELS_PER_BYTE_MINUS1	
+		addb	vduvar_PIXELS_PER_BYTE_MINUS1	
+		ldy	#mostbl_VDU_pix_mask_16colour - 1
+		lda	b,y	
+		sta	zp_vdu_grpixmask		
+		ldb	vduvar_PIXELS_PER_BYTE_MINUS1	;	D8A6
+		cmpb	#$03				;	D8A9
+		puls	D
+		beq	LD8B2				;	4 pixels per byte
+		bhs	LD8B5				;	8 pixels per byte
 						;	2 pixels per byte
-	aslb
-	rola
-	aslb
-	rola
-	bra	LD8B5
-LD8B2	 aslb
-	rola
-LD8B5	andb	#$F8				;	D8B5
-	addd	zp_vdu_gra_char_cell
-	bpl	LD8C6				;	D8C0
-	suba	vduvar_SCREEN_SIZE_HIGH		;	D8C3
-LD8C6	std	zp_vdu_gra_char_cell		;	D8C6
-	ldb	vduvar_GRA_CUR_CELL_LINE	;	D8C8
+		aslb
+		rola
+		aslb
+		rola
+		bra	LD8B5
+LD8B2		 aslb
+		rola
+LD8B5		andb	#$F8				;	D8B5
+		addd	zp_vdu_gra_char_cell
+		bpl	LD8C6				;	D8C0
+		suba	vduvar_SCREEN_SIZE_HIGH		;	D8C3
+LD8C6		std	zp_vdu_gra_char_cell		;	D8C6
+		ldb	vduvar_GRA_CUR_CELL_LINE	;	D8C8
 LD8CBclrArts	
-	clra
-	rts					;	D8CD
+		clra
+		rts					;	D8CD
 ;; ----------------------------------------------------------------------------
 x_cursor_start					; LD8CE
-	pshs	A				; Push A
-;;;	lda	#$A0				; A=&A0
-	ldb	sysvar_VDU_Q_LEN		; X=number of items in VDU queque
-	bne	LD916pulsArts			; if not 0 D916
-	tim	#$A0, zp_vdu_status
-;;;	bita	zp_vdu_status			; else check VDU status byte
-	bne	LD916pulsArts			; if either VDU is disabled or plot to graphics
+		pshs	A				; Push A
+		ldb	sysvar_VDU_Q_LEN		; X=number of items in VDU queque
+		bne	LD916pulsArts			; if not 0 D916
+	IF CPU_6809
+		lda	#$A0				; A=&A0
+		bita	zp_vdu_status			; else check VDU status byte
+	ELSE
+		tim	#$A0, zp_vdu_status
+	ENDIF
+		bne	LD916pulsArts			; if either VDU is disabled or plot to graphics
 						; cursor enabled then D916
-	tim	#$40, zp_vdu_status
-;;;	lda	#$40
-;;;	bita	zp_vdu_status
-	bne	1F				; if cursor editing enabled D8F5
-	lda	vduvar_CUR_START_PREV		; else get 6845 register start setting
-	anda	#$9F				; clear bits 5 and 6
-	ora	#$40				; set bit 6 to modify last cursor size setting
-	jsr	x_crtc_set_cursor		; change write cursor format
-	ldx	#vduvar_TXT_CUR_X		; X=&18
-	ldy	#vduvar_TEXT_IN_CUR_X		; Y=&64
-	jsr	copy2fromXtoY			; set text input cursor from text output cursor
-	jsr	x_start_cursor_edit_qry		; modify character at cursor poistion
-	lda	#$02				; A=2
-	jsr	x_ORA_with_vdu_status		; bit 1 of VDU status is set to bar scrolling
+	IF CPU_6809
+		lda	#$40
+		bita	zp_vdu_status
+	ELSE
+		tim	#$40, zp_vdu_status
+	ENDIF
+		bne	1F				; if cursor editing enabled D8F5
+		lda	vduvar_CUR_START_PREV		; else get 6845 register start setting
+		anda	#$9F				; clear bits 5 and 6
+		ora	#$40				; set bit 6 to modify last cursor size setting
+		jsr	x_crtc_set_cursor		; change write cursor format
+		ldx	#vduvar_TXT_CUR_X		; X=&18
+		ldy	#vduvar_TEXT_IN_CUR_X		; Y=&64
+		jsr	copy2fromXtoY			; set text input cursor from text output cursor
+		jsr	x_start_cursor_edit_qry		; modify character at cursor poistion
+		lda	#$02				; A=2
+		jsr	x_ORA_with_vdu_status		; bit 1 of VDU status is set to bar scrolling
 1
-	lda	#$BF				;A=&BF
-	jsr	mos_VDU_and_A_vdustatus		;bit 6 of VDU status =0 
-	puls	A				;Pull A
-	anda	#$7F				;clear hi bit (7)
-	jsr	mos_VDU_WRCH			; exec up down left or right?
-	lda	#$40				;A=&40
-	jmp	x_ORA_with_vdu_status		;exit 
+		lda	#$BF				;A=&BF
+		jsr	mos_VDU_and_A_vdustatus		;bit 6 of VDU status =0 
+		puls	A				;Pull A
+		anda	#$7F				;clear hi bit (7)
+		jsr	mos_VDU_WRCH			; exec up down left or right?
+		lda	#$40				;A=&40
+		jmp	x_ORA_with_vdu_status		;exit 
 ;; ----------------------------------------------------------------------------
 x_cursor_COPY					; LD905
 ;;	lda	#$20				;A=&20
 ;;	bita	zp_vdu_status			
 ;;	bvc	LD8CBclrArts			;if bit 6 cursor editing is set
 ;;	bne	LD8CBclrArts			;or bit 5 is set exit &D8CB
-	tim	#$40, zp_vdu_status
-;;;	lda	#$40
-;;;	bita	zp_vdu_status
-	beq	LD8CBclrArts			; not cursor editing
-	tim	#$20, zp_vdu_status
-;;;	lda	#$20
-;;;	bita	zp_vdu_status
-	bne	LD8CBclrArts			; VDU5
-	pshs	B
-	jsr	mos_OSBYTE_135			;read a character from the screen
-	puls	B
-	tsta
-	beq	LD917rts			;if A=0 on return exit via D917
-	pshs	A				;else store A
-	jsr	mos_VDU_9			;perform cursor right
+	IF CPU_6809
+		lda	#$40
+		bita	zp_vdu_status
+	ELSE
+		tim	#$40, zp_vdu_status
+	ENDIF
+		beq	LD8CBclrArts			; not cursor editing
+	IF CPU_6809
+		lda	#$20
+		bita	zp_vdu_status
+	ELSE
+		tim	#$20, zp_vdu_status
+	ENDIF
+		bne	LD8CBclrArts			; VDU5
+		pshs	B,X,Y
+		lda	#135
+		jsr	OSBYTE				;read a character from the screen - note changed this to use
+		tfr	X,D				;OSBYTE instead of direct jump to allow 135 to be intercepted
+		tfr	B,A				;in VNULA utils ROM
+		puls	B,X,Y
+		tsta
+		beq	LD917rts			;if A=0 on return exit via D917
+		pshs	A				;else store A
+		jsr	mos_VDU_9			;perform cursor right
 LD916pulsArts	
-	puls	A				;	D916
+		puls	A				;	D916
 LD917rts	
-	rts					;	D917
+		rts					;	D917
 ;; ----------------------------------------------------------------------------
 
 
 x_cancel_cursor_edit				; LD918
-	lda	#$BD				;	D918
-	jsr	mos_VDU_and_A_vdustatus		;	D91A
-	jsr	x_crtc_reset_cursor				;	D91D
-	lda	#$0D				;	D920
-	rts					;	D922
+		lda	#$BD				;	D918
+		jsr	mos_VDU_and_A_vdustatus		;	D91A
+		jsr	x_crtc_reset_cursor				;	D91D
+		lda	#$0D				;	D920
+		rts					;	D922
 ;; ----------------------------------------------------------------------------
 ;; OSBYTE 132  Read bottom of display RAM;  
 mos_OSBYTE_132
-	ldb	vduvar_MODE			; get current screen mode
+		ldb	vduvar_MODE			; get current screen mode
 ;; OSBYTE 133  Read lowestFDBess for given mode
 mos_OSBYTE_133
-	andb	#$07				; modulo 7 TODO: EXTRA MODES
-	ldx	#mostbl_VDU_mode_size
-	ldb	B,X				;	D92A
-	ldx	#mostbl_VDU_screebot_h
-	lda	B,X				;	D92D
-	clrb
-	tfr	D,X				; return X is full adress, Y is high byte
-	m_tay
+		andb	#$07				; modulo 7 TODO: EXTRA MODES
+		IF MACH_CHIPKIT
+		; TODO: remove bodge for chipkit mk1 (see also mos_VDU_set_mode)
+		cmpb	#7
+		bne	1F
+		ldb	#6
+1		
+		ENDIF
+		ldx	#mostbl_VDU_mode_size
+		ldb	B,X				;	D92A
+		ldx	#mostbl_VDU_screebot_h
+		lda	B,X				;	D92D
+		clrb
+		tfr	D,X				; return X is full adress, Y is high byte
+		m_tay
 ;;;	tst	sysvar_RAM_AVAIL		;	D932 - removed < 32k check
 ;;;	bmi	LD93E				;	D935
 ;;;	anda	#$3F				;	D937
@@ -3452,37 +3581,37 @@ mos_OSBYTE_133
 ;;;	bcs	LD93E				;	D93B
 ;;;	txa					;	D93D
 ;;;LD93E:	tay					;	D93E
-	rts					;	D93F
+		rts					;	D93F
 ;; ----------------------------------------------------------------------------
 vec_table
-	;TODO = fill these in!
-	FDB	x_Bad_command_error		;  LD940 USERV
-	FDB	mos_DEFAULT_BRK_HANDLER		;  LD942 BRKV
-	FDB	mos_IRQ1V_default_entry		;  LD944 IRQ1V
-	FDB	mos_IRQ2V_default_entry		;  LD946 IRQ2V
-	FDB	mos_CLIV_default_handler	;  LD948 CLIV
-	FDB	mos_default_BYTEV_handler	;  LD94A BYTEV
-	FDB	mos_WORDV_default_entry		;  LD94C WORDV
-	FDB	mos_WRCH_default_entry		;  LD94E WRCHV
-	FDB	mos_RDCHV_default_entry		;  LD950 RDCHV
-	FDB	dummy_vector_RTS		;  LD952 FILEV
-	FDB	dummy_vector_RTS		;  LD954 ARGSV
-	FDB	dummy_vector_RTS		;  LD956 BGETV
-	FDB	dummy_vector_RTS 		;  LD958 BPUTV
-	FDB	dummy_vector_RTS		;  LD95A GBPBV
-	FDB	mos_FINDV_default_handler	;  LD95C FINDV
-	FDB	mos_FSCV_default_handler	;  LD95E FSCV
-	FDB	dummy_vector_RTS		;  LD960 EVNTV
-	FDB	dummy_vector_RTS		;  LD962 UPTV
-	FDB	dummy_vector_RTS		;  LD964 NETV
-	FDB	dummy_vector_RTS		;  LD966 VDUV
-	FDB	KEYV_default			;  LD968 KEYV
-	FDB	mos_INSV_default_entry_point	;  LD96A INSV
-	FDB	mos_REMV_default_entry_point	;  LD96C REMV
-	FDB	mos_CNPV_default_entry_point	;  LD96E CNPV
-	FDB	dummy_vector_RTS		;  LD970 IND1V
-	FDB	dummy_vector_RTS		;  LD972 IND2V
-	FDB	dummy_vector_RTS		;  LD974 IND3V
+		;TODO = fill these in!
+		FDB	x_Bad_command_error		;  LD940 USERV
+		FDB	mos_DEFAULT_BRK_HANDLER		;  LD942 BRKV
+		FDB	mos_IRQ1V_default_entry		;  LD944 IRQ1V
+		FDB	mos_IRQ2V_default_entry		;  LD946 IRQ2V
+		FDB	mos_CLIV_default_handler	;  LD948 CLIV
+		FDB	mos_default_BYTEV_handler	;  LD94A BYTEV
+		FDB	mos_WORDV_default_entry		;  LD94C WORDV
+		FDB	mos_WRCH_default_entry		;  LD94E WRCHV
+		FDB	mos_RDCHV_default_entry		;  LD950 RDCHV
+		FDB	dummy_vector_RTS		;  LD952 FILEV
+		FDB	mos_OSARGS		;  LD954 ARGSV
+		FDB	dummy_vector_RTS		;  LD956 BGETV
+		FDB	dummy_vector_RTS 		;  LD958 BPUTV
+		FDB	dummy_vector_RTS		;  LD95A GBPBV
+		FDB	mos_FINDV_default_handler	;  LD95C FINDV
+		FDB	mos_FSCV_default_handler	;  LD95E FSCV
+		FDB	dummy_vector_RTS		;  LD960 EVNTV
+		FDB	dummy_vector_RTS		;  LD962 UPTV
+		FDB	dummy_vector_RTS		;  LD964 NETV
+		FDB	dummy_vector_RTS		;  LD966 VDUV
+		FDB	KEYV_default			;  LD968 KEYV
+		FDB	mos_INSV_default_entry_point	;  LD96A INSV
+		FDB	mos_REMV_default_entry_point	;  LD96C REMV
+		FDB	mos_CNPV_default_entry_point	;  LD96E CNPV
+		FDB	dummy_vector_RTI		;  LD970 IND1V
+		FDB	dummy_vector_RTI		;  LD972 IND2V
+		FDB	dummy_vector_RTI		;  LD974 IND3V
 vec_table_end
 ;	FDB	x_Bad_command_error			;  LD940 USERV
 ;	FDB	mos_DEFAULT_BRK_HANDLER			;  LD942 BRKV
@@ -3494,7 +3623,7 @@ vec_table_end
 ;	FDB	mos_WRCH_default_entry			;  LD94E WRCHV
 ;	FDB	mos_RDCHV_default_entry			;  LD950 RDCHV
 ;	FDB	mos_OSFILE_ENTRY			;  LD952 FILEV
-;	FDB	mos_start_of_data_for_save		;  LD954 ARGSV
+;	FDB	mos_OSARGS		;  LD954 ARGSV
 ;	FDB	mos_OSBGET_get_a_byte_from_a_file	;  LD956 BGETV
 ;	FDB	mos_OSBPUT_WRITE_A_BYTE_TO_FILE 	;  LD958 BPUTV
 ;	FDB	dummy_vector_RTS			;  LD95A GBPBV
@@ -3517,94 +3646,113 @@ vec_table_end
 ;; ----------------------------------------------------------------------------
 ;; MOS VARIABLES DEFAULT SETTINGS
 mostbl_SYSVAR_DEFAULT_SETTINGS				; LD976
-	FDB	sysvar_OSVARADDR - $A6			; A6 default osvar base (minus A6 for osbyte offset)
-	FDB	EXT_USERV				; A8 default start of extended vector table
-	FDB	oswksp_ROMTYPE_TAB			; AA default start of rom info table
-	FDB	key2ascii_tab - $10			; AC default start of keyboard to ASCII table
-	
-	FDB	vduvars_start				; AE base of VDU variables
-	FCB	$00					; B0 CFS timeout
-	FCB	$00					; B1 input source number (keyboard=0/serial=1/etc)
-	FCB	$FF					; B2 keyboard semaphore
-	FCB	$00					; B3 primary OSHWM for exploded font
-	FCB	$00					; B4  B4 OSHWM
-	FCB	$01 					; B5 Serial mode
-	
-	FCB	$00					; B6 char def exploded state
-	FCB	$00					; B7 cassette/rom switch
-	FCB	$00					; B8 video ULA copy (CTL)
-	FCB	$00					; B9 video ULA copy (PAL?)
-	FCB	$00					; BA ROM number active at BREAK
-	FCB	$FF					; BB BASIC ROM number
-	FCB	$04					; BC ADC channel
-	FCB	$04					; BD Max ADC channel
+		FDB	sysvar_OSVARADDR - $A6			; A6 default osvar base (minus A6 for osbyte offset)
+		FDB	EXT_USERV				; A8 default start of extended vector table
+		FDB	oswksp_ROMTYPE_TAB			; AA default start of rom info table
+		FDB	key2ascii_tab - $10			; AC default start of keyboard to ASCII table
+		
+		FDB	vduvars_start				; AE base of VDU variables
+		FCB	$00					; B0 CFS timeout
+		FCB	$00					; B1 input source number (keyboard=0/serial=1/etc)
+		FCB	$FF					; B2 keyboard semaphore
+		FCB	$00					; B3 primary OSHWM for exploded font
+		FCB	$00					; B4  B4 OSHWM
+		FCB	$01 					; B5 Serial mode
+		
+		FCB	$00					; B6 char def exploded state
+		FCB	$00					; B7 cassette/rom switch
+		FCB	$00					; B8 video ULA copy (CTL)
+		FCB	$00					; B9 video ULA copy (PAL?)
+		FCB	$00					; BA ROM number active at BREAK
+		FCB	$FF					; BB BASIC ROM number
+		FCB	$04					; BC ADC channel
+		FCB	$04					; BD Max ADC channel
 
-	FCB	$00					; BE ADC conv type
-	FCB	$FF					; BF RS423 use flag
-	FCB	$56					; C0 RS423 ctl flag
-	FCB	$19					; C1 flash counter
-	FCB	$19					; C2 flash mark
-	FCB	$19					; C3 flash space
-	FCB	$32					; C4 keyboard autorepeat delay
-	FCB	$08					; C5 keyboard autorepeat rate
+		FCB	$00					; BE ADC conv type
+		FCB	$FF					; BF RS423 use flag
+		FCB	$56					; C0 RS423 ctl flag
+		FCB	$19					; C1 flash counter
+		FCB	$19					; C2 flash mark
+		FCB	$19					; C3 flash space
+		FCB	$32					; C4 keyboard autorepeat delay
+		FCB	$08					; C5 keyboard autorepeat rate
 
-	FCB	$00					; C6 *EXEC handle
-	FCB	$00					; C7 *SPOOL handle
-	FCB	$00					; C8 ESCAPE effect
-	FCB	$00					; C9 keyboard disable
-	FCB	$20					; CA keyboard status
-	FCB	$09					; CB Serial handshake extent
-	FCB	$00					; CC Serial suppression flag
-	FCB	$00					; CD Serial/cassette select flag
+		FCB	$00					; C6 *EXEC handle
+		FCB	$00					; C7 *SPOOL handle
+		FCB	$00					; C8 ESCAPE effect
+		FCB	$00					; C9 keyboard disable
+		FCB	$20					; CA keyboard status
+		FCB	$09					; CB Serial handshake extent
+		FCB	$00					; CC Serial suppression flag
+		FCB	$00					; CD Serial/cassette select flag
 
 
-	FCB	$00					; CE Econet OS Call intercept status
-	FCB	$00					; CF Econet read char intercept status
-	FCB	$00					; D0 Econet write char intercept status
-	FCB	$50					; D1 Speech suppress $50=speak
-	FCB	$00					; D2 Sound suppress
-	FCB	$03					; D3 Bell channel
-	FCB	$90					; D4 Bell vol, H, S
-	FCB	$64					; D5 Bell freq
+		FCB	$00					; CE Econet OS Call intercept status
+		FCB	$00					; CF Econet read char intercept status
+		FCB	$00					; D0 Econet write char intercept status
+		FCB	$50					; D1 Speech suppress $50=speak
+		FCB	$00					; D2 Sound suppress
+		FCB	$03					; D3 Bell channel
+		FCB	$90					; D4 Bell vol, H, S
+		FCB	$64					; D5 Bell freq
 
-	FCB	$06					; D6 Bell duration
-	FCB	$81					; D7 Startup message suppress/!BOOT lock
-	FCB	$00					; D8 Soft key string
-	FCB	$00					; D9 lines since page
-	FCB	$00					; DA VDU Q len
-	FCB	$09					; DB TAB char
-	FCB	$1B					; DC ESCAPE char
-	FCB	$01					; DD Input buffer C0-CF interpretation
+		FCB	$06					; D6 Bell duration
+		FCB	$81					; D7 Startup message suppress/!BOOT lock
+		FCB	$00					; D8 Soft key string
+		FCB	$00					; D9 lines since page
+		FCB	$00					; DA VDU Q len
+		FCB	$09					; DB TAB char
+		FCB	$1B					; DC ESCAPE char
+		FCB	$01					; DD Input buffer C0-CF interpretation
 
-	FCB	$D0					; DE Input buffer D0-DF interpretation
-	FCB	$E0					; DF Input buffer E0-EF interpretation
-	FCB	$F0					; E0 Input buffer F0-FF interpretation
-	FCB	$01					; E1 fnKey status 80-8F
-	FCB	$80					; E2 fnKey status 90-9F
-	FCB	$90					; E3 fnKey status A0-AF
-	FCB	$00					; E4 fnKey status B0-BF
-	FCB	$00					; E5 ESCAPE key action
+		FCB	$D0					; DE Input buffer D0-DF interpretation
+		FCB	$E0					; DF Input buffer E0-EF interpretation
+		FCB	$F0					; E0 Input buffer F0-FF interpretation
+		FCB	$01					; E1 fnKey status 80-8F
+		FCB	$80					; E2 fnKey status 90-9F
+		FCB	$90					; E3 fnKey status A0-AF
+		FCB	$00					; E4 fnKey status B0-BF
+		FCB	$00					; E5 ESCAPE key action
 
-	FCB	$00					; E6 ESCAPE effects
-	FCB	$FF					; E7 IRQ mask for user VIA
-	FCB	$FF					; E8 IRQ mask for 6850 
-	FCB	$FF					; E9 IRQ mask for system VIA
-	FCB	$00					; EA TUBE flag
-	FCB	$00					; EB Speech flag
-	FCB	$00					; EC char dest status
-	FCB	$00					; ED cursor edit status
-	
-	FCB	$00					; EE location 27E (keypad numeric base Master)
-	FCB	$00					; EF location 27F (?)
-	FCB	$00					; F0 location 280 (Country code)
-	FCB	$00					; F1 location 281 (user flag)
-	FCB	$64					; F2 Serial ULA copy
-	FCB	$05					; F3 Timer switch state
-	FCB	$FF					; F4 Soft key consistency
-	FCB	$01					; F5 Printer dest
+		FCB	$00					; E6 ESCAPE effects
+		FCB	$FF					; E7 IRQ mask for user VIA
+		FCB	$FF					; E8 IRQ mask for 6850 
+		FCB	$FF					; E9 IRQ mask for system VIA
+		FCB	$00					; EA TUBE flag
+		FCB	$00					; EB Speech flag
+		FCB	$00					; EC char dest status
+		FCB	$00					; ED cursor edit status
+		
+		FCB	$00					; EE location 27E (keypad numeric base Master)
+		FCB	$00					; EF location 27F (?)
+		FCB	$00					; F0 location 280 (Country code)
+		FCB	$00					; F1 location 281 (user flag)
+		;TODO this default changed to 9,600 baud
+;		FCB	$64					; F2 Serial ULA copy - original
+	IF MACH_BEEB && NOICE
+		FCB	$40					; F2 Serial ULA copy - 19200 for noice
+	ELSE
+		FCB	$52					; F2 Serial ULA copy - 4,800 for HOSTFS
+	ENDIF
+		FCB	$05					; F3 Timer switch state
+		FCB	$FF					; F4 Soft key consistency
+		FCB	$01					; F5 Printer dest
 
-	FCB	$0A,$00,$00,$00,$00,$00,$FF	;	D9C6
+		FCB	$0A,$00,$00,$00,$00,$00,$FF	;	D9C6
 
+
+	IF CPU_6309
+ **************************************************************************
+ * 6309 div0/illegal op trap
+ **************************************************************************
+mos_handle_div0
+		bitmd	#$40
+		bne	mos_handle_illegalop
+
+		DO_BRK	$FF, "Divide by 0", 0
+mos_handle_illegalop
+		DO_BRK	$FF, "Illegal instruction", 0		
+	ENDIF
 
  **************************************************************************
  **************************************************************************
@@ -3623,7 +3771,7 @@ mostbl_SYSVAR_DEFAULT_SETTINGS				; LD976
 
 ;; ----------------------------------------------------------------------------
 mos_handle_res
-	lda	#$3B				; rti instruction ( was $40 for 6502)
+		lda	#$3B				; rti instruction ( was $40 for 6502)
 ; Store RTI in 1st byte of NMI space
 mos_handle_res_resnmi
 		sta	vec_nmi				; store rti at start of NMI space
@@ -3634,7 +3782,7 @@ mos_handle_res_resnmi
 
 	IF NATIVE
 		; ENTER NATIVE MODE
-		LDMD	#3
+		LDMD	#1
 	ENDIF
 
 
@@ -3643,12 +3791,21 @@ mos_handle_res_resnmi
 	ENDIF
 
 
-		DEBUGPR	"mos_handle_res"
+
+		DEBUG_INFO	"mos_handle_res"
+	IF MACH_CHIPKIT
 		lda	SHEILA_ROMCTL_RAM		; if bit 7 set this is a cold reset
 		clr	SHEILA_ROMCTL_RAM		; clear and set RAM to bank 0
 		pshs	a				;save what's left
 		tsta
 		bmi	mos_handle_res_skip_clear_mem1	;if Power up A bit 7 == 1 
+	ENDIF
+	IF MACH_BEEB
+		lda	sheila_SYSVIA_ier
+		asla
+		pshs	a
+		beq	mos_handle_res_skip_clear_mem1	; it's a power up
+	ENDIF
 		lda	sysvar_BREAK_EFFECT		;else if BREAK pressed read BREAK Action flags (set by
 							;*FX200,n) 
 		lsra					;divide by 2
@@ -3659,7 +3816,7 @@ mos_handle_res_resnmi
 
 ; Always clear memory if no sys via interrupts enabled i.e. hard RES
 mos_handle_res_skip_clear_mem1
-		DEBUGPR	"hard reset"
+		DEBUG_INFO	"hard reset"
 
 ;TODO - this commented out to stop the noIce debugger getting trampled!
 
@@ -3674,28 +3831,72 @@ mos_handle_res_skip_clear_mem1
 ;	leax	1,X
 ;	bra	mos_handle_res_clear_lp1
 
+	IF CPU_6809
+	IF NOICE=1
 ;;;;;; special noice version leave holes at $D00-$D01, $A00-$B00
-	clr	$400
-	ldw	#$A00-$401
-	ldx	#$400
-	ldy	#$401
-	tfm	X,Y+
-	ldy	#$B00
-	ldw	#$D00-$B01
-	tfm	X,Y+
-	ldy	#$D01
-	ldw	#$8000-$D01
-	tfm	X,Y+
+		clra
+		ldy	#$A00-$400
+		ldx	#$400
+1		sta	,X+
+		leay	-1,Y
+		bne	1B
+
+		ldx	#$B00
+		ldy	#$D00-$B00
+1		sta	,X+
+		leay	-1,Y
+		bne	1B
+
+		ldx	#$D00
+		ldy	#$8000-$D00
+1		sta	,X+
+		leay	-1,Y
+		bne	1B
+	ELSE
+		clra
+		ldy	#$8000-$400
+		ldx	#$400
+1		sta	,X+
+		leay	-1,Y
+		bne	1B
+	ENDIF
+	ELSE
+	IF NOICE=1
+;;;;;; special noice version leave holes at $D00-$D01, $A00-$B00
+		clr	$400
+		ldw	#$A00-$401
+		ldx	#$400
+		ldy	#$401
+		tfm	X,Y+
+		ldy	#$B00
+		ldw	#$D00-$B01
+		tfm	X,Y+
+		ldy	#$D01
+		ldw	#$8000-$D01
+		tfm	X,Y+
+	ELSE
+		clr	$400
+		ldx	#$400
+		ldy	#$401
+		ldw	#$8000-$401
+		tfm	X,Y+
+	ENDIF
+	ENDIF
 
 
-1	lda	#$80
-	sta	sysvar_RAM_AVAIL
-	sta	sysvar_KEYB_SOFT_CONSISTANCY
+1		lda	#$80
+		sta	sysvar_RAM_AVAIL
+		sta	sysvar_KEYB_SOFT_CONSISTANCY
 
 ;; Don't clear memory if clear memory flag not set
 mos_handle_res_skip_clear_mem2
-	ldb	#$8F				;	DA03
-	stb	sheila_SYSVIA_ddrb		;	DA05
+	IF MACH_BEEB
+		ldb	#$0F				;	DA03
+	ENDIF
+	IF MACH_CHIPKIT
+		ldb	#$8F				;	DA03
+	ENDIF
+		stb	sheila_SYSVIA_ddrb		;	DA05
 
  *************************************************************************
  *                                                                       *
@@ -3718,126 +3919,135 @@ mos_handle_res_skip_clear_mem2
  *       C0 & C1 are involved with hardware scroll screen address        * NOTE: Not used on 6809
  *************************************************************************
 							;B=&F on entry
-1	decb						;loop start
-	stb	sheila_SYSVIA_orb			;Write latch IC32
-	cmpb	#$09					;Is it 9?
-	bhs	1B					;If not go back and do it again
+1		decb						;loop start
+		stb	sheila_SYSVIA_orb			;Write latch IC32
+		cmpb	#$09					;Is it 9?
+		bhs	1B					;If not go back and do it again
 							;B=8 at this point
 							;Caps Lock On, SHIFT Lock undetermined
 							;Keyboard Autoscan on
 							;Sound disabled (may still sound)
-	clr	sysvar_BREAK_LAST_TYPE			;Clear last BREAK flag
-	incb						;B=9
-LDA11	tfr	b,a					;A=B
-	jsr	keyb_check_key_code_API			;Interrogate keyboard
+		clr	sysvar_BREAK_LAST_TYPE			;Clear last BREAK flag
+		incb						;B=9
+LDA11		tfr	b,a					;A=B
+		jsr	keyb_check_key_code_API			;Interrogate keyboard
 ;	cmpb	#$80					; - change this as was reversing C
-	addb	#$80					; - TODO: check works!
+		addb	#$80					; - TODO: check works!
 							;for keyboard links 9-2 and CTRL key (1)
-	ror	zp_mos_INT_A				;rotate MSB into bit 7 of &FC
-	tfr	a,b					;Get back value of X for loop
-	decb						;Decrement it
-	bne	LDA11					;and if >0 do loop again
+		ror	zp_mos_INT_A				;rotate MSB into bit 7 of &FC
+		tfr	a,b					;Get back value of X for loop
+		decb						;Decrement it
+		bne	LDA11					;and if >0 do loop again
 							;On exit if Carry set link 3 is made
 							;link 2 = bit 0 of &FC and so on
 							;If CTRL pressed bit 7 of &FC=1 X=0
-	rol	zp_mos_INT_A				;CTRL is now in carry &FC is keyboard links	
-	jsr	x_Turn_on_Keyboard_indicators		;Set LEDs
+		rol	zp_mos_INT_A				;CTRL is now in carry &FC is keyboard links	
+		jsr	x_Turn_on_Keyboard_indicators		;Set LEDs
 							;Carry set on entry is in bit 0 of A on exit
-	rora						;Get carry back into carry flag
+		rora						;Get carry back into carry flag
 x_set_up_page_2
-	ldx	#$9C					;
-	ldy	#$8D					;
+		ldx	#$9C					;
+		ldy	#$8D					;
 ;;	puls	A					;get back A from &D9DB
 ;;	tsta
 ;;	beq	LDA36					;if A=0 power up reset so DA36 with X=&9C Y=&8D
-	tst	,S+
-	bmi	LDA36
-	ldy	#$7E					;else Y=&7E
-	bcc	x_set_up_page_2_2			;and if not CTRL-BREAK DA42 WARM RESET
-	ldy	#$87					;else Y=&87 COLD RESET
-	inc	sysvar_BREAK_LAST_TYPE			;&28D=1
-LDA36	inc	sysvar_BREAK_LAST_TYPE			;&28D=&28D+1
-	lda	zp_mos_INT_A				;get keyboard links set
-	eora	#$FF					;invert
-	sta	sysvar_STARTUP_OPT			;and store at &28F
-	ldx	#$90					;X=&90
-	
+		tst	,S+
+	IF MACH_CHIPKIT
+		bmi	1F
+	ENDIF
+	IF MACH_BEEB
+		beq	1F
+	ENDIF
+		ldy	#$7E					;else Y=&7E
+		bcc	x_set_up_page_2_2			;and if not CTRL-BREAK DA42 WARM RESET
+		ldy	#$87					;else Y=&87 COLD RESET
+		inc	sysvar_BREAK_LAST_TYPE			;&28D=1
+1		inc	sysvar_BREAK_LAST_TYPE			;&28D=&28D+1
+		lda	zp_mos_INT_A				;get keyboard links set
+		eora	#$FF					;invert
+		sta	sysvar_STARTUP_OPT			;and store at &28F
+		ldx	#$90					;X=&90
+		
 
-	DEBUGPR	"Setup page 2"
+		DEBUG_INFO	"Setup page 2"
 
 ;; : set up page 2; on entry	   &28D=0 Warm reset, X=&9C, Y=&7E ; &28D=1 Power up  , X=&90, Y=&8D ; &28D=2 Cold reset, X=&9C, Y=&87 
 x_set_up_page_2_2
-	clra
+		clra
 x_setup_pg2_lp0	
-	cmpx	#$CE					;zero &200+X to &2CD
-	blo	x_setup_pg2_sk1				;	DA46
-	lda	#$FF					;then set &2CE to &2FF to &FF
+		cmpx	#$CE					;zero &200+X to &2CD
+		blo	x_setup_pg2_sk1				;	DA46
+		lda	#$FF					;then set &2CE to &2FF to &FF
 x_setup_pg2_sk1
-	sta	$200,x					;LDA4A
-	leax	1,x
-	cmpx	#$100
-	bne	x_setup_pg2_lp0			;	DA4E
-	sta	sheila_USRVIA_ddra		;	DA50
+		sta	$200,x					;LDA4A
+		leax	1,x
+		cmpx	#$100
+		bne	x_setup_pg2_lp0			;	DA4E
+		sta	sheila_USRVIA_ddra		;	DA50
 
-	DEBUGPR	"Setup zp"
-	ldx	#zp_cfs_w
-LDA56	clr	,x+					;zero zeropage &E2 to &FF
-	cmpx	#$100
-	bne	LDA56				;	DA59
+		DEBUG_INFO	"Setup zp"
+		ldx	#zp_cfs_w
+LDA56		clr	,x+					;zero zeropage &E2 to &FF
+		cmpx	#$100
+		bne	LDA56				;	DA59
 
-	DEBUGPR	"Setup vectors"
+		DEBUG_INFO	"Setup vectors"
 
+		
 
-LDA5B	lda	vec_table - 1,y			;	DA5B
-	sta	USERV - 1,y			;	DA5E
-	leay	-1,y				;	DA61
-	bne	LDA5B				;	DA62
-	lda	#$62				;	DA64
-	sta	zp_mos_keynumfirst		;	DA66
-	; TODO:ACIA
-;	jsr	LFB0A				;	DA68
+LDA5B		lda	vec_table - 1,y			;	DA5B
+		sta	USERV - 1,y			;	DA5E
+		leay	-1,y				;	DA61
+		bne	LDA5B				;	DA62
+		lda	#$62				;	DA64
+		sta	zp_mos_keynumfirst		;	DA66
+		
+	IF MACH_BEEB
+		jsr	ACIA_reset_from_CTL_COPY				; reset ACIA
+	ENDIF
 
-	DEBUGPR "Setup vias"
+		DEBUG_INFO "Setup vias"
 
 ; clear interrupt and enable registers of Both VIAs
 x_clear_IFR_IER_VIAs
-	ldd	#$7F7F
-	std	sheila_SYSVIA_ifr			; disable and clear interrupts on system
-	std	sheila_USRVIA_ifr			; and user vias
-	clr	-2,S					; clear the stack
-	CLI						; briefly allow interrupts to clear anything pending
-	SEI						; disallow again N.B. All VIA IRQs are disabled
-;;	lda	#$40
-;;	bita	zp_mos_INT_A				; if bit 6=1 then JSR &F055 (normally 0) 
-	tst	-2,S					; if this is set then an interrupt occurred
-	beq	LDA80					; else DA80
-	jsr	[$FDFE]					; if IRQ held low at BREAK then jump to address held in
-							; FDFE (JIM) 
-LDA80	
-	lda	#$F2					;enable interrupts 1,4,5,6 of system VIA
-	sta	sheila_SYSVIA_ier			;
+		ldd	#$7F7F
+		std	sheila_SYSVIA_ifr			; disable and clear interrupts on system
+		std	sheila_USRVIA_ifr			; and user vias
+	;; DB 20180223 - removed this as *legacy*
+;;;		clr	-2,S					; clear the stack
+;;;		CLI						; briefly allow interrupts to clear anything pending
+;;;		SEI						; disallow again N.B. All VIA IRQs are disabled
+;;;;;	lda	#$40
+;;;;;	bita	zp_mos_INT_A				; if bit 6=1 then JSR &F055 (normally 0) 
+;;;		tst	-2,S					; if this is set then an interrupt occurred
+;;;		beq	LDA80					; else DA80
+;;;		jsr	[$FDFE]					; if IRQ held low at BREAK then jump to address held in
+;;;							; FDFE (JIM) 
+;;;LDA80		
+		lda	#$F2					;enable interrupts 1,4,5,6 of system VIA
+		sta	sheila_SYSVIA_ier			;
 							;0      Keyboard enabled as needed
 							;1      Frame sync pulse
 							;4      End of A/D conversion
 							;5      T2 counter (for speech)
 							;6      T1 counter (10 mSec intervals)
 							;
-	lda	#$04					;set system VIA PCR
-	sta	sheila_SYSVIA_pcr			;
+		lda	#$04					;set system VIA PCR
+		sta	sheila_SYSVIA_pcr			;
 							;CA1 to interrupt on negative edge (Frame sync)
-							;CA2 Handshake output for Keyboard
+							;CA2 input pos edge Keyboard
 							;CB1 interrupt on negative edge (end of conversion)
 							;CB2 Negative edge (Light pen strobe)
-	lda	#$60					;                       
-	sta	sheila_SYSVIA_acr			;set system VIA ACR
+		lda	#$60					;                       
+		sta	sheila_SYSVIA_acr			;set system VIA ACR
 							;disable latching
 							;disable shift register
 							;T1 counter continuous interrupts
 							;T2 counter timed interrupt
-	lda	#$0E					;set system VIA T1 counter (Low)
-	sta	sheila_SYSVIA_t1ll			;this becomes effective when T1 hi set
+		lda	#$0E					;set system VIA T1 counter (Low)
+		sta	sheila_SYSVIA_t1ll			;this becomes effective when T1 hi set
 
-	sta	sheila_USRVIA_pcr			;set user VIA PCR
+		sta	sheila_USRVIA_pcr			;set user VIA PCR
 							;CA1 interrupt on -ve edge (Printer Acknowledge)
 							;CA2 High output (printer strobe)
 							;CB1 Interrupt on -ve edge (user port) 
@@ -3847,33 +4057,33 @@ LDA80
 							;Bits 0 & 1 determine channel selected
 							;Bit 3=0 8 bit conversion bit 3=1 12 bit
 
-	cmpa	sheila_USRVIA_pcr			;read user VIA IER if = &0E then DAA2 chip present 
-	beq	LDAA2					;so goto DAA2
-	inc	sysvar_USERVIA_IRQ_MASK_CPY		;else increment user VIA mask to 0 to bar all 
+		cmpa	sheila_USRVIA_pcr		;read user VIA IER if = &0E then DAA2 chip present 
+		beq	LDAA2				;so goto DAA2
+		inc	sysvar_USERVIA_IRQ_MASK_CPY	;else increment user VIA mask to 0 to bar all 
 							;user VIA interrupts
 
-LDAA2	lda	#$27					;set T1 (hi) to &27 this sets T1 to &270E (9998 uS)
-	sta	sheila_SYSVIA_t1lh			;or 10msec, interrupts occur every 10msec therefore
-	sta	sheila_SYSVIA_t1ch			;
+LDAA2		lda	#$27				;set T1 (hi) to &27 this sets T1 to &270E (9998 uS)
+		sta	sheila_SYSVIA_t1lh		;or 10msec, interrupts occur every 10msec therefore
+		sta	sheila_SYSVIA_t1ch		;
 
-	DEBUGPR	"snd_init"
+		DEBUG_INFO	"snd_init"
 
-	jsr	snd_init					;clear the sound channels
+		jsr	snd_init			;clear the sound channels
 
-	;TODO:SERPROC
-;	lda	sysvar_SERPROC_CTL_CPY			;read serial ULA control register
-;	and	#$7F					;zero bit 7
-;	jsr	LE6A7					;and set up serial ULA
+		lda	sysvar_SERPROC_CTL_CPY		;read serial ULA control register
+		anda	#$7F				;zero bit 7
+		jsr	setSerULA			;and set up serial ULA
 
-	tst	sysvar_KEYB_SOFT_CONSISTANCY		;get soft key status flag
-	beq	mos_cat_swroms  ;if 0 (keys OK) then DABD
-	jsr	mos_OSBYTE_18			;else reset function keys
+		tst	sysvar_KEYB_SOFT_CONSISTANCY	;get soft key status flag
+		beq	mos_cat_swroms			;if 0 (keys OK) then DABD
+		jsr	mos_OSBYTE_18			;else reset function keys
 
-
-	DEBUGPR	"catalogue ROMs"
-; Check sideways ROMS and make catalogue; X=0 
-		clrb
 mos_cat_swroms
+		DEBUG_INFO	"catalogue ROMs"
+		clrb
+
+; Check sideways ROMS and make catalogue; X=0 
+mos_cat_swroms_lp
 		jsr	mos_select_SWROM_B		;set up ROM latch and RAM copy to X
 		ldy	#copyright_symbol_backwards+4	;set X to point to offset in table
 		ldb	$8007				;get copyright offset from ROM
@@ -3921,7 +4131,7 @@ mos_cat_swroms_skipvalid				; LDAFF
 mos_cat_swroms_skipnext					;LDB0C
 		incb					;increment X to point to next ROM
 		cmpb	#$10				;is it 15 or less
-		blo	mos_cat_swroms			;if so goto &DABD for next ROM
+		blo	mos_cat_swroms_lp			;if so goto &DABD for next ROM
 
 ;TODO - Speech
 ;; Check SPEECH System; X=&10 
@@ -3936,25 +4146,27 @@ mos_cat_swroms_skipnext					;LDB0C
 ;	stx	sheila_SYSVIA_t2cl		;	DB21
 ;	stx	sheila_SYSVIA_t2ch		;	DB24
 
-	* TODO: DOM - force non interlace mode
-	lda	#1
-	sta	oswksp_VDU_INTERLACE
+		* TODO: DOM - force non interlace mode
+		lda	#1
+		sta	oswksp_VDU_INTERLACE
 
 
 ; SCREEN SET UP; X=0 
 x_SCREEN_SET_UP
-	DEBUGPR "x_SCREEN_SET_UP"
-	lda	sysvar_STARTUP_OPT			;get back start up options (mode)
-	jsr	mos_jump2vdu_init			;then jump to screen initialisation
-	ldy	#$CA					;Y=&CA
-	jsr	x_INSERT_byte_in_Keyboard_buffer	;to enter this in keyboard buffer
+		DEBUG_INFO "x_SCREEN_SET_UP"
+		lda	sysvar_STARTUP_OPT			;get back start up options (mode)
+		jsr	mos_jump2vdu_init			;then jump to screen initialisation
+		ldy	#$CA					;Y=&CA
+		jsr	x_INSERT_byte_in_Keyboard_buffer	;to enter this in keyboard buffer
 							;this enables the *KEY 10 facility
 ;; enter BREAK intercept with Carry Clear
 ;TODO - ROMS
 ;TODO - TUBE
-	jsr	mos_OSBYTE_247
+		jsr	mos_OSBYTE_247
 ;TODO - cassette
-;	jsr	x_set_cassette_options		;	DB35
+;		jsr	x_set_cassette_options		;	DB35
+
+;TODO - TUBE
 ;	lda	#$81				;	DB38
 ;	sta	LFEE0				;	DB3A
 ;	lda	LFEE0				;	DB3D
@@ -3965,57 +4177,59 @@ x_SCREEN_SET_UP
 ;	bne	LDB4D				;	DB48
 ;	dec	sysvar_TUBE_PRESENT		;	DB4A
 ;LDB4D:	
-	ldx	#$0E				;	DB4D
-	ldb	#SERVICE_1_ABSWKSP_REQ		;	DB4F
-	jsr	mos_OSBYTE_143_b_cmd_x_param	;	DB51
-	ldb	#SERVICE_2_RELWKSP_REQ		;	DB54
-	jsr	mos_OSBYTE_143_b_cmd_x_param	;	DB56
-	tfr	X,D
-	stb	sysvar_PRI_OSHWM
-	stb	sysvar_CUR_OSHWM			
+		ldx	#$0E				;	DB4D
+		ldb	#SERVICE_1_ABSWKSP_REQ		;	DB4F
+		jsr	mos_OSBYTE_143_b_cmd_x_param	;	DB51
+		ldb	#SERVICE_2_RELWKSP_REQ		;	DB54
+		jsr	mos_OSBYTE_143_b_cmd_x_param	;	DB56
+		tfr	X,D
+		stb	sysvar_PRI_OSHWM
+		stb	sysvar_CUR_OSHWM			
 ;	ldBBB	#$FE				;	DB5F
 ;	ldy	sysvar_TUBE_PRESENT		;	DB61
 ;	jsr	mos_OSBYTE_143_b_cmd_x_param	;	DB64
 ;	and	sysvar_STARTUP_DISPOPT		;	DB67
 ;	bpl	LDB87				;	DB6A
 
-	jsr	printWelcome1
+		jsr	printWelcome1
 
-	; TODO REMOVE THIS
-	jsr	mos_PRTEXT
-	fcb	"MOS=",0
-	lda	SHEILA_ROMCTL_MOS
-	jsr	PRHEX
-	jsr	OSNEWL
-	jsr	OSNEWL
+	IF MACH_CHIPKIT
+		; TODO REMOVE THIS
+		jsr	mos_PRTEXT
+		fcb	"MOS=",0
+		lda	SHEILA_ROMCTL_MOS
+		jsr	PRHEX
+		jsr	OSNEWL
+		jsr	OSNEWL
+	ENDIF
 
 
-	; TODO - work out memory size and print if a hard reset
+		; TODO - work out memory size and print if a hard reset
 
 LDB87
-	orcc	#CC_C
-	jsr	mos_OSBYTE_247			;look for break intercept jump do *TV etc
-	jsr	mos_OSBYTE_118			;set up LEDs in accordance with keyboard status
+		SEC
+		jsr	mos_OSBYTE_247			;look for break intercept jump do *TV etc
+		jsr	mos_OSBYTE_118			;set up LEDs in accordance with keyboard status
 
 
 
 ;TODO - ROMS
-	; changed from 6502 -> 6809 sign flag is in bit 3
-	tfr	CC,B				; B now contains bit 1=shift
-	aslb
-	aslb					; get it into bit 3
-	eorb	sysvar_STARTUP_OPT		;or with start up options which may or may not
-	andb	#$08				;invert bit 3
-	clra
-	tfr	D,X				; set Y=0 for !BOOT or =8 for no boot
-	ldb	#SERVICE_3_AUTOBOOT
-	jsr	mos_OSBYTE_143_b_cmd_x_param	; pass round to FS ROMS
+		; changed from 6502 -> 6809 sign flag is in bit 3
+		tfr	CC,B				; B now contains bit 1=shift
+		aslb
+		aslb					; get it into bit 3
+		eorb	sysvar_STARTUP_OPT		;or with start up options which may or may not
+		andb	#$08				;invert bit 3
+		clra
+		tfr	D,X				; set Y=0 for !BOOT or =8 for no boot
+		ldb	#SERVICE_3_AUTOBOOT
+		jsr	mos_OSBYTE_143_b_cmd_x_param	; pass round to FS ROMS
 ;	beq	x_Preserve_current_language_on_soft_RESET;	DB9F
 ;	tya					;	DBA1
 ;	bne	x_resettapespeed_enter_lang	;	DBA2
 ;	lda	#$8D				;	DBA4
 ;	jsr	mos_selects_ROM_filing_system	;	DBA6
-	;;; STARRUNPLINGBOOT!!!!
+		;;; STARRUNPLINGBOOT!!!!
 ;	ldx	#$D2				;	DBA9
 ;	ldy	#$EA				;	DBAB
 ;	dec	sysvar_STARTUP_DISPOPT		;	DBAD
@@ -4049,7 +4263,7 @@ mos_SEARCH_FOR_LANGUAGE_TO_ENTER_Highest_priority
 ;	bmi	mos_TUBE_FOUND_enter_tube_software;	DBD8
 ;; no language error
 x_no_language_error
-	DO_BRK	$F9, "Language?"
+		DO_BRK	$F9, "Language?"
 
 
 x_mos_ENTER_ROM_X
@@ -4078,55 +4292,71 @@ x_mos_ENTER_ROM_B
 ;; ----------------------------------------------------------------------------
 ;; TUBE FOUND enter tube software
 mos_TUBE_FOUND_enter_tube_software
-	TODO	"TUBE"
+		TODO	"TUBE"
 ;	jmp	L0400				;	DC08
 
-mos_get_SWROM_B_X_A_API
-	lda	zp_mos_curROM
-	sta	,-S
-	jsr	mos_select_SWROM_B
-	lda	,X
-	ldb	,S+
+mos_OSRDRM
+		pshs 	B
+		tfr	Y,D
+		lda	zp_mos_curROM
+		sta	,-S
+		jsr	mos_select_SWROM_B
+		lda	,X
+		ldb	,S+
+		jsr	mos_select_SWROM_B
+		puls	B,PC
 ;mos_select_SWROM_X:
 mos_select_SWROM_B
-	stb	zp_mos_curROM			;RAM copy of rom latch 
-	stb	SHEILA_ROMCTL_SWR		;write to rom latch
-	rts					;and return
+		stb	zp_mos_curROM			;RAM copy of rom latch 
+		stb	SHEILA_ROMCTL_SWR		;write to rom latch
+		rts					;and return
 ;; ----------------------------------------------------------------------------
 mos_handle_irq
-	jmp	[IRQ1V]				;	DC24
+		jmp	[IRQ1V]				;	DC24
+
+mos_handle_nmi	
+		jmp	[NMI9V]
+mos_handle_swi
+		jmp	[SWI9V]
+mos_handle_swi2
+		jmp	[SW29V]
 ;; ----------------------------------------------------------------------------
 ;; BRK handling routine	- TODO: test for native mode!
 mos_handle_swi3
-	pshs	CC,A,X
-	SEI						; disable interrupts - 6809 doesn't do that for us!
-	ldx	14,S					; points at byte after SWI instruction
-	stx	zp_mos_error_ptr
-	stx	2,S					; set X on return to this
+		pshs	CC,A,X
+		SEI						; disable interrupts - 6809 doesn't do that for us!
+	IF NATIVE
+		ldx	16,S
+	ELSE
+		ldx	14,S					; points at byte after SWI instruction
+	ENDIF
+		stx	zp_mos_error_ptr
+		stx	2,S					; set X on return to this
 
-	lda	zp_mos_curROM				; get currently active ROM
-	sta	sysvar_ROMNO_ATBREAK			; and store it in &24A
-	stx	zp_mos_OSBW_X				; store stack pointer in &F0
-	ldb	#$06					; and issue ROM service call 6
-	jsr	mos_OSBYTE_143_b_cmd_x_param		; (User BRK) to roms
-							; at this point &FD/E point to byte after BRK
-							; ROMS may use BRK for their own purposes 
-	ldb	sysvar_CUR_LANG				; get current language
-	jsr	mos_select_SWROM_B			; and activate it
-	puls	CC,A,X					; restore A,X,CC
-	CLI						; allow interrupts
-	jmp	[BRKV]					; and JUMP via BRKV (normally into current language)
+		lda	zp_mos_curROM				; get currently active ROM
+		sta	sysvar_ROMNO_ATBREAK			; and store it in &24A
+		stx	zp_mos_OSBW_X				; store stack pointer in &F0
+		ldb	#SERVICE_6_BRK				; and issue ROM service call 6
+		jsr	mos_OSBYTE_143_b_cmd_x_param		; (User BRK) to roms
+								; at this point &FD/E point to byte after BRK
+								; ROMS may use BRK for their own purposes 
+		ldb	sysvar_CUR_LANG				; get current language
+		jsr	mos_select_SWROM_B			; and activate it
+		puls	CC,A,X					; restore A,X,CC
+		CLI						; allow interrupts
+		jmp	[BRKV]					; and JUMP via BRKV (normally into current language)
 ;; ----------------------------------------------------------------------------
 ;; DEFAULT BRK HANDLER
 mos_DEFAULT_BRK_HANDLER
-	ldy	zp_mos_error_ptr
-	jsr	printAtY				;print message - including error number - TODO - is this right?
-	lda	sysvar_STARTUP_DISPOPT			;if BIT 0 set and DISC EXEC error
-	rora						;occurs
-LDC5D	bcs	LDC5D					;hang up machine!!!!
-	jsr	OSNEWL					;else print two newlines
-	jsr	OSNEWL					;
-	jmp	x_resettapespeed_enter_lang		;and set tape speed before entering current
+		ldy	zp_mos_error_ptr
+		leay	1,Y
+		jsr	printAtY				;print message - including error number - TODO - is this right?
+		lda	sysvar_STARTUP_DISPOPT			;if BIT 0 set and DISC EXEC error
+		rora						;occurs
+LDC5D		bcs	LDC5D					;hang up machine!!!!
+		jsr	OSNEWL					;else print two newlines
+		jsr	OSNEWL					;
+		jmp	x_resettapespeed_enter_lang		;and set tape speed before entering current
 							;language 
 ;; ----------------------------------------------------------------------------
 ;LDC68:	sec					;	DC68
@@ -4152,11 +4382,13 @@ LDC5D	bcs	LDC5D					;hang up machine!!!!
 ;; ----------------------------------------------------------------------------
 ;; Main IRQ Handling routines, default IRQIV destination
 mos_IRQ1V_default_entry				; LDC93
-	; TODO ACIA
+		; TODO ACIA
+
+
 ;LDCA2:	lda	LFE08				;get value of status register of ACIA
 ;	bvs	LDCA9				;if parity error then DCA9
 ;	bpl	mos_VIA_INTERUPTS_ROUTINES	;else if no interrupt requested DD06
-	bra	mos_VIA_INTERUPTS_ROUTINES
+		bra	mos_VIA_INTERUPTS_ROUTINES
 ;LDCA9:	ldx	zp_mos_rs423timeout		;read RS423 timeout counter
 ;	dex					;decrement it
 ;	bmi	LDCDE				;and if <0 DCDE
@@ -4185,7 +4417,7 @@ mos_IRQ1V_default_entry				; LDC93
 ;	lda	#$E7				;set timeout counter to stored value
 ;	sta	zp_mos_rs423timeout		;
 LDCDDrti
-	rti					;and exit (to DE82)
+		rti					;and exit (to DE82)
 ;; ----------------------------------------------------------------------------
 						;A contains ACIA status
 ;LDCDE:	and	sysvar_ACIA_IRQ_MASK_CPY	;AND with ACIA bit mask (normally FF)
@@ -4246,8 +4478,8 @@ LDD3D		ldy	#$04				;Y=4 and call E494 to check and implement vertical
 ;; ----------------------------------------------------------------------------
 ;; PRINTER INTERRUPT USER VIA 1
 mos_PRINTER_INTERRUPT_USER_VIA_1
-	
-	;TODO printer interrupts
+		
+		;TODO printer interrupts
 		bra	issue_unknown_interrupt
 
 
@@ -4411,9 +4643,9 @@ LDE3E		;TODO PRINTER
 ;; ----------------------------------------------------------------------------
 ;; SYSTEM INTERRUPT 4 ADC end of conversion
 irq_adc_EOC
-	rola						;put original bit 4 from FE4D into bit 7 of A
-	bpl	irq_keyboard ;if not set DE72
-	;TODO ADC / CB1
+		rola						;put original bit 4 from FE4D into bit 7 of A
+		bpl	irq_keyboard ;if not set DE72
+		;TODO ADC / CB1
 
 ;LDE4A:	ldx	sysvar_ADC_CUR			;else get current ADC channel
 ;	beq	LDE6C				;if 0 DE6C
@@ -4429,10 +4661,10 @@ irq_adc_EOC
 ;	bne	LDE69				;if X=0
 ;	ldx	sysvar_ADC_MAX			;get highest ADC channel preseny
 ;LDE69:	jsr	LDE8F				;and start new conversion
-LDE6C	lda	#$10				;rest interrupt 4
+LDE6C		lda	#$10				;rest interrupt 4
 irq_set_sysvia_ifr_rti				; LDE6E
-	sta	sheila_SYSVIA_ifr		; reset SYS VIA IFR
-	rti					; finished interrupts
+		sta	sheila_SYSVIA_ifr		; reset SYS VIA IFR
+		rti					; finished interrupts
 ;; ----------------------------------------------------------------------------
 ;; SYSTEM INTERRUPT 0 Keyboard;	
 irq_keyboard					; LDE72
@@ -4448,7 +4680,7 @@ LDE7F		jmp	issue_unknown_interrupt
 ;; ----------------------------------------------------------------------------
 ;; IRQ2V default entry
 mos_IRQ2V_default_entry
-	rti					;	DE8B
+		rti					;	DE8B
 
 *************************************************************************
 *                                                                       *
@@ -4475,41 +4707,47 @@ LDE8F		;;m_txb
 						;
 ;; ----------------------------------------------------------------------------
 printWelcome1
-	lda	vduvar_COL_COUNT_MINUS1
-	beq	printWelcomeMO7
-	lda	#$0D
-	jsr	OSASCI
-	tst	vduvar_MODE
-	beq	printWelcomeMO0
-	ldx	#mc_logo
-	jsr	render_logox2
-	ldy	#mos_welcome_msg + 1
-	jsr	printAtY
-	lda	#$0D
-	jsr	OSASCI
-	ldx	#mc_logo  + 16
-	jsr	render_logox2
-	lda	#$0D
-	jmp	OSASCI
+		lda	vduvar_MODE
+		beq	printWelcomeMO0
+		cmpa	#7
+		beq	printWelcomeMO7
+		cmpa	#6
+		beq	printWelcomeMO36
+		cmpa	#3
+		beq	printWelcomeMO36
+		ldx	#mc_logo
+		jsr	render_logox2
+		ldy	#mos_welcome_msg
+		jsr	printAtY
+		ldx	#mc_logo  + 16
+		jsr	render_logox2
+		bra	1F
 printWelcomeMO0
-	ldx	#mc_logo_0
-	jsr	render_logox4
-	ldy	#mos_welcome_msg + 1
-	jsr	printAtY
-	lda	#$0D
-	jsr	OSASCI
-	ldx	#mc_logo_0  + 32
-	jsr	render_logox4
-	lda	#$0D
-	jmp	OSASCI
+		ldx	#mc_logo_0
+		jsr	render_logox4
+		ldy	#mos_welcome_msg
+		jsr	printAtY
+		ldx	#mc_logo_0  + 32
+		jsr	render_logox4
+1		ldy	#mos_version
+2		jsr	printAtY
+		jsr	OSNEWL
+		jmp	OSNEWL
 printWelcomeMO7
-	ldy	#mos_welcome_msg
+		ldy	#mos_welcome_msg7
+		jsr	printAtY
+		ldy	#mos_version7
+		bra	2B
+printWelcomeMO36
+		ldy	#mos_welcome_msg
+		jsr	printAtY
+		bra	1B
 printAtY					; LDEB1
-	lda	,y+
-	jsr	OSASCI
-	tsta
-	bne	printAtY
-	rts
+		lda	,y+
+		beq	1F
+		jsr	OSASCI
+		bra	printAtY
+1		rts
 ;; ----------------------------------------------------------------------------
 ;; OSBYTE 129 TIMED ROUTINE; ON ENTRY TIME IS IN X,Y 
 x_OSBYTE_129
@@ -4552,12 +4790,12 @@ mos_RDCHV_return_SEC_ESC				; LDF00
 		lda	#$1B				; return ESCAPE
 		bra	mos_RDCHV_char_found
 mos_RDCHV_return_CS_restore_A				;	LDF05	 - not changed order
-		lda	zp_mos_OS_wksp2
+		lda	zp_mos_OS_wksp
 mos_RDCHV_char_found					;	LDF03
 		puls	B,X,Y,PC
 ;; ----------------------------------------------------------------------------
 copyright_symbol_backwards			; LDF0C
-	FCB	")C(",0
+		FCB	")C(",0
 
 STARCMD		MACRO
 		FCB	\1
@@ -4570,108 +4808,114 @@ STARCMDx	MACRO
 		ENDM
 
 mostbl_star_commands
-	STARCMD	"."	,mos_jmp_FSCV		,$05	; *.        &E031, A=5     FSCV, X=>String
-	STARCMD	"FX"	,mos_STAR_FX		,$FF	; *FX       &E342, A=&FF   Number parameters
-	STARCMD	"BASIC"	,mos_STAR_BASIC		,$00	; *BASIC    &E018, A=0     X=>String
-	STARCMD	"CAT"	,mos_jmp_FSCV		,$05	; *CAT      &E031, A=5     FSCV, X=>String
-	STARCMD	"CODE"	,mos_STAR_OSBYTE_A	,$88	; *CODE     &E348, A=&88   OSBYTE &88
-	STARCMD	"EXEC"	,mos_STAR_EXEC		,$00	; *EXEC     &F68D, A=0     X=>String
-	STARCMD	"HELP"	,mos_STAR_HELP		,$FF	; *HELP     &F0B9, A=&FF   F2/3=>String
-	STARCMD	"KEY"	,mos_STAR_KEY		,$FF	; *KEY      &E327, A=&FF   F2/3=>String
-	STARCMD	"LOAD"	,mos_STAR_LOAD		,$00	; *LOAD     &E23C, A=0     X=>String
-	STARCMD	"LINE"	,mos_jmp_USERV		,$01	; *LINE     &E659, A=1     USERV, X=>String
+		STARCMD	"."	,mos_jmp_FSCV		,$05	; *.        &E031, A=5     FSCV, X=>String
+		STARCMD	"FX"	,mos_STAR_FX		,$FF	; *FX       &E342, A=&FF   Number parameters
+		STARCMD	"BASIC"	,mos_STAR_BASIC		,$00	; *BASIC    &E018, A=0     X=>String
+		STARCMD	"CAT"	,mos_jmp_FSCV		,$05	; *CAT      &E031, A=5     FSCV, X=>String
+		STARCMD	"CODE"	,mos_STAR_OSBYTE_A	,$88	; *CODE     &E348, A=&88   OSBYTE &88
+		STARCMD	"EXEC"	,mos_STAR_EXEC		,$00	; *EXEC     &F68D, A=0     X=>String
+		STARCMD	"HELP"	,mos_STAR_HELP		,$FF	; *HELP     &F0B9, A=&FF   F2/3=>String
+		STARCMD	"KEY"	,mos_STAR_KEY		,$FF	; *KEY      &E327, A=&FF   F2/3=>String
+		STARCMD	"LOAD"	,mos_STAR_LOAD		,$00	; *LOAD     &E23C, A=0     X=>String
+		STARCMD	"LINE"	,mos_jmp_USERV		,$01	; *LINE     &E659, A=1     USERV, X=>String
 ;;;	STARCMD	"MOTOR'	,mos_STAR_OSBYTE_A	,$89	; *MOTOR    &E348, A=&89   OSBYTE
-	STARCMD	"OPT"	,mos_STAR_OSBYTE_A	,$8B	; *OPT      &E348, A=&8B   OSBYTE
-	STARCMD	"RUN"	,mos_jmp_FSCV		,$04	; *RUN      &E031, A=4     FSCV, X=>String
-	STARCMD	"ROM"	,mos_STAR_OSBYTE_A	,$8D	; *ROM      &E348, A=&8D   OSBYTE
-	STARCMD	"SAVE"	,mos_STAR_SAVE		,$00	; *SAVE     &E23E, A=0     X=>String
-	STARCMD	"SPOOL"	,mos_STAR_SPOOL		,$00	; *SPOOL    &E281, A=0     X=>String
+		STARCMD	"OPT"	,mos_STAR_OSBYTE_A	,$8B	; *OPT      &E348, A=&8B   OSBYTE
+		STARCMD	"RUN"	,mos_jmp_FSCV		,$04	; *RUN      &E031, A=4     FSCV, X=>String
+		STARCMD	"ROM"	,mos_STAR_OSBYTE_A	,$8D	; *ROM      &E348, A=&8D   OSBYTE
+		STARCMD	"SAVE"	,mos_STAR_SAVE		,$00	; *SAVE     &E23E, A=0     X=>String
+		STARCMD	"SPOOL"	,mos_STAR_SPOOL		,$00	; *SPOOL    &E281, A=0     X=>String
+	IF NOICE
+		STARCMD	"SWI"	,mos_STAR_SWI		,$00
+	ENDIF
+
 ;;;	STARCMD	"TAPE'	,mos_STAR_OSBYTE_A	,$8C	; *TAPE     &E348, A=&8C   OSBYTE
-	STARCMD "TIME"	,mos_STAR_TIME		,$00	; *TIME
-	STARCMD	"TV"	,mos_STAR_OSBYTE_A	,$90	; *TV       &E348, A=&90   OSBYTE
-	STARCMDx	mos_jmp_FSCV		,$03	; Unmatched &E031, A=3     FSCV, X=>String
-	FCB	00					; Table end marker
+	IF MACH_CHIPKIT
+		STARCMD "TIME"	,mos_STAR_TIME		,$00	; *TIME
+	ENDIF
+		STARCMD	"TV"	,mos_STAR_OSBYTE_A	,$90	; *TV       &E348, A=&90   OSBYTE
+		STARCMDx	mos_jmp_FSCV		,$03	; Unmatched &E031, A=3     FSCV, X=>String
+		FCB	00					; Table end marker
 
 mos_CLIV_default_handler			; LDF89
-	stx	zp_mos_txtptr			; store text pointer
+		stx	zp_mos_txtptr			; store text pointer
 ;;;	sty	zp_mos_txtptr+1			; not needed in 6809
-	lda	#$08				; indicate operation to FSCV
-	jsr	mos_jmp_FSCV			; inform FS of *command
-	ldx	zp_mos_txtptr
-	ldb	#0
-1	lda	,x+
-	cmpa	#$D
-	beq	cli_term_ok
-	incb
-	bne	1B
-	rts					; return - no terminating $D found in 256 chars
+		lda	#$08				; indicate operation to FSCV
+		jsr	mos_jmp_FSCV			; inform FS of *command
+		ldx	zp_mos_txtptr
+		ldb	#0
+1		lda	,x+
+		cmpa	#$D
+		beq	cli_term_ok
+		incb
+		bne	1B
+		rts					; return - no terminating $D found in 256 chars
 cli_term_ok					;LDF9E
-	ldx	zp_mos_txtptr			;	DF9E
-1	jsr	mos_skip_spaces_at_X		; Skip any spaces
-	beq	LE017rts			; Exit if at CR
-	cmpa	#'*'				; Is this character '*'?
-	beq	1B				; Loop back to skip it, and check for spaces again
+		ldx	zp_mos_txtptr			;	DF9E
+1		jsr	mos_skip_spaces_at_X		; Skip any spaces
+		beq	LE017rts			; Exit if at CR
+		cmpa	#'*'				; Is this character '*'?
+		beq	1B				; Loop back to skip it, and check for spaces again
 
-	cmpa	#$0D				; check for CR
-	beq	LE017rts			; Exit if at CR
-	cmpa 	#'|'				; Is it '|' - a comment
-	beq	LE017rts			; Exit if so
-	cmpa	#'/'				; Is it '/' - pass straight to filing system
-	bne	LDFBE				; Jump forward if not
+		cmpa	#$0D				; check for CR
+		beq	LE017rts			; Exit if at CR
+		cmpa 	#'|'				; Is it '|' - a comment
+		beq	LE017rts			; Exit if so
+		cmpa	#'/'				; Is it '/' - pass straight to filing system
+		bne	LDFBE				; Jump forward if not
 ;;;	iny					; Move past the '/'
 ;;;	jsr	LE009				; Convert &F2/3,Y->XY, ignore returned A
 ;;;	tfr	Y,X				; move Y to X, already have Y pointing after /
-	lda	#$02				; 2=RunSlashCommand
-	bra	mos_jmp_FSCV			; Jump to pass to FSCV
+		lda	#$02				; 2=RunSlashCommand
+		bra	mos_jmp_FSCV			; Jump to pass to FSCV
 
-LDFBE	leax	-1,X				; point back at start of command
-	stx	zp_mos_X			; Store offset to start of command
-	ldy	#mostbl_star_commands		; point Y at commands table
-	bra	LDFD7				; start searching
-LDFC4	eora	,Y+				; compare chars
-	anda	#$DF				; case insensitive
-	bne	cli_skip_end			; if ne skip to end of current table entry
-	SEC					;	DFCC
-LDFCD	bcc	LDFF4				;	DFCD
+LDFBE		leax	-1,X				; point back at start of command
+		stx	zp_mos_X			; Store offset to start of command
+		ldy	#mostbl_star_commands		; point Y at commands table
+		bra	LDFD7				; start searching
+LDFC4		eora	,Y+				; compare chars
+		anda	#$DF				; case insensitive
+		bne	cli_skip_end			; if ne skip to end of current table entry
+		SEC					;	DFCC
+LDFCD		bcc	LDFF4				;	DFCD
 ;	inx					;	DFCF
-	lda	,X+				;	DFD0
-	jsr	mos_CHECK_FOR_ALPHA_CHARACTER	;	DFD2
-	bcc	LDFC4				;	DFD5
-	leax	-1,X				; backup one and check below if it was a .
-	CLC					; indicate "found"
-LDFD7	lda	,Y+				;	DFD7
-	bmi	LDFF2				;	DFDA
-	lda	,X+				;	DFDC
-	cmpa	#'.'				;	DFDE
-	beq	cli_abbrev			;	DFE0
+		lda	,X+				;	DFD0
+		jsr	mos_CHECK_FOR_ALPHA_CHARACTER	;	DFD2
+		bcc	LDFC4				;	DFD5
+		leax	-1,X				; backup one and check below if it was a .
+		CLC					; indicate "found"
+LDFD7		lda	,Y+				;	DFD7
+		bmi	LDFF2				;	DFDA
+		lda	,X+				;	DFDC
+		cmpa	#'.'				;	DFDE
+		beq	cli_abbrev			;	DFE0
 cli_skip_end	
-	SEC					; indicate a "not found situation"
-	ldx	zp_mos_X			; reload X to start of command buffer
+		SEC					; indicate a "not found situation"
+		ldx	zp_mos_X			; reload X to start of command buffer
 cli_abbrev					; LDFE6
 cli_abbrev_loop					; LDFE8
-	leay	1,Y				; 
-	lda	-2,Y				; get last byte of name in table
-	beq	cli_uk_command			; if 0 we're at the end of the table
-	bpl	cli_abbrev_loop			; if +ve continue to skip 
-	leay	1,Y				; skip over "A" column
-	bmi	LDFCD				; if -ve we've reached a command pointer
-LDFF2	leay	2,Y				;	DFF2
-LDFF4	leay	-3,Y				;	DFF4
-	ldb	1,Y
-	pshs	D
+		leay	1,Y				; 
+		lda	-2,Y				; get last byte of name in table
+		beq	cli_uk_command			; if 0 we're at the end of the table
+		bpl	cli_abbrev_loop			; if +ve continue to skip 
+		leay	1,Y				; skip over "A" column
+		bmi	LDFCD				; if -ve we've reached a command pointer
+LDFF2		leay	2,Y				;	DFF2
+LDFF4		leay	-3,Y				;	DFF4
+		ldb	1,Y
+		pshs	D
 ;;	pha					;	DFF6
 ;;	lda	LDF11,x				;	DFF7
 ;;	pha					;	DFFA
-	jsr	mos_skip_spaces_at_X		;	DFFB
-	leax	-1,X				; point Y back at last char
-	CLC					;	DFFE
-	pshs	CC				;	DFFF
-	jsr	cli_get_params			;	E000
-	puls	CC,PC				;	E003
+		jsr	mos_skip_spaces_at_X		;	DFFB
+		leax	-1,X				; point Y back at last char
+		CLC					;	DFFE
+		pshs	CC				;	DFFF
+		jsr	cli_get_params			;	E000
+		puls	CC,PC				;	E003
 ;; ----------------------------------------------------------------------------
 cli_get_params					; LE004
-	lda	2,Y				; get "A" column from table
-	bmi	LE017rts			; if -ve just go
+		lda	2,Y				; get "A" column from table
+		bmi	LE017rts			; if -ve just go
 ;;	tfr	Y,X				; return X as text pointer (to command tail)
 ;LE009:	tya					; else
 ;	ldy	LDF12,x				;	E00A
@@ -4682,263 +4926,278 @@ cli_get_params					; LE004
 ;	ldy	zp_mos_txtptr+1			;	E012
 ;	bcc	LE017rts				;	E014
 ;	iny					;	E016
-	andcc	#~CC_Z				; DB: not sure this is needed but *EXEC expects Z clear on entry!
+		CLZ				; DB: not sure this is needed but *EXEC expects Z clear on entry!
 LE017rts
-	rts					;	E017
+		rts					;	E017
 
+	IF NOICE
+; enter the debugger can run * commands in Noice and pass paramaters here
+; this is better than just pressing the debug button where the utility might
+; return into the middle of an interrupt routine or be nested in an OS call.
+mos_STAR_SWI
+		swi					; invoke NoICE
+		rts
+	ENDIF
 ;; ----------------------------------------------------------------------------
-mos_STAR_BASIC					; LE018
-	ldb	sysvar_ROMNO_BASIC		; get BASIC rom no
-	bmi	cli_uk_command			; if minus then unknown command
-	SEC					; else
-	jmp	x_mos_ENTER_ROM_B		; enter language
+mos_STAR_BASIC						; LE018
+		ldb	sysvar_ROMNO_BASIC		; get BASIC rom no
+		bmi	cli_uk_command			; if minus then unknown command
+		SEC					; else
+		jmp	x_mos_ENTER_ROM_B		; enter language
 ;; ----------------------------------------------------------------------------
-cli_uk_command					; LE021
-	ldx	zp_mos_X			; Get back pointer to start of command
-	ldb	#SVC_OSCLI_UK			; issue service call to ROMs
-	jsr	mos_OSBYTE_143_b_cmd_x_param	;
-	beq	LE017rts			; if handled exit
-	ldx	zp_mos_X			; else get back pointer
-	lda	#FSCV_CODE_OSCLI_UK		; and issue to current FS
-mos_jmp_FSCV					; LE031	
-	jmp	[FSCV]				;	E031
+cli_uk_command						; LE021
+		ldx	zp_mos_X			; Get back pointer to start of command
+		ldb	#SERVICE_4_UKCMD		; issue service call to ROMs
+		jsr	mos_OSBYTE_143_b_cmd_x_param	;
+		beq	LE017rts			; if handled exit
+		ldx	zp_mos_X			; else get back pointer
+		lda	#FSCV_CODE_OSCLI_UK		; and issue to current FS
+mos_jmp_FSCV						; LE031	
+		jmp	[FSCV]				;	E031
 ;; ----------------------------------------------------------------------------
-LE034	
-	asla					;	E034
-LE035	anda	#$01				;	E035
-	bra	mos_jmp_FSCV			;	E037
+LE034		
+		asla					;	E034
+LE035		anda	#$01				;	E035
+		bra	mos_jmp_FSCV			;	E037
 
 mos_skip_spaces_at_X				; LE03A
-1	lda	,x+				;	E03A
-	cmpa	#' '				;	E03C
-	beq	1B				;	E03E
-LE040	cmpa	#$0D				;	E040
-	rts					;	E042
+1		lda	,x+				;	E03A
+		cmpa	#' '				;	E03C
+		beq	1B				;	E03E
+LE040		cmpa	#$0D				;	E040
+		rts					;	E042
 ;;; ----------------------------------------------------------------------------NEEDED BY HEX PARSER FOR *LOAD/SAVE
 mos_skip_spaces_at_X_eqCOMMAorCR_whenCS
-	bcc	mos_skip_spaces_at_X				;	E043
+		bcc	mos_skip_spaces_at_X				;	E043
 mos_skip_spaces_at_X_eqCOMMAorCR
-	jsr	mos_skip_spaces_at_X				;	E045
-	cmpa	#','				;	E048
-	bne	LE040				;	E04A
-	bra	mos_skip_spaces_at_X
+		jsr	mos_skip_spaces_at_X				;	E045
+		cmpa	#','				;	E048
+		bne	LE040				;	E04A
+		bra	mos_skip_spaces_at_X
 ;;	rts					;	E04D
 ;; ----------------------------------------------------------------------------
-	; api change number returned in B instead of X, use X as pointer
+		; api change number returned in B instead of X, use X as pointer
 cli_parse_number_API2
-	leax	-1,X
+		leax	-1,X
 cli_parse_number_API					; LE04E
-	jsr	mos_skip_spaces_at_X
-	jsr	cli_parse_number_isdigit	;	E051
-	bcc	2F				;	E054
-	tfr	a,b
-	stb	zp_mos_OS_wksp			;	E056
-1	jsr	cli_parse_number_next_isdigit	;	E058
-	bcc	LE076				;	E05B
-	sta	,-S
-	lda	zp_mos_OS_wksp
-	ldb	#10
-	mul
-	tsta
-	bne	LE08Dclcrts			; overflowed into A
-	addb	,S+
-	bcs	LE08Dclcrts			; overflowed 
-	stb	zp_mos_OS_wksp
-	bra	1B
-LE076	cmpa	#$0D				;	E078
-	SEC					;	E07A
-2	leax	-1,X
-	rts
+		jsr	mos_skip_spaces_at_X
+		jsr	cli_parse_number_isdigit	;	E051
+		bcc	2F				;	E054
+		tfr	a,b
+		stb	zp_mos_OS_wksp			;	E056
+1		jsr	cli_parse_number_next_isdigit	;	E058
+		bcc	LE076				;	E05B
+		sta	,-S
+		lda	zp_mos_OS_wksp
+		ldb	#10
+		mul
+		tsta
+		bne	LE08Dclcrts			; overflowed into A
+		addb	,S+
+		bcs	LE08Dclcrts			; overflowed 
+		stb	zp_mos_OS_wksp
+		bra	1B
+LE076		cmpa	#$0D				;	E078
+		SEC					;	E07A
+2		leax	-1,X
+		rts
 ;; ----------------------------------------------------------------------------
 ;LE07C:	iny					;	E07C
 ;LE07D:	lda	(zp_mos_txtptr),y		;	E07D
 cli_parse_number_next_isdigit
-	lda	,X+
+		lda	,X+
 cli_parse_number_isdigit
-	cmpa	#'0'				;	E083
-	blo	LE08Dclcrts			;	E085
-	cmpa	#'9'+1				;	E07F
-	bhs	LE08Dclcrts			;	E081
-	anda	#$0F				;	E087
-	rts					; returns with carry set indicating a valid number
+		cmpa	#'0'				;	E083
+		blo	LE08Dclcrts			;	E085
+		cmpa	#'9'+1				;	E07F
+		bhs	LE08Dclcrts			;	E081
+		anda	#$0F				;	E087
+		rts					; returns with carry set indicating a valid number
 ;; ----------------------------------------------------------------------------
-LE08A	jsr	mos_skip_spaces_at_X_eqCOMMAorCR			;	E08A
+LE08A		leax 	-1,X
+		jsr	mos_skip_spaces_at_X_eqCOMMAorCR			;	E08A
 LE08Dclcrts
-	CLC					;	E08D
-	rts					;	E08E
+		CLC					;	E08D
+		rts					;	E08E
 ;; ----------------------------------------------------------------------------
 x_CheckDigitatXisHEX					; LE08F
-	jsr	cli_parse_number_next_isdigit		; 
-	bcs	LE0A2					; if Carry set then its a 0-9 number
-	leax	-1,X
-	anda	#$DF					;	E094
-	cmpa	#$47					;	E096
-	bhs	LE08A					;	E098
-	cmpa	#$41					;	E09A
-	blo	LE08A					;	E09C
-	suba	#$37					;	E09F
+		jsr	cli_parse_number_next_isdigit		; 
+		bcs	LE0A2					; if Carry set then its a 0-9 number
+;		leax	-1,X
+		anda	#$DF					;	E094
+		cmpa	#$47					;	E096
+		bhs	LE08A					;	E098
+		cmpa	#$41					;	E09A
+		blo	LE08A					;	E09C
+		suba	#$37					;	E09F
 LE0A2
-	SEC
-	rts						;	E0A3
+		SEC
+		rts						;	E0A3
 ;; ----------------------------------------------------------------------------
 mos_WRCH_default_entry
-	pshs	D,X,Y
-	; TODO:ECONET
-;	tst	sysvar_ECO_OSWRCH_INTERCEPT	;	E0AE
-;	bpl	LE0BB				;	E0B1
-;	tay					;	E0B3
-;	lda	#$04				;	E0B4
-;	jsr	LE57E				;	E0B6
-;	bcs	LE10D				;	E0B9
+		pshs	D,X,Y
+		; TODO:ECONET
+;	tst	sysvar_ECO_OSWRCH_INTERCEPT		; Check OSWRCH interception flag
+;	bpl	LE0BB					; Not set, skip interception call
+;	tay						; Pass character to Y
+;	lda	#$04					; A=4 for OSWRCH call
+;	jsr	LE57E					; Call interception code
+;	bcs	LE10D					; If claimed, jump past to exit
 ;LE0BB:	
-	tim	#$02, sysvar_OUTSTREAM_DEST
-;;;	ldb	#$02				;	E0BC
-;;;	bitb	sysvar_OUTSTREAM_DEST		;	E0BE
-	bne	LE0C8				;	E0C1
-	jsr	mos_VDU_WRCH			;	E0C5
+	IF CPU_6809
+		ldb	#$02				;	E0BC
+		bitb	sysvar_OUTSTREAM_DEST		;	E0BE
+	ELSE
+		tim	#$02, sysvar_OUTSTREAM_DEST
+	ENDIF
+		bne	LE0C8				;	E0C1
+		jsr	mos_VDU_WRCH			;	E0C5
 LE0C8
-;	lda	#$08				;	E0C8
-;	bit	sysvar_OUTSTREAM_DEST		;	E0CA
-;	bne	LE0D1				;	E0CD
-;	bcc	LE0D6				;	E0CF
-;LE0D1	lda	0,S
-;	jsr	mos_PRINTER_DRIVER		;	E0D3
-;LE0D6	lda	sysvar_OUTSTREAM_DEST		;	E0D6
-;	ror	a				;	E0D9
-;	bcc	LE0F7				;	E0DA
-;	ldy	zp_mos_rs423timeout		;	E0DC
-;	dey					;	E0DE
-;	bpl	LE0F7				;	E0DF
-;	pla					;	E0E1
-;	pha					;	E0E2
-;	php					;	E0E3
-;	sei					;	E0E4
-;	ldx	#$02				;	E0E5
-;	pha					;	E0E7
-;	jsr	mos_OSBYTE_152			;	E0E8
-;	bcc	LE0F0				;	E0EB
-;	jsr	LE170				;	E0ED
-;LE0F0:	pla					;	E0F0
-;	ldx	#$02				;	E0F1
-;	jsr	x_INSV_flashiffull;	E0F3
-;	plp					;	E0F6
-;LE0F7:	lda	#$10				;	E0F7
-;	bit	sysvar_OUTSTREAM_DEST		;	E0F9
-;	bne	LE10D				;	E0FC
-;	ldy	sysvar_SPOOL_FILE		;	E0FE
-;	beq	LE10D				;	E101
-;	pla					;	E103
-;	pha					;	E104
-;	sec					;	E105
-;	ror	zp_mos_cfs_critical		;	E106
-;	jsr	OSBPUT				;	E108
-;	lsr	zp_mos_cfs_critical		;	E10B
-;LE10D:	
-	puls	D,X,Y,PC
+		; TODO:PRINTER
+	ldb	#$08				; Check output destination
+	bitb	sysvar_OUTSTREAM_DEST		; Is printer seperately enabled?
+	bne	LE0D1				; Yes, jump to call printer driver
+	bcc	LE0D6				; Carry clear, don't sent to printer
+LE0D1	;;lda	0,S				; Get character back
+	;;					; Resave character
+	jsr	mos_PRINTER_DRIVER		; Call printer driver
+LE0D6	lda	sysvar_OUTSTREAM_DEST		; Check output destination
+	rora					; Is serial output enabled?
+	bcc	LE0F7				; No, skip past serial output
+	ldb	zp_mos_rs423timeout		; Get serial timout counter
+	decb					; Decrease counter
+	bpl	LE0F7				; Timed out, skip past serial code
+	
+	pshs	CC				; Save IRQs
+	SEI					; Disable IRQs
+	ldx	#$02				; X=2 for serial output buffer
+	jsr	mos_OSBYTE_152			; Examine serial output buffer
+	bcc	LE0F0				; Buffer not full, jump to send character
+	jsr	LE170				; Wait for buffer to empty a bit
+LE0F0	lda	1,S				; Get character back
+	ldx	#$02				; X=2 for serial output buffer
+	jsr	x_INSV_flashiffull		; Send character to serial output buffer
+	puls	CC				; Restore IRQs
+LE0F7	lda	#$10				; Check output destination
+	bita	sysvar_OUTSTREAM_DEST		; Is SPOOL output disabled?
+	bne	LE10D				; Yes, skip past SPOOL output
+	clra
+	ldb	sysvar_SPOOL_FILE		; Get SPOOL handle
+	beq	LE10D
+	tfr	D,Y
+	lda	,S				; Get character back
+	SEC					;	E105
+	ror	zp_mos_cfs_critical		; Set RFS/CFS's 'spooling' flag
+	jsr	OSBPUT				; Write character to SPOOL channel
+	lsr	zp_mos_cfs_critical		; Reset RFS/CFS's 'spooling' flag
+LE10D	puls	D,X,Y,PC
 
 ;; ----------------------------------------------------------------------------
 ;; PRINTER DRIVER; A=character to print 
-;mos_PRINTER_DRIVER:
-;	bit	sysvar_OUTSTREAM_DEST		;	E114
-;	bvs	LE139				;	E117
-;	cmp	sysvar_PRINT_IGNORE		;	E119
-;	beq	LE139				;	E11C
+mos_PRINTER_DRIVER
+	ldb	#$40
+	bitb	sysvar_OUTSTREAM_DEST		;if bit 6 of VDU byte =1 printer is disabled
+	bne	LE139				;so E139
+	cmpa	sysvar_PRINT_IGNORE		;compare with printer ignore character
+	beq	LE139				;if the same E139
 LE11E
-	TODO	"PRINTER"
-;	php					;	E11E
-;	sei					;	E11F
-;	tax					;	E120
-;	lda	#$04				;	E121
-;	bit	sysvar_OUTSTREAM_DEST		;	E123
-;	bne	LE138				;	E126
-;	txa					;	E128
-;	ldx	#$03				;	E129
-;	jsr	x_INSV_flashiffull;	E12B
-;	bcs	LE138				;	E12E
-;	bit	mosbuf_buf_busy+3		;	E130
-;	bpl	LE138				;	E133
-;	jsr	LE13A				;	E135
-;LE138:	plp					;	E138
-;LE139:	rts					;	E139
+	pshs	CC				;else save flags
+	SEI					;bar interrupts 
+;;	tax					;X=A
+	ldb	#$04				;
+	bitb	sysvar_OUTSTREAM_DEST		;read bit 2 'disable printer driver'
+	bne	LE138				;if  set printer is disabled so exit E138 
+;;	txa					;else A=X
+	ldx	#$03				;X=3
+	jsr	x_INSV_flashiffull		;and put character in printer buffer
+	bcs	LE138				;if carry set on return exit, buffer empty
+	tst	mosbuf_buf_busy+3		;else check buffer busy flag if 0
+	bpl	LE138				;then E138 to exit
+	jsr	LE13A				;else E13A to open printer cahnnel
+LE138	puls	CC,PC				;	E138
+LE139	rts					;	E139
 ;; ----------------------------------------------------------------------------
-;LE13A:	lda	sysvar_PRINT_DEST		;	E13A
-;	beq	x_Buffer_handling		;	E13D
-;	cmp	#$01				;	E13F
-;	bne	x_serial_printer		;	E141
-;	jsr	mos_OSBYTE_145			;	E143
-;	ror	mosbuf_buf_busy+3		;	E146
-;	bmi	LE190				;	E149
-;	ldy	#$82				;	E14B
-;	sty	sheila_USRVIA_ier		;	E14D
-;	sta	sheila_USRVIA_ora		;	E150
-;	lda	sheila_USRVIA_pcr		;	E153
-;	and	#$F1				;	E156
-;	ora	#$0C				;	E158
-;	sta	sheila_USRVIA_pcr		;	E15A
-;	ora	#$0E				;	E15D
-;	sta	sheila_USRVIA_pcr		;	E15F
-;	bne	LE190				;	E162
+LE13A	lda	sysvar_PRINT_DEST		;check printer destination
+	lbeq	x_Buffer_handling		;if 0 then E1AD clear printer buffer and exit
+	cmpa	#$01				;if parallel printer not selected
+	bne	x_serial_printer		;E164
+	jsr	mos_OSBYTE_145			;else read a byte from the printer buffer
+	ror	mosbuf_buf_busy+3		;if carry is set then 2d2 is -ve
+	bmi	LE139				;so return via E190
+	ldb	#$82				;else enable interrupt 1 of the external VIA
+	stb	sheila_USRVIA_ier		;
+	sta	sheila_USRVIA_ora		;pass code to centronics port
+	lda	sheila_USRVIA_pcr		;pulse CA2 line to generate STROBE signal
+	anda	#$F1				;to advise printer that
+	ora	#$0C				;valid data is 
+	sta	sheila_USRVIA_pcr		;waiting
+	ora	#$0E				;
+	sta	sheila_USRVIA_pcr		;
+	bra	LE139				;then exit
 ;; :serial printer
-;x_serial_printer:
-;	cmp	#$02				;	E164
-;	bne	x_printer_is_neither_serial_or_parallel_so_its_user_type;	E166
-;	ldy	zp_mos_rs423timeout		;	E168
-;	dey					;	E16A
-;	bpl	x_Buffer_handling		;	E16B
-;	lsr	mosbuf_buf_busy+3		;	E16D
-;LE170:	lsr	sysvar_RS423_USEFLAG		;	E170
-LE173
-	;TODO serial
-	TODO	"LE173 - rs423 as input"
-;	jsr	x_check_RS423_input_buffer	;	E173
-;	bcc	LE190				;	E176
-;	ldx	#$20				;	E178
-;LE17A:	ldy	#$9F				;	E17A
-;; OSBYTE 156 update ACIA setting and RAM copy; on entry	 
-;mos_OSBYTE_156:
-;	php					;	E17C
-;	sei					;	E17D
-;	tya					;	E17E
-;	stx	zp_mos_OS_wksp2			;	E17F
-;	and	sysvar_RS423_CTL_COPY		;	E181
-;	eor	zp_mos_OS_wksp2			;	E184
-;	ldx	sysvar_RS423_CTL_COPY		;	E186
-;LE189:	sta	sysvar_RS423_CTL_COPY		;	E189
-;	sta	LFE08				;	E18C
-;	plp					;	E18F
-;LE190:	rts					;	E190
+x_serial_printer
+	cmpa	#$02				;is it Serial printer??
+	bne	x_printer_user			;if not E191
+	ldb	zp_mos_rs423timeout		;else is RS423 in use by cassette?? 
+	decb					;
+	bpl	x_Buffer_handling		;if so E1AD to flush buffer
+	lsr	mosbuf_buf_busy+3		;else clear buffer busy flag
+LE170	lsr	sysvar_RS423_USEFLAG		;and RS423 busy flag
+LE173	jsr	x_check_RS423_input_buffer_API	;count buffer if C is clear on return
+	bcs	LE139				;no room is buffer so exit
+	ldx	#$20				;else 
+LE17A	ldy	#$9F				;
+
+	IF MACH_BEEB
+; OSBYTE 156 update ACIA setting and RAM copy; on entry	 
+mos_OSBYTE_156
+		pshs	CC				;	E17C
+		SEI					;	E17D
+		m_tya					;	E17E
+		STX_B	zp_mos_OS_wksp2			;	E17F
+		anda	sysvar_RS423_CTL_COPY		;	E181
+		eora	zp_mos_OS_wksp2			;	E184
+		LDX_B	sysvar_RS423_CTL_COPY		;	E186
+ACIA_set_CTL_and_copy				; LE189
+		sta	sysvar_RS423_CTL_COPY		;put new value in
+		sta	sheila_ACIA_CTL			;and store to ACIA control register
+		puls	CC,PC				;get back flags and exit
+	ELSE
+mos_OSBYTE_156
+	TODOSKIP "CHIPKIT OSBYTE 156"
+	ENDIF
 ;; ----------------------------------------------------------------------------
 ;; printer is neither serial or parallel so its user type
-;x_printer_is_neither_serial_or_parallel_so_its_user_type:
-;	clc					;	E191
-;	lda	#$01				;	E192
-;	jsr	LE1A2				;	E194
-;; OSBYTE 123 Warn printer driver going dormant
-;mos_OSBYTE_123:
-;	ror	mosbuf_buf_busy+3		;	E197
-;LE19A:	rts					;	E19A
+x_printer_user
+	CLC					;	E191
+	lda	#$01				;	E192
+	jsr	LE1A2				;	E194
+; OSBYTE 123 Warn printer driver going dormant
+mos_OSBYTE_123
+	ror	mosbuf_buf_busy+3		;	E197
+LE19A	rts					;	E19A
 ;; ----------------------------------------------------------------------------
 ;LE19B:	bit	mosbuf_buf_busy+3		;	E19B
 ;	bmi	LE19A				;	E19E
 ;	lda	#$00				;	E1A0
-LE1A2	ldx	#$03				;X=3
+LE1A2		ldx	#$03				;X=3
 LPT_NETV_then_UPTV				; LE1A4
-	ldy	sysvar_PRINT_DEST		;Y=printer destination
-	jsr	[NETV]				;to JMP (NETV)
-	jmp	[UPTV]				;jump to PRINT VECTOR for special routines
+		ldy	sysvar_PRINT_DEST		;Y=printer destination
+		jsr	[NETV]				;to JMP (NETV)
+		jmp	[UPTV]				;jump to PRINT VECTOR for special routines
 
  *************** Buffer handling *****************************************
-	;X=buffer number
-	;Buffer number	Address		Flag	Out pointer	In pointer
-	;0=Keyboard	3E0-3FF		2CF	2D8		2E1
-	;1=RS423 Input	A00-AFF		2D0	2D9		2E2
-	;2=RS423 output	900-9BF		2D1	2DA		2E3
-	;3=printer	880-8BF		2D2	2DB		2E4
-	;4=sound0	840-84F		2D3	2DC		2E5
-	;5=sound1	850-85F		2D4	2DD		2E6
-	;6=sound2	860-86F		2D5	2DE		2E7
-	;7=sound3	870-87F		2D6	2DF		2E8
-	;8=speech	8C0-8FF		2D7	2E0		2E9
+		;X=buffer number
+		;Buffer number	Address		Flag	Out pointer	In pointer
+		;0=Keyboard	3E0-3FF		2CF	2D8		2E1
+		;1=RS423 Input	A00-AFF		2D0	2D9		2E2
+		;2=RS423 output	900-9BF		2D1	2DA		2E3
+		;3=printer	880-8BF		2D2	2DB		2E4
+		;4=sound0	840-84F		2D3	2DC		2E5
+		;5=sound1	850-85F		2D4	2DD		2E6
+		;6=sound2	860-86F		2D5	2DE		2E7
+		;7=sound3	870-87F		2D6	2DF		2E8
+		;8=speech	8C0-8FF		2D7	2E0		2E9
 
 x_Buffer_handling					; LE1AD
 		CLC					;clear carry
@@ -4948,7 +5207,7 @@ x_Buffer_handling2					; LE1AE
 		bcs	LE1BB				;if carry set on entry then E1BB
 		lda	mostbl_SERIAL_BAUD_LOOK_UP,x	;else get byte from baud rate/sound data table
 		bpl	LE1BB				;if +ve the E1BB
-		jsr	snd_clear_chan_API			;else clear sound data
+		jsr	snd_clear_chan_API		;else clear sound data
 
 LE1BB		SEC					;set carry
 		ror	mosbuf_buf_busy,x		;rotate buffer flag to show buffer empty
@@ -4958,7 +5217,7 @@ LE1BB		SEC					;set carry
 		lda	#$00				;else Input buffer so A=0
 		sta	sysvar_KEYB_SOFTKEY_LENGTH	;store as length of key string
 		sta	sysvar_VDU_Q_LEN		;and length of VDU queque
-LE1CB		jsr	x_mos_CLV_and_CNPV				;then enter via count purge vector any 
+LE1CB		jsr	x_mos_SEV_and_CNPV				;then enter via count purge vector any 
 							;user routines
 		puls	CC,A,PC				;restore flags, A and exit
 
@@ -4984,9 +5243,14 @@ LE1DA		pshs	B,CC				;push flags
 		bcc	LE1EA				;if carry caused E1EA
 		suba	mostbl_BUFFER_ADDRESS_OFFS,X	;subtract buffer start offset (i.e. add buffer length)
 LE1EA		
+	IF CPU_6809
+		pshs	B
+		ldb	#1				;check carry in pushed flags
+		bitb	,S
+		puls	B				; TODO get rid?
+	ELSE
 		tim	#1, 0,S
-;;;		ldb	#1				;check carry in pushed flags
-;;;		bitb	,S
+	ENDIF
 		beq	LE1F3				;if carry clear E1F3 to exit
 		adda	mostbl_BUFFER_ADDRESS_OFFS,X	;add to get bytes used
 		coma					;and invert to get space left
@@ -5019,7 +5283,7 @@ x_loadsave_clr_4bytesY_API
 
 
 ;; ----------------------------------------------------------------------------
-;; shift through osfile control block
+;; shift through osfile control block - BIG ENDIAN!
 x_shift_through_osfile_control_block
 		rola					; left justify nybble
 		rola
@@ -5054,9 +5318,9 @@ mos_STAR_SAVE						; LE23E
 		jsr	mos_CLC_GSINIT			; and call GSINIT to prepare for reading text line
 LE257		jsr	mos_GSREAD			; read a code from text line if OK read next
 		bcc	LE257				; until end of filename reached
+		leax	-1,X				; step back one
 		tst	,S				; get back A without stack changes
 		beq	x_SAVE_build_ctl_block		; IF A=0 (SAVE)  E2C2
-;;		leax	-1,X				; step back one
 		jsr	x_LOADSAVE_readaddr		; set up file block
 		bcs	x_loadsave_setAXOSFILE_clrEXEClo; if carry set do OSFILE
 		beq	x_loadsave_setAXOSFILE		; else if A=0 goto OSFILE, or drop through for bad addr!
@@ -5064,32 +5328,32 @@ brkBadAddress						; LE267
 		DO_BRK	$FC, "Bad Address"
 
 ;; CLOSE SPOOL/ EXEC FILES
-mos_CLOSE_SPOOL_EXEC
-	ldb	#SERVICE_10_SPOOL_CLOSE		; X=10 issue *SPOOL/EXEC files warning
-	jsr	mos_OSBYTE_143_b_cmd_x_param	; and issue call
-	beq	LE29F				; if a rom accepts and issues a 0 then E29F to return
-	jsr	mos_CLOSE_EXEC_FILE		; else close the current file
-	clra					; A=0
+mos_OSBYTE_119
+		ldb	#SERVICE_10_SPOOL_CLOSE		; X=10 issue *SPOOL/EXEC files warning
+		jsr	mos_OSBYTE_143_b_cmd_x_param	; and issue call
+		beq	LE29F				; if a rom accepts and issues a 0 then E29F to return
+		jsr	mos_CLOSE_EXEC_FILE		; else close the current file
+		clra					; A=0
 
-	; always entered with A=0 but Z=1 flag decided whether to close????
-	; Y ignored
-	; X filename to open in Z=0
+		; always entered with A=0 but Z=1 flag decided whether to close????
+		; Y ignored
+		; X filename to open in Z=0
 mos_STAR_SPOOL
-	pshs	CC,Y					; if A=0 file is closed so
-	ldb	sysvar_SPOOL_FILE			; get file handle
-	sta	sysvar_SPOOL_FILE			; store A as file handle
-	tstb
-	beq	LE28F					; if Y<>0 then E28F (i.e. no existing spool file open)
-	jsr	OSFIND					; else close file via osfind
-LE28F	puls	CC,Y					; get back original Y
+		pshs	CC,Y					; if A=0 file is closed so
+		ldb	sysvar_SPOOL_FILE			; get file handle
+		sta	sysvar_SPOOL_FILE			; store A as file handle
+		tstb
+		beq	LE28F					; if Y<>0 then E28F (i.e. no existing spool file open)
+		jsr	OSFIND					; else close file via osfind
+LE28F		puls	CC,Y					; get back original Y
 							; pull flags
-	beq	LE29F					; if Z=1 on entry then exit
-	lda	#$80					; else A=&80
-	jsr	OSFIND					; to open file Y for output
-	tsta						; Y=A
-	beq	x_Bad_command_error			; and if this is =0 then E310 BAD COMMAND ERROR
-	sta	sysvar_SPOOL_FILE			; store file handle
-LE29F	rts						; and exit
+		beq	LE29F					; if Z=1 on entry then exit
+		lda	#$80					; else A=&80
+		jsr	OSFIND					; to open file Y for output
+		tsta						; Y=A
+		lbeq	x_Bad_command_error			; and if this is =0 then E310 BAD COMMAND ERROR
+		sta	sysvar_SPOOL_FILE			; store file handle
+LE29F		rts						; and exit
 ;; ----------------------------------------------------------------------------
 x_loadsave_setAXOSFILE_clrEXEClo
 		bne	x_Bad_command_error		;
@@ -5117,51 +5381,83 @@ LE2C1		rts						;	E2C1
 ;; ----------------------------------------------------------------------------
 ;; ; set up OSfile control block
 x_SAVE_build_ctl_block
-	TODO "x_SAVE_build_ctl_block"
-;	ldx	#$0A				;	E2C2
-;	jsr	x_LOADSAVE_readaddr		;	E2C4
-;	bcc	x_Bad_command_error		;	E2C7
-;	clv					;	E2C9
-;; READ file length from text line
-;x_READ_file_length_from_text_line:
-;	lda	(zp_mos_txtptr),y		;	E2CA
-;	cmp	#$2B				;	E2CC
-;	bne	LE2D4				;	E2CE
-;	bit	mostbl_SYSVAR_DEFAULT_SETTINGS+65;	E2D0
-;	iny					;	E2D3
-;LE2D4:	ldx	#$0E				;	E2D4
-;	jsr	x_LOADSAVE_readaddr		;	E2D6
-;	bcc	x_Bad_command_error		;	E2D9
-;	php					;	E2DB
-;	bvc	LE2ED				;	E2DC
-;	ldx	#$FC				;	E2DE
-;	clc					;	E2E0
-;LE2E1:	lda	stack+252,x			;	E2E1
-;	adc	USERV,x				;	E2E4
-;	sta	USERV,x				;	E2E7
-;	inx					;	E2EA
-;	bne	LE2E1				;	E2EB
-;LE2ED:	ldx	#$03				;	E2ED
-;LE2EF:	lda	osfile_ctlblk+10,x		;	E2EF
-;	sta	osfile_ctlblk+6,x		;	E2F2
-;	sta	osfile_ctlblk+2,x		;	E2F5
-;	dex					;	E2F8
-;	bpl	LE2EF				;	E2F9
-;	plp					;	E2FB
-;	beq	x_loadsave_setAXOSFILE				;	E2FC
-;	ldx	#$06				;	E2FE
-;	jsr	x_LOADSAVE_readaddr		;	E300
-;	bcc	x_Bad_command_error		;	E303
-;	beq	x_loadsave_setAXOSFILE				;	E305
-;	ldx	#$02				;	E307
-;	jsr	x_LOADSAVE_readaddr		;	E309
-;	bcc	x_Bad_command_error		;	E30C
-;	beq	x_loadsave_setAXOSFILE				;	E30E
-;; Bad command error
+	ldy	#osfile_ctlblk+$A			; point at "start address"
+	jsr	x_LOADSAVE_readaddr			;	E2C4
+	bcc	x_Bad_command_error			; if no hex digit found EXIT via BAD Command error
+	clr	zp_mos_OS_wksp				; clear bit 6
+; READ file length from text line
+x_READ_file_length_from_text_line
+;;	lda	,X					; read next byte from text line
+	cmpa	#'+'					; is it '+'
+	bne	LE2D4					; if not assume its a last byte address so e2d4
+	dec	zp_mos_OS_wksp				; else set V and M flags
+;;	leax	1,X					; increment Y to point to hex group
+LE2D4	
+	ldy	#osfile_ctlblk+$E			;X=E
+	jsr	x_LOADSAVE_readaddr			;
+	bcc	x_Bad_command_error			;if carry clear no hex digit so exit via error
+	pshs	CC					;save flags
+	tst	zp_mos_OS_wksp
+	bpl	LE2ED					;if V set them E2ED explicit end address found
+;; 	ldx	#$FC					;else X=&FC
+;; 	clc						;clear carry
+;; LE2E1:	lda	stack+252,x				;and add length data to start address
+;; 	adc	USERV,x					;
+;; 	sta	USERV,x					;
+;; 	inx						;
+;;	bne	LE2E1					;repeat until X=0
+	; add length to start store at osfil
+;;	ldd	osfile_ctlblk+$A+2
+;;	addd	osfile_ctlblk+$E+2
+;;	std	osfile_ctlblk+$E+2
+;;	ldd	osfile_ctlblk+$A
+;;	adcb	osfile_ctlblk+$E+1
+;;	adca	osfile_ctlblk+$E+0
+;;	std	osfile_ctlblk+$E+0			; 21
+	CLC
+	ldy	#osfile_ctlblk+$A+4			; 3
+	ldb	#4					; 2
+1	lda	,-Y					; 2+0
+	adca	4,Y					; 2+0
+	sta	4,Y					; 2+0
+	decb						; 1
+	bne	1B					; 2
+							; 14
+
+LE2ED
+;;;	ldx	#$03					;X=3
+;;LE2EF:	lda	osfile_ctlblk+10,x			;copy start adddress to load and execution addresses
+;;	sta	osfile_ctlblk+6,x			;
+;;	sta	osfile_ctlblk+2,x			;
+;;	dex						;
+;;	bpl	LE2EF					;get back flag
+	ldy	#osfile_ctlblk+$A			; 3
+	ldb	#3					; 2
+1	lda	,Y+					; 2+0
+	sta	-5,Y					; 2+0
+	sta	-9,Y					; 2+0
+	decb						; 1
+	bpl	1B					; 2
+							; 14
+
+
+
+	puls	CC					;if end of command line reached then E2A5
+	beq	x_loadsave_setAXOSFILE			; to do osfile
+	ldy	#osfile_ctlblk+6			;else set up execution address
+	jsr	x_LOADSAVE_readaddr			;
+	bcc	x_Bad_command_error			;if error BAD COMMAND
+	beq	x_loadsave_setAXOSFILE			;and if end of line reached do OSFILE
+	ldx	#osfile_ctlblk+6			;else set up load address
+	jsr	x_LOADSAVE_readaddr			;
+	bcc	x_Bad_command_error			;if error BAD command
+	beq	x_loadsave_setAXOSFILE			;else on end of line do OSFILE
+							;anything else is an error!!!!
+; Bad command error
 x_Bad_command_error				; LE310
-	DO_BRK $FE, "Bad Command"
+		DO_BRK $FE, "Bad Command"
 x_Bad_key_error
-	DO_BRK $FB, "Bad Key"
+		DO_BRK $FB, "Bad Key"
 ;	adc	(zp_lang+100,x)			;	E313
 ;	jsr	L6F63				;	E315
 ;	adc	$616D				;	E318
@@ -5176,7 +5472,7 @@ x_Bad_key_error
 ;	brk					;	E326
 ;; *KEY ENTRY
 mos_STAR_KEY
-	TODO	"mos_STAR_KEY"
+		TODO	"mos_STAR_KEY"
 ;	jsr	cli_parse_number				;	E327
 ;	bcc	LE31D				;	E32A
 ;	cpx	#$10				;	E32C
@@ -5195,37 +5491,37 @@ mos_STAR_KEY
 ;; ----------------------------------------------------------------------------
 ;; *FX	OSBYTE
 mos_STAR_FX						; LE342
-	jsr	cli_parse_number_API			; get number to pass as A to OSBYTE
-	bcc	x_Bad_command_error
-	tfr	B,A
+		jsr	cli_parse_number_API			; get number to pass as A to OSBYTE
+		bcc	x_Bad_command_error
+		tfr	B,A
 ;; *CODE	  *MOTOR  *OPT	  *ROM	  *TAPE	  *TV; enter codes    *CODE   &88 
 ; A = osbyte function
 ; X pointer to command line string
 ; C clear = entered from CLI parser - don't allow comma, else dropped in from *FX above in which case allow comma
 mos_STAR_OSBYTE_A					; LE348
-	pshs	A					; save A
+		pshs	A					; save A
 ;;;	lda	#$00					;	E349
-	lda	#0					; clear values for X, Y NB: lda rather than clr, need to preserve C flag
-	sta	zp_mos_GSREAD_characc			
-	sta	zp_mos_GSREAD_quoteflag			
-	jsr	mos_skip_spaces_at_X_eqCOMMAorCR_whenCS ; if CS (i.e. *FX) allow comma, else just skip spaces
-	beq	1F					;
-	jsr	cli_parse_number_API2			; parse X value
-	bcc	x_Bad_command_error			;
-	stb	zp_mos_GSREAD_characc			;
-	jsr	mos_skip_spaces_at_X_eqCOMMAorCR	; spaces always ok here
-	beq	1F					;
-	jsr	cli_parse_number_API2			; parse Y value
-	bcc	x_Bad_command_error			;
-	stb	zp_mos_GSREAD_quoteflag			;
-	jsr	mos_skip_spaces_at_X			;
-	bne	x_Bad_command_error			; garbage at end
-1	LDY_B	zp_mos_GSREAD_quoteflag			;
-	LDX_B	zp_mos_GSREAD_characc			;
-	puls	A					;
-	jsr	OSBYTE					; exec OSBYTE
-	bvs	x_Bad_command_error			; BRK if VS
-	rts						;
+		lda	#0					; clear values for X, Y NB: lda rather than clr, need to preserve C flag
+		sta	zp_mos_GSREAD_characc			
+		sta	zp_mos_GSREAD_quoteflag			
+		jsr	mos_skip_spaces_at_X_eqCOMMAorCR_whenCS ; if CS (i.e. *FX) allow comma, else just skip spaces
+		beq	1F					;
+		jsr	cli_parse_number_API2			; parse X value
+		bcc	x_Bad_command_error			;
+		stb	zp_mos_GSREAD_characc			;
+		jsr	mos_skip_spaces_at_X_eqCOMMAorCR	; spaces always ok here
+		beq	1F					;
+		jsr	cli_parse_number_API2			; parse Y value
+		bcc	x_Bad_command_error			;
+		stb	zp_mos_GSREAD_quoteflag			;
+		jsr	mos_skip_spaces_at_X			;
+		bne	x_Bad_command_error			; garbage at end
+1		LDY_B	zp_mos_GSREAD_quoteflag			;
+		LDX_B	zp_mos_GSREAD_characc			;
+		puls	A					;
+		jsr	OSBYTE					; exec OSBYTE
+		bvs	x_Bad_command_error			; BRK if VS
+		rts						;
 ;; ----------------------------------------------------------------------------
 ;LE377:	sec					;	E377
 ;	jsr	mos_GSINIT				;	E378
@@ -5333,32 +5629,7 @@ LE3C8		leax	-1,X				;point to next lower key offset
 ;	plp					;	E433
 ;	rts					;	E434
 ; ----------------------------------------------------------------------------
-; BUFFER ADDRESS HI LOOK UP TABLE
-;;;mostbl_BUFFER_ADDRESS_LO_LOOK_UP_TABLE
-;;;mostbl_BUFFER_ADDRESS_HI_LOOK_UP_TABLE
-mostbl_BUFFER_ADDRESS_PTR_LUT
-	BUFFER_PTR_ADDR		BUFFER_KEYB_START,BUFFER_KEYB_END
-	BUFFER_PTR_ADDR		BUFFER_SERI_START,BUFFER_SERI_END
-	BUFFER_PTR_ADDR		BUFFER_SERO_START,BUFFER_SERO_END
-	BUFFER_PTR_ADDR		BUFFER_LPT_START,BUFFER_LPT_END
-	BUFFER_PTR_ADDR		BUFFER_SND0_START,BUFFER_SND0_END
-	BUFFER_PTR_ADDR		BUFFER_SND1_START,BUFFER_SND1_END
-	BUFFER_PTR_ADDR		BUFFER_SND2_START,BUFFER_SND2_END
-	BUFFER_PTR_ADDR		BUFFER_SND3_START,BUFFER_SND3_END
-	BUFFER_PTR_ADDR		BUFFER_SPCH_START,BUFFER_SPCH_END
-
-;;;mostbl_BUFFER_START_ADDRESS_OFFSET
-mostbl_BUFFER_ADDRESS_OFFS
-	BUFFER_ACC_OFF		BUFFER_KEYB_START,BUFFER_KEYB_END
-	BUFFER_ACC_OFF		BUFFER_SERI_START,BUFFER_SERI_END
-	BUFFER_ACC_OFF		BUFFER_SERO_START,BUFFER_SERO_END
-	BUFFER_ACC_OFF		BUFFER_LPT_START,BUFFER_LPT_END
-	BUFFER_ACC_OFF		BUFFER_SND0_START,BUFFER_SND0_END
-	BUFFER_ACC_OFF		BUFFER_SND1_START,BUFFER_SND1_END
-	BUFFER_ACC_OFF		BUFFER_SND2_START,BUFFER_SND2_END
-	BUFFER_ACC_OFF		BUFFER_SND3_START,BUFFER_SND3_END
-	BUFFER_ACC_OFF		BUFFER_SPCH_START,BUFFER_SPCH_END
-
+; BUFFER ADDRESS HI LOOK UP TABLE - move to after vectors
 
 *************************************************************************
 *                                                                       *
@@ -5390,7 +5661,7 @@ jmpREMV
 *************************************************************************
 ;on entry X = buffer number
 ;on exit if buffer is empty C=1, Y is preserved 
-;else C=0, Y = char
+;else C=0, Y = char (and A)
 
 mos_REMV_default_entry_point				; LE464
 		CLC						;clear carry (assume success)
@@ -5405,9 +5676,12 @@ mos_REMV_default_entry_point				; LE464
 		ldb	,S					;get back B from stack but leave there
 		abx
 		lda	,X					;get char from buffer
-		tim	#$02, 1,S
-;;;		ldb	#2
-;;;		bitb	1,S					;check overflow flag in stacked flags
+	IF CPU_6809
+		ldb	#2
+		bitb	1,S					;check overflow flag in stacked flags
+	ELSE
+		tim	#$02, 1,S				;check overflow flag in stacked flags
+	ENDIF
 		beq	1F					;V not set branch
 		m_tay						;stick char found Y
 		leas	1,S					;skip stacked B
@@ -5525,15 +5799,15 @@ x_check_event_2_char_into_buf_fromA				; LE4A8
 ;; ----------------------------------------------------------------------------
 ;; CHECK FOR ALPHA CHARACTER; ENTRY  character in A ; exit with carry set if non-Alpha character 
 mos_CHECK_FOR_ALPHA_CHARACTER			; LE4E3
-	PSHS	A				;Save A
-	anda	#$DF				;convert lower to upper case
-	cmpa	#'Z'				;is it less than eq 'Z'
-	bhi	LE4EE				;if so exit with carry clear
-	cmpa	#'A'				;is it 'A' or greater ??
-	bhs	LE4EF				;if not exit routine with carry set
-LE4EE	SEC					;else clear carry
-LE4EF	puls	A,PC				;get back original value of A
-	rts					;and Return
+		PSHS	A				;Save A
+		anda	#$DF				;convert lower to upper case
+		cmpa	#'Z'				;is it less than eq 'Z'
+		bhi	LE4EE				;if so exit with carry clear
+		cmpa	#'A'				;is it 'A' or greater ??
+		bhs	LE4EF				;if not exit routine with carry set
+LE4EE		SEC					;else clear carry
+LE4EF		puls	A,PC				;get back original value of A
+		rts					;and Return
 ;; ----------------------------------------------------------------------------
 ;; : INSERT byte in Keyboard buffer
 x_INSERT_byte_in_Keyboard_buffer			; LE4F1
@@ -5569,15 +5843,15 @@ mos_OSBYTE_153
 		jsr	x_CAUSE_AN_EVENT		;
 		bcc	LE513				;if event handles ESCAPE then exit with carry clear
 		jsr	mos_OSBYTE_125			;else set ESCAPE flag
-LE513		andcc	#~CC_C				;clear carry 
+LE513		CLC					;clear carry 
 		rts					;and exit
 ;; ----------------------------------------------------------------------------
 ;; get a byte from keyboard buffer and interpret as necessary; on entry A=cursor editing status 1=return &87-&8B,  ; 2= use cursor keys as soft keys 11-15 ; this area not reached if cursor editing is normal 
 mos_interpret_keyb_byte					; LE515
-	rora					;get bit 1 into carry
-	bcc	mos_interpret_keyb_byte2
-	puls	A				;get back A
-	lbra	x_exit_with_carry_clear		;if carry is set return
+		rora					;get bit 1 into carry
+		bcc	mos_interpret_keyb_byte2
+		puls	A				;get back A
+		lbra	x_exit_with_carry_clear		;if carry is set return
 						;else cursor keys are 'soft'
 
 mos_interpret_keyb_byte2
@@ -5663,13 +5937,13 @@ x_get_byte_from_buffer					; LE539
 ;;;	txa					;A=X
 ;;;	pha					;Push X 
 ;;;	tya					;get back Y
-	pshs	X
-	jsr	x_cursor_start				;execute edit action
-	puls	X
+		pshs	X
+		jsr	x_cursor_start				;execute edit action
+		puls	X
 ;	pla					;restore X
 ;	tax					;
 mos_check_eco_get_byte_from_kbd			; LE577
-	;	TODO econet
+		;	TODO econet
 ;	bit	sysvar_ECO_OSRDCH_INTERCEPT	;check econet RDCH flag
 ;	bpl	x_get_byte_from_key_string	;if not set goto E581
 ;	lda	#$06				;else Econet function 6 
@@ -5680,17 +5954,17 @@ mos_check_eco_get_byte_from_kbd			; LE577
 ;and 02C9 key string pointer to next byte
 
 x_get_byte_from_key_string
-	lda	sysvar_KEYB_SOFTKEY_LENGTH	;get length of keystring
-	beq	x_get_byte_from_buffer		;if 0 E539 get a character from the buffer
-	LDY_B	mosvar_SOFTKEY_PTR		;get soft key expansion pointer
-	lda	$0B01,y				;get character from string
-	inc	mosvar_SOFTKEY_PTR		;increment pointer
-	dec	sysvar_KEYB_SOFTKEY_LENGTH	;decrement length
+		lda	sysvar_KEYB_SOFTKEY_LENGTH	;get length of keystring
+		beq	x_get_byte_from_buffer		;if 0 E539 get a character from the buffer
+		LDY_B	mosvar_SOFTKEY_PTR		;get soft key expansion pointer
+		lda	$0B01,y				;get character from string
+		inc	mosvar_SOFTKEY_PTR		;increment pointer
+		dec	sysvar_KEYB_SOFTKEY_LENGTH	;decrement length
 ;; exit with carry clear
 x_exit_with_carry_clear
-	CLC					;	E592
+		CLC					;	E592
 LE593rts	
-	rts					;	E593
+		rts					;	E593
 ;; ----------------------------------------------------------------------------
 ;; expand soft key strings
 x_expand_soft_key_strings				; LE594
@@ -5706,13 +5980,13 @@ x_expand_soft_key_strings				; LE594
 		ASSERT	"can assume not get here and turn to BRA ! no you can't x_expand_soft_key_strings"
 ;; deal with COPY key
 x_deal_with_COPY_key
-	pshs	X
-	jsr	x_cursor_COPY				;	E5A8
-	tsta
-	lbeq	x_ERROR_EDITING				;	E5AC
-	puls	X
-	CLC						;	E5B1
-	rts						;	E5B2
+		pshs	X
+		jsr	x_cursor_COPY				;	E5A8
+		tsta
+		lbeq	x_ERROR_EDITING				;	E5AC
+		puls	X
+		CLC						;	E5B1
+		rts						;	E5B2
 ;; ----------------------------------------------------------------------------
 ;; OSBYTE LOOK UP TABLE !!!!!ADDRESSES!!!!
 mostbl_OSBYTE_LOOK_UP
@@ -5744,11 +6018,11 @@ OSBYTE2_START	equ	117
 mostbl_OSBYTE_LOOK_UP2
 		FDB	mos_OSBYTE_117			;	E5DF
 		FDB	mos_OSBYTE_118			;	E5E1
-		FDB	mos_OSBYTE_nowt			;	E5E3
+		FDB	mos_OSBYTE_119			;	E5E3
 		FDB	mos_OSBYTE_nowt			;	E5E5
-		FDB	mos_OSBYTE_nowt			;	E5E7
+		FDB	mos_OSBYTE_121			;	E5E7
 		FDB	mos_OSBYTE_122			;	E5E9
-		FDB	mos_OSBYTE_nowt			;	E5EB
+		FDB	mos_OSBYTE_123			;	E5EB
 		FDB	mos_OSBYTE_124			;	E5ED
 		FDB	mos_OSBYTE_125			;	E5EF
 		FDB	mos_OSBYTE_126			;	E5F1
@@ -5781,7 +6055,7 @@ mostbl_OSBYTE_LOOK_UP2
 		FDB	mos_OSBYTE_nowt			;	E627
 		FDB	mos_OSBYTE_nowt			;	E629
 		FDB	mos_OSBYTE_nowt			;	E62B
-		FDB	mos_OSBYTE_nowt			;	E62D
+		FDB	mos_OSBYTE_156			;	E62D		
 		FDB	mos_OSBYTE_nowt			;	E62F
 		FDB	mos_OSBYTE_nowt			;	E631
 		FDB	mos_OSBYTE_nowt			;	E633
@@ -5806,10 +6080,14 @@ mostbl_OSWORD_LOOK_UP
 		FDB	mos_OSWORD_nowt			;	E651
 		FDB	mos_OSWORD_nowt			;	E653
 		FDB	mos_OSWORD_nowt			;	E655
+	IF MACH_CHIPKIT
 		FDB	mos_OSWORD_E_read_rtc
 		FDB	mos_OSWORD_F_write_rtc
 
 OSWORD_MAX			equ	15
+	ELSE
+OSWORD_MAX			equ	13
+	ENDIF
 OSBYTE_TABLE_OSBYTE_SIZE 	equ	mostbl_OSWORD_LOOK_UP - mostbl_OSBYTE_LOOK_UP
 
 *ORIGINALTABLE*
@@ -5837,7 +6115,7 @@ OSBYTE_TABLE_OSBYTE_SIZE 	equ	mostbl_OSWORD_LOOK_UP - mostbl_OSBYTE_LOOK_UP
 ;	FDB	mos_OSBYTE_21			;	E5DD
 ;	FDB	mos_OSBYTE_117			;	E5DF
 ;	FDB	mos_OSBYTE_118			;	E5E1
-;	FDB	mos_CLOSE_SPOOL_EXEC		;	E5E3
+;	FDB	mos_OSBYTE_119		;	E5E3
 ;	FDB	mos_OSBYTE_120			;	E5E5
 ;	FDB	mos_OSBYTE_121			;	E5E7
 ;	FDB	mos_OSBYTE_122			;	E5E9
@@ -5900,48 +6178,48 @@ OSBYTE_TABLE_OSBYTE_SIZE 	equ	mostbl_OSWORD_LOOK_UP - mostbl_OSBYTE_LOOK_UP
 
 
 mos_OSBYTE_nowt
-	LDA	zp_mos_OSBW_A
-	JSR	debug_print_hex
-	TODO	"OSBYTE"
+		LDA	zp_mos_OSBW_A
+		JSR	debug_print_hex
+		TODO	"OSBYTE"
 
 mos_OSWORD_nowt
-	LDA	zp_mos_OSBW_A
-	JSR	debug_print_hex
-	TODO	"OSWORD"
+		LDA	zp_mos_OSBW_A
+		JSR	debug_print_hex
+		TODO	"OSWORD"
 
 
 mos_OSBYTE_136					; LE657
 ;mos_STAR_CODE_effectively:= * + 1		; *CODE effectively???
-	CLRA					;	E657
+		CLRA					;	E657
 ;; ----------------------------------------------------------------------------
 ;; *LINE	  entry
 mos_jmp_USERV
-	jmp	[USERV]				;	E659
+		jmp	[USERV]				;	E659
 ;; ----------------------------------------------------------------------------
 ;; OSBYTE  126  Acknowledge detection of ESCAPE condition
 mos_OSBYTE_126
-	ldx	#$00				;	E65C
-	tst	zp_mos_ESC_flag			;	E65E
-	bpl	mos_OSBYTE_124			;	E660
-	lda	sysvar_KEYB_ESC_EFFECT		;	E662
-	bne	LE671				;	E665
-	CLI					;	E667
-	sta	sysvar_SCREENLINES_SINCE_PAGE	;	E668
-	jsr	mos_STAR_EXEC			;	E66B
-	jsr	mos_flush_all_buffers				;	E66E
-LE671	ldx	#$FF				;	E671
+		ldx	#$00				;	E65C
+		tst	zp_mos_ESC_flag			;	E65E
+		bpl	mos_OSBYTE_124			;	E660
+		lda	sysvar_KEYB_ESC_EFFECT		;	E662
+		bne	LE671				;	E665
+		CLI					;	E667
+		sta	sysvar_SCREENLINES_SINCE_PAGE	;	E668
+		jsr	mos_STAR_EXEC			;	E66B
+		jsr	mos_flush_all_buffers				;	E66E
+LE671		ldx	#$FF				;	E671
 ;; OSBYTE  124  Clear ESCAPE condition
 mos_OSBYTE_124
-	CLC					;	E673
+		CLC					;	E673
 ;; OSBYTE  125  Set ESCAPE flag
 mos_OSBYTE_125
-	ror	zp_mos_ESC_flag			;	E674
+		ror	zp_mos_ESC_flag			;	E674
 ;TODO: TUBE
 ;;	tst	sysvar_TUBE_PRESENT		;	E676
 ;;	bmi	LE67C				;	E679
-	rts					;	E67B
+		rts					;	E67B
 ; ----------------------------------------------------------------------------
-LE67C	TODO	"TUBE ESCAPE"
+LE67C		TODO	"TUBE ESCAPE"
 ;LE67C:	jmp	L0403				;	E67C
 ;; ----------------------------------------------------------------------------
 ;; OSBYTE  137  Turn on Tape motor
@@ -5951,14 +6229,14 @@ LE67C	TODO	"TUBE ESCAPE"
 ;	rol	a				;	E683
 ;	cpx	#$01				;	E684
 ;	ror	a				;	E686
-;	bvc	LE6A7				;	E687
+;	bvc	setSerULA				;	E687
 ;; OSBYTE 08/07 set serial baud rates
 mos_OSBYTE_08
-	lda	#$38				;	E689
+		lda	#$38				;	E689
 ;; OSBYTE 08/07 set serial baud rates
 mos_OSBYTE_07
-	; TODO serial
-	TODO	"mos_OSBYTE_07"
+		; TODO serial
+		TODO	"mos_OSBYTE_07"
 ;	eor	#$3F				;	E68B
 ;	sta	zp_mos_OS_wksp2			;	E68D
 ;	ldy	sysvar_SERPROC_CTL_CPY		;	E68F
@@ -5972,12 +6250,15 @@ mos_OSBYTE_07
 ;	ora	zp_mos_OS_wksp2+1		;	E6A0
 ;	ora	#$40				;	E6A2
 ;	eor	sysvar_RS423CASS_SELECT		;	E6A4
-;LE6A7:	sta	sysvar_SERPROC_CTL_CPY		;	E6A7
-;	sta	LFE10				;	E6AA
-	;TODO - this could be improved
-LE6AD	m_tya					;put Y in A to save old contents
-LE6AE	m_tax					;write new setting to X
-	rts					;and return
+setSerULA						; LE6A7
+		sta	sysvar_SERPROC_CTL_CPY		;	E6A7
+	;TODO chipkit serial
+	IF MACH_BEEB
+		sta	sheila_SERIAL_ULA		;	E6AA
+	ENDIF
+LE6AD		m_tya					;put Y in A to save old contents
+LE6AE		m_tax					;write new setting to X
+		rts					;and return
 
 *************************************************************************
 *                                                                       *
@@ -5985,7 +6266,7 @@ LE6AE	m_tax					;write new setting to X
 *                                                                       *
 *************************************************************************
 ;on entry Y=0, X=new value
-	; TODO: the next two need optimising
+		; TODO: the next two need optimising
 mos_OSBYTE_09					; LE6B0
 		ldy	#1				;Y is incremented to 1
 		CLC					;clear carry
@@ -6018,7 +6299,7 @@ mos_OSBYTE_10
  
  ;on input X contains stream number
 mos_OSBYTE_2
-	; TODO SERIAL
+		; TODO SERIAL
 ;	txa					;	E6D3
 ;	and	#$01				;	E6D4
 ;	pha					;	E6D6
@@ -6029,7 +6310,7 @@ mos_OSBYTE_2
 ;	cmp	sysvar_RS423_CTL_COPY		;	E6DE
 ;	php					;	E6E1
 ;	sta	sysvar_RS423_CTL_COPY		;	E6E2
-;	sta	LFE08				;	E6E5
+;	sta	sheila_ACIA_CTL				;	E6E5
 ;	jsr	LE173				;	E6E8
 ;	plp					;	E6EB
 ;	beq	LE6F1				;	E6EC
@@ -6039,13 +6320,13 @@ mos_OSBYTE_2
 ;	sta	sysvar_CURINSTREAM		;	E6F5
 ;	rts					;	E6F8
 
-	; DB: just swap X with contents of CURINSTREAM
-	lda	sysvar_CURINSTREAM
-	pshs	A
-	clr	,-S
-	m_txa
-	sta	sysvar_CURINSTREAM
-	puls	X,PC
+		; DB: just swap X with contents of CURINSTREAM
+		lda	sysvar_CURINSTREAM
+		pshs	A
+		clr	,-S
+		m_txa
+		sta	sysvar_CURINSTREAM
+		puls	X,PC
 
 *************************************************************************
 *                                                                       *
@@ -6055,7 +6336,7 @@ mos_OSBYTE_2
 
         ;X contains event number 0-9
 mos_OSBYTE_13
-	clra					;	E6F9
+		clra					;	E6F9
 *************************************************************************
 *                                                                       *
 *       OSBYTE  14   enable events                                      *
@@ -6072,7 +6353,7 @@ mos_OSBYTE_14					; LE6FA
 		bra	LE6AD				;and exit via E6AD
 ;; OSBYTE  16   Select A/D channel; X contains channel number or 0 if disable conversion	 
 mos_OSBYTE_16
-	TODO	"ADC"
+		TODO	"ADC"
 ;	beq	LE70B				;	E706
 ;	jsr	mos_OSBYTE_17			;	E708
 ;LE70B:	lda	sysvar_ADC_MAX			;	E70B
@@ -6083,33 +6364,33 @@ mos_OSBYTE_16
 
 ; OSBYTE 129   Read key within time limit; X and Y contains either time limit in centi seconds Y=&7F max ; or Y=&FF and X=-ve INKEY value 
 mos_OSBYTE_129					; LE713
-	tst	zp_mos_OSBW_Y			; check Y negative
-	bmi	LE721				; if Y=&FF the E721
-	CLI					; else allow interrupts
-	jsr	x_OSBYTE_129			; and go to timed routine
-	bcs	LE71F				; if carry set then E71F
-	m_tax					; then X=A
-	clra					; A=0
-LE71F	m_tay					; Y=A
-	rts					; and return
+		tst	zp_mos_OSBW_Y			; check Y negative
+		bmi	LE721				; if Y=&FF the E721
+		CLI					; else allow interrupts
+		jsr	x_OSBYTE_129			; and go to timed routine
+		bcs	LE71F				; if carry set then E71F
+		m_tax					; then X=A
+		clra					; A=0
+LE71F		m_tay_c					; Y=A
+		rts					; and return
 ;; ----------------------------------------------------------------------------
-LE721	lda	zp_mos_OSBW_X			; A=X
-	beq	mos_OSBYTE_129_machtype
-	eora	#$7F				; convert to keyboard input
-	m_tax					; X=A
-	SEC
-	jsr	jmpKEYV				; then scan keyboard
-	rola					; put bit 7 into carry
-LE729	ldx	#$FFFF				; X=&FF
-	ldy	#$FFFF				; Y=&FF
-	bcs	LE731				; if bit 7 of A was set goto E731 (RTS)
-	leax	1,X				; else X=0
-	leay	1,Y				; and Y=0
-LE731	rts					; and exit
+LE721		lda	zp_mos_OSBW_X			; A=X
+		beq	mos_OSBYTE_129_machtype
+		eora	#$7F				; convert to keyboard input
+		m_tax					; X=A
+		SEC
+		jsr	jmpKEYV				; then scan keyboard
+		rola					; put bit 7 into carry
+LE729		ldx	#$FFFF				; X=&FF
+		ldy	#$FFFF				; Y=&FF
+		bcs	LE731				; if bit 7 of A was set goto E731 (RTS)
+		leax	1,X				; else X=0
+		leay	1,Y				; and Y=0
+LE731		rts					; and exit
 mos_OSBYTE_129_machtype
-	ldx	#mos_MACHINE_TYPE_BYTE
-	ldy	#$FFFF
-	rts
+		ldx	#mos_MACHINE_TYPE_BYTE
+		ldy	#$FFFF
+		rts
 ;; ----------------------------------------------------------------------------
 ;; check occupancy of input or free space of output buffer; X=buffer number ; Buffer number  Address	    Flag    Out pointer	    In pointer ; 0=Keyboard	3E0-3FF		2CF	2D8		2E1 ; 1=RS423 Input  A00-AFF	     2D0     2D9	 
 ;x_check_buffer_space:
@@ -6117,22 +6398,29 @@ mos_OSBYTE_129_machtype
 ;	eor	#$FF				;	E733
 ;	tax					;	E735
 ;	cpx	#$02				;	E736
-;LE738:	clv					;	E738
-;	bvc	x_mos_CNPV				;	E739
-x_mos_CLV_and_CNPV					; LE73B
+LE738		CLV				;	E738
+		bra	x_mos_CNPV			;	E739
+x_mos_SEV_and_CNPV					; LE73B
 		orcc	#CC_V+CC_C+CC_N
 x_mos_CNPV						; LE73E
 		jmp	[CNPV]				;	E73E
 ;; ----------------------------------------------------------------------------
 ;; check RS423 input buffer
-;x_check_RS423_input_buffer:
-;	sec					;	E741
-;	ldx	#$01				;	E742
-;	jsr	LE738				;	E744
-;	cpy	#$01				;	E747
-;	bcs	LE74E				;	E749
-;	cpx	sysvar_RS423_BUF_EXT		;	E74B
-;LE74E:	rts					;	E74E
+	; old API return Cy = 1 when buffer > minimum in BUF_EXT
+	; new API return Cy = 0 when buffer > minimum in BUF_EXT
+x_check_RS423_input_buffer_API
+	SEC					;	E741
+	ldx	#$01				;X=1 to point to buffer
+	jsr	LE738				;and count it
+;;	cmpy	#$01				;if the hi byte of the answer is 1 or more
+;;	bcs	LE74E				;then Return
+;;	cmpx	sysvar_RS423_BUF_EXT		;else compare with minimum buffer space
+;;LE74E	rts					;and exit
+	ldb	sysvar_RS423_BUF_EXT
+	stb	,-S
+	clr	,-S
+	cmpx	,S++
+	rts
 ;; ----------------------------------------------------------------------------
 ;; OSBYTE 128  READ ADC CHANNEL; ON Entry: X=0		    Exit Y contains number of last channel converted ; X=channel number	      X,Y contain 16 bit value read from channe ; X<0 Y=&FF		 X returns information about various buffers ; X=&FF (key
 ;mos_OSBYTE_128:
@@ -6159,32 +6447,32 @@ x_mos_CNPV						; LE73E
 ;; ----------------------------------------------------------------------------
 ;; pointed to by default BYTEV
 mos_default_BYTEV_handler
-	pshs	A,CC
-	SEI					; disable interrupts
-	sta	zp_mos_OSBW_A			; store A,X,Y in zero page       
-	sty	zp_mos_OSBW_Y			;        
-	STX_B	zp_mos_OSBW_X			;        
-	ldx	#$07				; X=7 to signal osbyte is being attempted
-	cmpa	#OSBYTE2_START			; if A=0-116
-	blo	x_Process_OSBYTE_SECTION_1	; then E7C2
-	cmpa	#161				; if A<161 
-	blo	x_Process_OSBYTE_SECTION_2	; then E78E
-	cmpa	#166				; if A=161-165
-	blo	mos_exec_BYTEV_from_osword_gtMAX; then EC78
-	CLC					; clear carry
+		pshs	D,CC
+		SEI					; disable interrupts
+		sta	zp_mos_OSBW_A			; store A,X,Y in zero page       
+		sty	zp_mos_OSBW_Y			;        
+		STX_B	zp_mos_OSBW_X			;        
+		ldx	#$07				; X=7 to signal osbyte is being attempted
+		cmpa	#OSBYTE2_START			; if A=0-116
+		blo	x_Process_OSBYTE_SECTION_1	; then E7C2
+		cmpa	#161				; if A<161 
+		blo	x_Process_OSBYTE_SECTION_2	; then E78E
+		cmpa	#166				; if A=161-165
+		blo	mos_exec_BYTEV_from_osword_gtMAX; then EC78
+		CLC					; clear carry
 
 mos_exec_BYTEV_from_osword_gt224		; LE78A enters here from above with X=7, carry clear, or from OSWORD with X=8 and carry set, A>=224
-	lda	#OSBYTE2_END + 1		; A=&A1
-	adca	#$00				;
+		lda	#OSBYTE2_END + 1		; A=&A1
+		adca	#$00				;
 ;; process osbyte calls 117 - 160
 x_Process_OSBYTE_SECTION_2
-	suba	#OSBYTE2_START - OSBYTE1_END - 1;convert to &16 to &41 (22-65) (OSBYTE 117 to 160) or &42 for OSBYTE > 165, &43 for OSWORD > 224
+		suba	#OSBYTE2_START - OSBYTE1_END - 1;convert to &16 to &41 (22-65) (OSBYTE 117 to 160) or &42 for OSBYTE > 165, &43 for OSWORD > 224
 LE791
-	asla					;	E791
-	SEC					;	E792
-	STY_B	zp_mos_OSBW_Y			; store Y - may have been set in 
+		asla					;	E791
+		SEC					;	E792
+		STY_B	zp_mos_OSBW_Y			; store Y - may have been set in 
 mos_exec_BYTEV_from_osword_leMAX			; LE793
-	;TODO ECONET, this would need to go back in WORDV too for econet!
+		;TODO ECONET, this would need to go back in WORDV too for econet!
 ;;	bit	sysvar_ECO_OSBW_INTERCEPT	;read econet intercept flag
 ;;	bpl	LE7A2				;if no econet intercept required E7A2
 ;;	txa					;else A=X
@@ -6192,52 +6480,52 @@ mos_exec_BYTEV_from_osword_leMAX			; LE793
 ;;	jsr	LE57E				; to JMP via ECONET vector
 ;;	bvs	LE7BC				;if return with V set E7BC
 
-LE7A2	ldx	#mostbl_OSBYTE_LOOK_UP
-	tfr	a,b
-	abx
-	ldd	,X				;get address from table
-	std	zp_mos_OS_wksp2			;store it
-	lda	zp_mos_OSBW_A			;restore A      
-	LDY_B	zp_mos_OSBW_Y			;Y
-	bcs	LE7B6				;if carry is set E7B6
+LE7A2		ldx	#mostbl_OSBYTE_LOOK_UP
+		tfr	a,b
+		abx
+		ldd	,X				;get address from table
+		std	zp_mos_OS_wksp2			;store it
+		lda	zp_mos_OSBW_A			;restore A      
+		LDY_B	zp_mos_OSBW_Y			;Y
+		bcs	LE7B6				;if carry is set E7B6
 ;;	ldy	#$00				;else
-	lda	[zp_mos_OSWORD_X]		;get value from address pointed to by &F0/1 (Y,X) - CHECK new API
-	ldx	zp_mos_OSBW_Y			; get full 16 bit X for OSWORD
-	SEC					;set carry
-	bra	1F
-LE7B6	
-	LDX_B	zp_mos_OSBW_X
-1	ldb	zp_mos_OSBW_X			;pass B=X : DB: extra new api to
-	jsr	[zp_mos_OS_wksp2]		;call &FA/B
-LE7BC	rora					;C=bit 0
-	puls	CC				;get back flags
-	rola					;bit 0=Carry
-	CLV					;clear V
-	puls	A,PC				;get back A
+		lda	[zp_mos_OSWORD_X]		;get value from address pointed to by &F0/1 (Y,X) - CHECK new API
+		ldx	zp_mos_OSBW_Y			; get full 16 bit X for OSWORD
+		SEC					;set carry
+		bra	1F
+LE7B6		
+		LDX_B	zp_mos_OSBW_X
+1		ldb	zp_mos_OSBW_X			;pass B=X : DB: extra new api to
+		jsr	[zp_mos_OS_wksp2]		;call &FA/B
+LE7BC		rora					;C=bit 0
+		puls	CC				;get back flags
+		rola					;bit 0=Carry
+		CLV					;clear V
+		puls	D,PC				;get back A
 						;and exit
 ;; ----------------------------------------------------------------------------
 ;; Process OSBYTE CALLS BELOW &75
 x_Process_OSBYTE_SECTION_1
-	ldy	#$00				;	E7C2
-	cmpa	#$16				;	E7C4
-	blo	LE791				;	E7C6
+		ldy	#$00				;	E7C2
+		cmpa	#$16				;	E7C4
+		blo	LE791				;	E7C6
 mos_exec_BYTEV_from_osword_gtMAX
 ;;;	php					;	E7C8
 ;;;	php					;	E7C9
 ;;;LE7CA:	pla					;	E7CA
 ;;;	pla					;	E7CB
 
-	; NOTE X has been set to 7 or 8 (osbyte or osword) or 8 from make a sound if unknown channel number
-	m_txb					; TODO - sort this out pass B around?
+		; NOTE X has been set to 7 or 8 (osbyte or osword) or 8 from make a sound if unknown channel number
+		m_txb					; TODO - sort this out pass B around?
 mos_do_ukOSWORD
-	jsr	mos_OSBYTE_143_b_cmd_x_param	; pass service call 7/8 to ROMS for unknown osbyte/word
-	bne	LE7D6				; if ne return with C and N set
-	LDX_B	zp_mos_OSBW_X			; else get original X register
-	jmp	LE7BC				;	E7D3
+		jsr	mos_OSBYTE_143_b_cmd_x_param	; pass service call 7/8 to ROMS for unknown osbyte/word
+		bne	LE7D6				; if ne return with C and N set
+		LDX_B	zp_mos_OSBW_X			; else get original X register
+		jmp	LE7BC				;	E7D3
 ;; ----------------------------------------------------------------------------
-LE7D6	puls	A,CC				;	E7D6
-	orcc	#CC_C+CC_N			; set C and N
-	rts					;	E7DB
+LE7D6		puls	D,CC				;	E7D6
+		orcc	#CC_C+CC_N			; set C and N
+		rts					;	E7DB
 ;; ----------------------------------------------------------------------------
 ;LE7DC:	lda	zp_mos_cfs_critical		;	E7DC
 ;	bmi	LE812				;	E7DE
@@ -6262,29 +6550,29 @@ LE7D6	puls	A,CC				;	E7D6
 ; NOTE: OSWORD API change where X is the pointer to block!
 
 mos_WORDV_default_entry				; LE7EB
-	pshs	A,CC				;Push A
+		pshs	D,CC				;Push A
 						;Push flags
-	SEI					;disable interrupts
-	sta	zp_mos_OSBW_A			;store A,X,Y
-	stx	zp_mos_OSBW_Y			;NOTE: STORE X in Y/X pointer area!
-	ldx	#8				; indicate coming from OSWORD
-	cmpa	#$E0				;if A=>224
-	bhs	1F				;then E78A with carry set
+		SEI					;disable interrupts
+		sta	zp_mos_OSBW_A			;store A,X,Y
+		stx	zp_mos_OSBW_Y			;NOTE: STORE X in Y/X pointer area!
+		ldx	#8				; indicate coming from OSWORD
+		cmpa	#$E0				;if A=>224
+		bhs	1F				;then E78A with carry set
 
-	cmpa	#OSWORD_MAX				;else if A=>14
-	bhi	2F				;else E7C8 with carry set pass to ROMS & exit
+		cmpa	#OSWORD_MAX				;else if A=>14
+		bhi	2F				;else E7C8 with carry set pass to ROMS & exit
 
-	asla
-	adda	#OSBYTE_TABLE_OSBYTE_SIZE
-	jmp	mos_exec_BYTEV_from_osword_leMAX
+		asla
+		adda	#OSBYTE_TABLE_OSBYTE_SIZE
+		jmp	mos_exec_BYTEV_from_osword_leMAX
 
 
 1
-	SEC
-	lbra	mos_exec_BYTEV_from_osword_gt224
+		SEC
+		lbra	mos_exec_BYTEV_from_osword_gt224
 2
-	SEC
-	bra	mos_exec_BYTEV_from_osword_gtMAX
+		SEC
+		bra	mos_exec_BYTEV_from_osword_gtMAX
 
 ;; read a byte from I/O memory; block of 4 bytes set atFDBess pointed to by 00F0/1 (Y,X) ; XY +0  ADDRESS of byte ; +4	 on exit byte read 
 ;mos_read_a_byte_from_IO_memory:
@@ -6323,48 +6611,48 @@ osverinx	ldx	#17				; As suggested by JGH, see email of 27/617 and http://beebwi
 
 ;; make a sound; block of 8 bytes set atFDBess pointed to by 00F0/1  ; XY +0  Channel or +0=Flush, Channel:+1=Hold,Sync ; 2  Amplitude	 ; 4  Pitch ; 6	 Duration ; Y=0 on entry 
 mos_OSWORD_7_SOUND
-	ldy	zp_mos_OSBW_Y
-	lda	1,Y				; get high byte of channel # (not little endian!)
-	cmpa	#$FF
-	beq	x_speech_handling_routine	;if its &FF goto speech
-	cmpa	#$20				;else if>=&20 set carry
-	ldb	#$08				;B=8 for unrecognised OSWORD call via osbyte 143
-	bhs	mos_do_ukOSWORD			;and if carry set off to E7CA to offer to ROMS 
+		ldy	zp_mos_OSBW_Y
+		lda	1,Y				; get high byte of channel # (not little endian!)
+		cmpa	#$FF
+		beq	x_speech_handling_routine	;if its &FF goto speech
+		cmpa	#$20				;else if>=&20 set carry
+		ldb	#$08				;B=8 for unrecognised OSWORD call via osbyte 143
+		bhs	mos_do_ukOSWORD			;and if carry set off to E7CA to offer to ROMS 
 
-	clra					; note must clra here or it will clear C returned next
-	jsr	snd_test_H1orF1_API		;return with Carry set if Flush=1:B=Channel#
-	orb	#$04				;convert to buffer number
-	tfr	D,X				; X = buffer #
-	bcc	LE848				;and if carry clear (ex E8C9) then E848
+		clra					; note must clra here or it will clear C returned next
+		jsr	snd_test_H1orF1_API		;return with Carry set if Flush=1:B=Channel#
+		orb	#$04				;convert to buffer number
+		tfr	D,X				; X = buffer #
+		bcc	LE848				;and if carry clear (ex E8C9) then E848
 
-	jsr	x_Buffer_handling2		;else flush buffer
+		jsr	x_Buffer_handling2		;else flush buffer
 
 LE848
-	ldy	zp_mos_OSBW_Y
-	leay	1,Y
-	jsr	snd_test_H1orF1_API		;returns with carry set if H=1;B=S
-	stb	zp_mos_OS_wksp2			;Sync number =&FA
-	pshs	CC				;save flags
-	lda	5,Y				;Get Duration byte
-	sta	,-S				;push it
-	lda	3,Y				;get pitch byte
-	sta	,-S				;push it
-	lda	1,Y				;get amplitude byte
-	rola					;H now =bit 0 (carry shifted)
-	suba	#$02				;subract 2
-	asla					;multiply by 4
-	asla					;
-	ora	zp_mos_OS_wksp2			;add S byte (0-3)
+		ldy	zp_mos_OSBW_Y
+		leay	1,Y
+		jsr	snd_test_H1orF1_API		;returns with carry set if H=1;B=S
+		stb	zp_mos_OS_wksp2			;Sync number =&FA
+		pshs	CC				;save flags
+		lda	5,Y				;Get Duration byte
+		sta	,-S				;push it
+		lda	3,Y				;get pitch byte
+		sta	,-S				;push it
+		lda	1,Y				;get amplitude byte
+		rola					;H now =bit 0 (carry shifted)
+		suba	#$02				;subract 2
+		asla					;multiply by 4
+		asla					;
+		ora	zp_mos_OS_wksp2			;add S byte (0-3)
 						;at this point bit 7=0 for an envelope
 						;bits 3-6 give envelope -1, or volume +15 
 						;(i.e.complemented)
 						;bit 2 gives H
 						;bits 0-1 =Sync
-	jsr	x_INSV_flashiffull	;transfer to buffer
-	bcc	LE887				;if C clear on exit succesful transfer so E887
-LE869	leas	2,S				;else get back
+		jsr	x_INSV_flashiffull	;transfer to buffer
+		bcc	LE887				;if C clear on exit succesful transfer so E887
+LE869		leas	2,S				;else get back
 						;stored values
-	puls	CC,PC				;
+		puls	CC,PC				;
 
 
 ;; read VDU status
@@ -6393,7 +6681,7 @@ LE887		SEC
 		bra	snd_insv2bytesfromstack
 ;; :speech handling routine
 x_speech_handling_routine
-	TODO	"x_speech_handling_routine"
+		TODO	"x_speech_handling_routine"
 ;	php					;	E88D
 ;	iny					;	E88E
 ;	lda	(zp_mos_OSBW_X),y		;	E88F
@@ -6408,11 +6696,11 @@ x_speech_handling_routine
 ;	bcs	LE869				;	E89F
 ;	ror	mosbuf_buf_busy+8		;	E8A1
 snd_insv2bytesfromstack				; LE8A4
-	lda	,S+				; get back byte 
-	jsr	jmpINSV				; enter it in buffer X
-	lda	,S+				; get back next
-	jsr	jmpINSV				; and enter it again
-	puls	CC,PC				; get back flags and exit
+		lda	,S+				; get back byte 
+		jsr	jmpINSV				; enter it in buffer X
+		lda	,S+				; get back next
+		jsr	jmpINSV				; and enter it again
+		puls	CC,PC				; get back flags and exit
 ;; ----------------------------------------------------------------------------
 
 
@@ -6439,53 +6727,61 @@ snd_insv2bytesfromstack				; LE8A4
  ;   12  target level at end of attack phase   (0-126)
  ;   13  target level at end of decay  phase   (0-126)
 mos_OSWORD_8_ENVELOPE
-	ldb	,X+
-	decb					;set up appropriate displacement to storage area
-	andb	#3
-	aslb					;A=(A-1)*16 or 15
-	aslb					;
-	aslb					;
-	aslb					;
-	ora	#$0F				;
-	leay	,X
-	ldx	#snd_envelope_defs
-	abx
-	ldb	#13
-1	lda	,Y+
-	sta	,X+
-	decb
-	bne	1B
-	clr	,X+
-	clr	,X+
-	clr	,X
-	rts
+		ldb	,X+
+		decb					;set up appropriate displacement to storage area
+		andb	#3
+		aslb					;A=(A-1)*16 or 15
+		aslb					;
+		aslb					;
+		aslb					;
+		ora	#$0F				;
+		leay	,X
+		ldx	#snd_envelope_defs
+		abx
+		ldb	#13
+1		lda	,Y+
+		sta	,X+
+		decb
+		bne	1B
+		clr	,X+
+		clr	,X+
+		clr	,X
+		rts
 ;; ----------------------------------------------------------------------------
 
-	; API change, X is point to high byte, Carry is set if H>=1, returns channel # in B
+		; API change, X is point to high byte, Carry is set if H>=1, returns channel # in B
 snd_test_H1orF1_API				; LE8C9
-	ldb	,Y				; get byte
-	cmpb	#$10				; is it greater than 15, if so set carry
-	andb	#$03				; and 3 to clear bits 2-7
+		ldb	,Y				; get byte
+		cmpb	#$10				; is it greater than 15, if so set carry
+		andb	#$03				; and 3 to clear bits 2-7
 						; increment Y
-	pshs	CC
-	eim	#1, 0,S
-	puls	CC,PC				; and exit
+	IF CPU_6809
+		pshs	CC,A
+		lda	0,S
+		eora	#1				; flip carry
+		sta	0,S
+		puls	CC,A,PC				; and exit
+	ELSE
+		pshs	CC
+		eim	#1, 0,S
+		puls	CC,PC				; and exit
+	ENDIF
 ;; ----------------------------------------------------------------------------
 ;; read interval timer
 mos_OSWORD_3_rd_timer
-	ldy	#oswksp_OSWORD3_CTDOWN+5	; point 1 after end
-	bra	LE8D8
+		ldy	#oswksp_OSWORD3_CTDOWN+5	; point 1 after end
+		bra	LE8D8
 ;; read system clock
 mos_OSWORD_1_rd_sys_clk
-	ldy	#sysvar_BREAK_LAST_TYPE+5	; point 1 after end
-	ldb	sysvar_TIMER_SWITCH
-	leay	B,Y
-LE8D8	ldb	#4
-LE8DA	lda	,-Y
-	sta	,X+
-	decb					;	E8E0
-	bpl	LE8DA				;	E8E1
-LE8E3	rts					;	E8E3
+		ldy	#sysvar_BREAK_LAST_TYPE+5	; point 1 after end
+		ldb	sysvar_TIMER_SWITCH
+		leay	B,Y
+LE8D8		ldb	#4
+LE8DA		lda	,-Y
+		sta	,X+
+		decb					;	E8E0
+		bpl	LE8DA				;	E8E1
+LE8E3		rts					;	E8E3
 ;; ----------------------------------------------------------------------------
 ;; write interval timer
 mos_OSWORD_4_wr_int_timer				; LE8E4
@@ -6537,11 +6833,14 @@ OSWORD_0_read_line_loop_read				; LE924
 		jsr	OSRDCH				;else read character  from input stream
 		bcs	OSWORD_0_read_line_skip_err	;if carry set then illegal character or other error
 							;exit via E972
+	IF CPU_6809
 		pshs	A
-		tim	#$02, sysvar_OUTSTREAM_DEST
-;;;		lda	sysvar_OUTSTREAM_DEST		;A=&27C get output stream *FX3 
-;;;		bita	#2
+		lda	sysvar_OUTSTREAM_DEST		;A=&27C get output stream *FX3 
+		bita	#2
 		puls	A
+	ELSE
+		tim	#$02, sysvar_OUTSTREAM_DEST
+	ENDIF
 		bne	OSWORD_0_read_line_skip_novdu	;if Carry set E937
 		tst	sysvar_VDU_Q_LEN		;get number of items in VDU queue
 		bne	OSWORD_0_read_line_loop_echo	;if not 0 output character and loop round again
@@ -6607,362 +6906,6 @@ mos_OSBYTE_130					; DB: new
 		ldy	#$FFFF
 1		rts
 
-mos_STAR_TIME
-		;TODO - find somewhere else to put this?
-		ldx	#stack
-		jsr	mos_OSWORD_E_read_rtc_0
-		ldx	#stack
-
-1		lda	,X+
-		jsr	OSASCI
-		cmpa	#$D
-		bne	1B
-		rts
-
-mos_OSWORD_F_write_rtc
-		leax	1,X
-		pshs	CC
-		SEI
-		jsr	rtc_wait
-		cmpa	#8
-		beq	mos_OSWORD_F_write_rtc_8
-		cmpa	#15
-		beq	mos_OSWORD_F_write_rtc_15
-		cmpa	#24
-		beq	mos_OSWORD_F_write_rtc_24
-mos_OSWORD_F_fin
-		puls	CC,PC
-
-		; date and time
-mos_OSWORD_F_write_rtc_24
-		jsr	mos_OSWORD_F_write_rtc_15_x
-mos_OSWORD_F_write_rtc_8
-		jsr	bcd_at_X
-		ldb	#RTC_REG_HOURS
-		jsr	rtc_write
-		leax	1,X
-		jsr	bcd_at_X
-		ldb	#RTC_REG_MINUTES
-		jsr	rtc_write
-		leax	1,X
-		jsr	bcd_at_X
-		ldb	#RTC_REG_SECONDS
-		jsr	rtc_write
-		bra	mos_OSWORD_F_fin
-
-mos_OSWORD_F_write_rtc_15_x
-		pshs	CC
-mos_OSWORD_F_write_rtc_15
-		pshsw
-		ldw	,X			; D contains first two letters of day
-		ldy	#tbl_days
-		ldb	#7
-		jsr	day_find
-		ldb	#RTC_REG_DOW
-		jsr	rtc_write
-
-		leax	4,X
-		jsr	bcd_at_X
-		ldb	#RTC_REG_DAY
-		jsr	rtc_write
-		
-		leax	1,X
-		ldw	1,X			; D contains second two letters of month
-		ldy	#tbl_months+1
-		ldb	#12
-		jsr	day_find
-		ldb	#RTC_REG_MONTH
-		jsr	rtc_write
-
-		leax	6,X
-		jsr	bcd_at_X
-		ldb	#RTC_REG_YEAR
-		jsr	rtc_write
-		
-		leax	1,X
-		pulsw
-		bra	mos_OSWORD_F_fin
-
-
-;  0123456789ABCDEF012345678
-;  Day,DD Mon Year.HH:MM:SS£
-;  YMDWhms
-
-
-day_find
-		clra
-1		cmpw	,Y++
-		beq	2F
-		leay	1,Y
-		inca
-		decb
-		bpl	1B
-		clra
-2		inca
-		rts
-
-bcd_at_X	jsr	bcd_digit
-		asla
-		asla
-		asla
-		asla
-		sta	,-S
-		jsr	bcd_digit
-		adda	,S+
-		rts
-
-
-bcd_digit	lda	,X+
-		suba	#'0'
-1		cmpa	#9
-		bls	1F
-		suba	#20
-		bra	1B
-1		rts
-
-
-mos_OSWORD_E_read_rtc
-		;; lda	,X
-		tsta
-		beq	mos_OSWORD_E_read_rtc_0
-		cmpa	#1
-		beq	mos_OSWORD_E_read_rtc_1
-		cmpa	#2
-		beq	mos_OSWORD_E_read_rtc_2
-		rts
-mos_OSWORD_E_read_rtc_0
-		stx	,--S
-		jsr	mos_OSWORD_E_read_rtc_1		; get BCD time
-		ldx	,S++
-		leax	-1,X
-		bra	mos_OSWORD_E_read_rtc_2
-mos_OSWORD_E_read_rtc_1
-
-		jsr	rtc_wait
-
-		pshs	CC
-		orcc	#CC_I + CC_F		; we mustn't be interrupted
-		ldb	#9
-1		jsr	rtc_read
-		sta	,X+
-		decb
-		cmpb	#5
-		bgt	1B
-		decb
-		bpl	1B
-
-		puls	CC,PC
-
-mos_OSWORD_E_read_rtc_2
-		; seconds
-		leay	$17,X
-		lda	7,x
-		jsr	mos_hexstr_Y
-		;minutes
-		leay	$14,X
-		lda	6,X
-		jsr	mos_hexstr_Y
-		;hours
-		leay	$11,X
-		lda	5,X
-		jsr	mos_hexstr_Y
-		; YY
-		leay	$E,X
-		lda	1,X
-		jsr	mos_hexstr_Y
-		; century
-		ldb	1,X
-		lda	#$19
-		cmpa	#$80
-		adca	#0
-		daa
-		leay	$C,X
-		jsr	mos_hexstr_Y
-		; DD
-		leay	$5,X
-		lda	3,X
-		jsr	mos_hexstr_Y
-		; Mon
-		stx	,--S
-		ldb	$2,X
-		cmpb	#$10				; convert BCD to binary
-		blo	1F
-		subb	#6
-1		leay	8,X
-		ldx	#tbl_months
-		jsr	domonth
-
-		ldx	,S
-		; Day
-		ldb	$4,X
-		leay	1,X
-		ldx	#tbl_days
-		jsr	doday
-
-		ldx	,S++
-
-		; puntuation
-		lda	#$D
-		sta	$19,X
-		lda	#':'
-		sta	$13,X
-		sta	$16,X
-		lda	#'.'
-		sta	$10,X
-		lda	#','
-		sta	$4,X
-		lda	#' '
-		sta	$7,X
-		sta	$B,X
-
-
-		rts
-
-domonth
-doday
-		decb
-		stb	,-S
-		aslb
-		addb	,S+
-		abx
-		ldb	#3
-1		lda	,X+
-		sta	,Y+
-		decb
-		bne	1B
-		rts
-
-
-
-tbl_days	fcb	"SunMonTueWedThuFriSat"
-tbl_months	fcb	"JanFebMarAprMayJumJulAugSepOctNovDec"
-
-
-rtc_wait					; wait for a UIP clear or if set wait for it to end
-		std	,--S
-		ldb	#$A
-		jsr	rtc_read
-		tsta
-		bpl	2F			; if not UIP we have 240uS to read clock
-
-1		ldb	#$A
-		jsr	rtc_read
-		tsta
-		bmi	1B			; wait for UIP to go low
-
-2		puls	D,PC
-
-
-		; rtc_write A=data, B=address
-rtc_write
-		pshs	CC,A
-
-		orcc	#CC_I + CC_F			; disable interrupts
-
-		; AS low
-		lda	#BITS_RTC_AS_OFF
-		sta	sheila_SYSVIA_orb
-
-		; DS low
-		lda	#BITS_RTC_DS
-		sta	sheila_SYSVIA_orb
-
-		; AS hi
-		lda	#BITS_RTC_AS_ON
-		sta	sheila_SYSVIA_orb
-
-		lda	#$FF
-		sta	sheila_SYSVIA_ddra
-
-		; rtc address
-		stb	sheila_SYSVIA_ora_nh
-
-		; CS low
-		lda	#BITS_RTC_CS 
-		sta	sheila_SYSVIA_orb
-
-		; RnW lo
-		lda	#BITS_RTC_RnW
-		sta	sheila_SYSVIA_orb
-
-		; AS low
-		lda	#BITS_RTC_AS_OFF
-		sta	sheila_SYSVIA_orb
-
-		; DS hi
-		lda	#BITS_RTC_DS + BITS_LAT_ON
-		sta	sheila_SYSVIA_orb
-
-		lda	1,S
-		sta	sheila_SYSVIA_ora_nh
-
-		; DS low
-		lda	#BITS_RTC_DS
-		sta	sheila_SYSVIA_orb
-
-		; CS hi
-		lda	#BITS_RTC_CS + BITS_LAT_ON
-		sta	sheila_SYSVIA_orb
-
-		puls	CC,A,PC
-
-
-rtc_read	
-		pshs	CC,A
-
-		orcc	#CC_I + CC_F			; disable interrupts
-
-		; AS low
-		lda	#BITS_RTC_AS_OFF
-		sta	sheila_SYSVIA_orb
-
-		; DS low
-		lda	#BITS_RTC_DS
-		sta	sheila_SYSVIA_orb
-
-		; AS hi
-		lda	#BITS_RTC_AS_ON
-		sta	sheila_SYSVIA_orb
-
-		lda	#$FF
-		sta	sheila_SYSVIA_ddra
-
-		; rtc address
-		stb	sheila_SYSVIA_ora_nh
-
-		; CS low
-		lda	#BITS_RTC_CS 
-		sta	sheila_SYSVIA_orb
-
-		; slow D all in
-		clr	sheila_SYSVIA_ddra
-
-		; RnW hi
-		lda	#BITS_RTC_RnW + BITS_LAT_ON
-		sta	sheila_SYSVIA_orb
-
-		; AS low
-		lda	#BITS_RTC_AS_OFF
-		sta	sheila_SYSVIA_orb
-
-		; DS hi
-		lda	#BITS_RTC_DS + BITS_LAT_ON
-		sta	sheila_SYSVIA_orb
-
-		lda	sheila_SYSVIA_ora_nh
-		sta	1,S
-
-		; DS low
-		lda	#BITS_RTC_DS
-		sta	sheila_SYSVIA_orb
-
-		; CS hi
-		lda	#BITS_RTC_CS + BITS_LAT_ON
-		sta	sheila_SYSVIA_orb
-
-		puls	CC,A,PC
-
-
 
 
  *************************************************************************
@@ -6982,8 +6925,8 @@ rtc_read
  ; X contains value
  ; Y = 0 * despite what it says in the userguide!
 mos_OSBYTE_1AND6
-	ora	#$F0				;A=osbyte +&F0
-	bra	LE99A				;JUMP to E99A
+		ora	#$F0				;A=osbyte +&F0
+		bra	LE99A				;JUMP to E99A
 
 
  *************************************************************************
@@ -6994,18 +6937,18 @@ mos_OSBYTE_1AND6
  *                                                                       *
  *************************************************************************
 mos_OSBYTE_12
-	bne	mos_OSBYTE_11			;if &F0<>0 goto E995
-	ldx	#$32				;if X=0 in original call then X=32
-	stx	sysvar_KEYB_AUTOREP_DELAY	;to set keyboard autorepeat delay ram copy
-	ldx	#$08				;X=8
+		bne	mos_OSBYTE_11			;if &F0<>0 goto E995
+		ldx	#$32				;if X=0 in original call then X=32
+		stx	sysvar_KEYB_AUTOREP_DELAY	;to set keyboard autorepeat delay ram copy
+		ldx	#$08				;X=8
 ;; SET  KEYBOARD AUTOREPEAT DELAY
 mos_OSBYTE_11
-	adda	#$D0				;	E995
+		adda	#$D0				;	E995
 ;; ENABLE/DISABLE CURSOR EDITING
 mos_OSBYTE_3AND4
-	adda	#$E9				;	E998
+		adda	#$E9				;	E998
 LE99A
-	STX_B	zp_mos_OSBW_X			;	E99A
+		STX_B	zp_mos_OSBW_X			;	E99A
 
 *************************************************************************
 *                                                                       *
@@ -7015,49 +6958,49 @@ LE99A
 *                                                                       *
 *************************************************************************
 mos_OSBYTE_RW_SYSTEM_VARIABLE
-	ldx	#sysvar_OSVARADDR-$A6
-	tfr	A,B				;Y=A+&190
-	cmpb	#$B0
-	blo	mos_OSBYTE_RW_SYSTEM_VARIABLE_BE
-	abx
-	ldd	,x				;i.e. A=&190 +osbyte call!
-	sta	,-S
-	anda	zp_mos_OSBW_Y			;new value = OLD value AND Y EOR X!     
-	eora	zp_mos_OSBW_X			;       
-	sta	,x+				;store it
-	lda	,S				; bet back original a
-	clr	,-S				; stacked Y
-	exg	a,b
-	std	,--S				; stack this as X
-	puls	Y,X,PC
+		ldx	#sysvar_OSVARADDR-$A6
+		tfr	A,B				;Y=A+&190
+		cmpb	#$B0
+		blo	mos_OSBYTE_RW_SYSTEM_VARIABLE_BE
+		abx
+		ldd	,x				;i.e. A=&190 +osbyte call!
+		sta	,-S
+		anda	zp_mos_OSBW_Y			;new value = OLD value AND Y EOR X!     
+		eora	zp_mos_OSBW_X			;       
+		sta	,x+				;store it
+		lda	,S				; bet back original a
+		clr	,-S				; stacked Y
+		exg	a,b
+		std	,--S				; stack this as X
+		puls	Y,X,PC
 
 mos_OSBYTE_RW_SYSTEM_VARIABLE_BE		; as above but frig for big endian
-	eorb	#1				; read these the opposite way round as they're big endian
-	abx
-	ldd	-1,X				;i.e. A=&190 +osbyte call and the byte before it (will give wrong answer in Y on odd accesses!)
-	stb	,-S				;push original value on stack
-	andb	zp_mos_OSBW_Y			;new value = OLD value AND Y EOR X!     
-	eorb	zp_mos_OSBW_X			;       
-	stb	,X				;store it
-	ldb	,S				; get back original B
-	clr	,-S				; this as high
-	std	,--S				;put Y return into top of returned X
-	puls	Y,X,PC
+		eorb	#1				; read these the opposite way round as they're big endian
+		abx
+		ldd	-1,X				;i.e. A=&190 +osbyte call and the byte before it (will give wrong answer in Y on odd accesses!)
+		stb	,-S				;push original value on stack
+		andb	zp_mos_OSBW_Y			;new value = OLD value AND Y EOR X!     
+		eorb	zp_mos_OSBW_X			;       
+		stb	,X				;store it
+		ldb	,S				; get back original B
+		clr	,-S				; this as high
+		std	,--S				;put Y return into top of returned X
+		puls	Y,X,PC
 
 
 
 ;; ----------------------------------------------------------------------------
 ;; SERIAL BAUD RATE LOOK UP TABLE
 mostbl_SERIAL_BAUD_LOOK_UP			; LE9AD
-	FCB	$64					; % 01100100      75
-	FCB	$7F					; % 01111111     150
-	FCB	$5B					; % 01011011     300
-	FCB	$6D					; % 01101101    1200
-	FCB	$C9					; % 11001001    2400
-	FCB	$F6					; % 11110110    4800
-	FCB	$D2					; % 11010010    9600
-	FCB	$E4					; % 11100100   19200    
-	FCB	$40					; % 01000000
+		FCB	$64					; % 01100100      75
+		FCB	$7F					; % 01111111     150
+		FCB	$5B					; % 01011011     300
+		FCB	$6D					; % 01101101    1200
+		FCB	$C9					; % 11001001    2400
+		FCB	$F6					; % 11110110    4800
+		FCB	$D2					; % 11010010    9600
+		FCB	$E4					; % 11100100   19200    
+		FCB	$40					; % 01000000
 
 *************************************************************************
 *                                                                       *
@@ -7070,19 +7013,19 @@ mostbl_SERIAL_BAUD_LOOK_UP			; LE9AD
 
 
 mos_OSBYTE_19						; LE9B6
-	lda	sysvar_CFSTOCTR			;read vertical sync counter
-1	CLI					;allow interrupts briefly
-	SEI					;bar interrupts
-	cmpa	sysvar_CFSTOCTR			;is it 0 (Vertical sync pulse)
-	beq	1B				;no then E9B9
+		lda	sysvar_CFSTOCTR			;read vertical sync counter
+1		CLI					;allow interrupts briefly
+		SEI					;bar interrupts
+		cmpa	sysvar_CFSTOCTR			;is it 0 (Vertical sync pulse)
+		beq	1B				;no then E9B9
 ;; READ VDU VARIABLE; X contains the variable number ; 0 =lefthand column in pixels current graphics window ; 2 =Bottom row in pixels current graphics window ; 4 =Right hand column in pixels current graphics window ; 6 =Top row in pixels current graphics win
-	; TODO: swap certain bytes here
+		; TODO: swap certain bytes here
 mos_OSBYTE_160
-	lda	vduvar_GRA_WINDOW_LEFT+1,x	;	E9C0
-	m_tay
-	lda	vduvar_GRA_WINDOW_LEFT,x	;	E9C3
-	m_tax					;	E9C6
-	rts					;	E9C7
+		lda	vduvar_GRA_WINDOW_LEFT+1,x	;	E9C0
+		m_tay
+		lda	vduvar_GRA_WINDOW_LEFT,x	;	E9C3
+		m_tax					;	E9C6
+		rts					;	E9C7
 ;; ----------------------------------------------------------------------------
 ;; RESET SOFT KEYS
 
@@ -7098,16 +7041,16 @@ mos_OSBYTE_160
 *** </osbyte>
 
 mos_OSBYTE_18
-	pshs	X
-	lda	#$10				;	E9C8
-	sta	sysvar_KEYB_SOFT_CONSISTANCY	;	E9CA
-	ldx	#soft_keys_start		;	E9CD
-	clrb
-1	sta	b,x				;	E9CF
-	incb					;	E9D2
-	bne	1B				;	E9D3
-	clr	sysvar_KEYB_SOFT_CONSISTANCY	;	E9D5
-	puls	X,PC				;	E9D8
+		pshs	X
+		lda	#$10				;	E9C8
+		sta	sysvar_KEYB_SOFT_CONSISTANCY	;	E9CA
+		ldx	#soft_keys_start		;	E9CD
+		clrb
+1		sta	b,x				;	E9CF
+		incb					;	E9D2
+		bne	1B				;	E9D3
+		clr	sysvar_KEYB_SOFT_CONSISTANCY	;	E9D5
+		puls	X,PC				;	E9D8
 ;; ----------------------------------------------------------------------------
  *************************************************************************
  *                                                                       *
@@ -7118,33 +7061,33 @@ mos_OSBYTE_18
                          ;called from &CB0E, &CAE3, &DB8B
 
 mos_OSBYTE_118					; LE9D9
-	pshs	CC				;PUSH P
-	SEI					;DISABLE INTERUPTS
-	lda	#$40				;switch on CAPS and SHIFT lock lights
-	jsr	x_keyb_leds_test_esc		;via subroutine
-	bmi	LE9E7				;if ESCAPE exists (M set) E9E7
-	ANDCC	#~(CC_C + CC_V)			;else clear V and C
+		pshs	CC				;PUSH P
+		SEI					;DISABLE INTERUPTS
+		lda	#$40				;switch on CAPS and SHIFT lock lights
+		jsr	x_keyb_leds_test_esc		;via subroutine
+		bmi	LE9E7				;if ESCAPE exists (M set) E9E7
+		ANDCC	#~(CC_C + CC_V)			;else clear V and C
 						;before calling main keyboard routine to
-	jsr	[KEYV]				;switch on lights as required
-LE9E7	puls	CC				;get back flags
-	rola					;and rotate carry into bit 0
-	rts					;Return to calling routine
+		jsr	[KEYV]				;switch on lights as required
+LE9E7		puls	CC				;get back flags
+		rola					;and rotate carry into bit 0
+		rts					;Return to calling routine
 ;; ----------------------------------------------------------------------------
 ;; Turn on keyboard lights and Test Escape flag; called from &E1FE, &E9DD  ;  
 x_keyb_leds_test_esc
-	bcc	LE9F5
-	ldb	#$07
-	stb	sheila_SYSVIA_orb
-	decb
-	stb	sheila_SYSVIA_orb
-LE9F5	tst	zp_mos_ESC_flag
-	rts
+		bcc	LE9F5
+		ldb	#$07
+		stb	sheila_SYSVIA_orb
+		decb
+		stb	sheila_SYSVIA_orb
+LE9F5		tst	zp_mos_ESC_flag
+		rts
 ;; ----------------------------------------------------------------------------
 mos_poke_SYSVIA_orb
-	pshs	CC
-	SEI
-	sta	sheila_SYSVIA_orb
-	puls	CC,PC
+		pshs	CC
+		SEI
+		sta	sheila_SYSVIA_orb
+		puls	CC,PC
 
 *************************************************************************
 *                                                                       *
@@ -7152,18 +7095,20 @@ mos_poke_SYSVIA_orb
 *                                                                       *
 *************************************************************************
 mos_OSBYTE_154
-	m_txa					;osbyte entry! X transferred to A thence to
+		m_txa					;osbyte entry! X transferred to A thence to
 mos_VIDPROC_set_CTL
-	pshs	CC				;save flags
-	SEI					;disable interupts
-	sta	sysvar_VIDPROC_CTL_COPY		;save RAM copy of new parameter
-	sta	sheila_VIDULA_ctl		;write to control register
-	anda	#$01
-	sta	sheila_VIDULA_pixeor		;RAMDAC flash
-	lda	sysvar_FLASH_MARK_PERIOD	;read  space count
-	sta	sysvar_FLASH_CTDOWN		;set flash counter to this value
-	puls	CC				;get back status
-	rts					;and return
+		pshs	CC				;save flags
+		SEI					;disable interupts
+		sta	sysvar_VIDPROC_CTL_COPY		;save RAM copy of new parameter
+		sta	sheila_VIDULA_ctl		;write to control register
+	IF MACH_CHIPKIT
+		anda	#$01
+		sta	sheila_VIDULA_pixeor		;RAMDAC flash
+	ENDIF
+		lda	sysvar_FLASH_MARK_PERIOD	;read  space count
+		sta	sysvar_FLASH_CTDOWN		;set flash counter to this value
+		puls	CC				;get back status
+		rts					;and return
 
 *************************************************************************
 *                                                                       *
@@ -7173,97 +7118,104 @@ mos_VIDPROC_set_CTL
                 ;entry X contains value to write
 
 mos_OSBYTE_155
-	m_txa					;	EA10
+		m_txa					;	EA10
 write_pallette_reg
-	eora	#$07				;	EA11
-	pshs	CC				;	EA13
-	SEI					;	EA14
-	sta	sysvar_VIDPROC_PAL_COPY		;	EA15
-	sta	sheila_VIDULA_pal		;	EA18
-	puls	CC,PC				;	EA1B
+		eora	#$07				;	EA11
+		pshs	CC				;	EA13
+		SEI					;	EA14
+		sta	sysvar_VIDPROC_PAL_COPY		;	EA15
+		sta	sheila_VIDULA_pal		;	EA18
+		puls	CC,PC				;	EA1B
 ;; ----------------------------------------------------------------------------
 ;; A contains first non blank character
 mos_CLC_GSINIT
-	CLC					;	EA1D
+		CLC					;	EA1D
 mos_GSINIT
-	ror	zp_mos_GSREAD_quoteflag		;Rotate moves carry to &E4
-	jsr	mos_skip_spaces_at_X		;get character from text
+		ror	zp_mos_GSREAD_quoteflag		;Rotate moves carry to &E4
+		jsr	mos_skip_spaces_at_X		;get character from text
 ;;	iny					;increment Y to point at next character DB: already is!
-	cmpa	#$22				;check to see if its '"'
-	beq	LEA2A				;if so EA2A (carry set)
-	leax	-1,X				;decrement Y
-	CLC					;clear carry
-LEA2A	ror	zp_mos_GSREAD_quoteflag		;move bit 7 to bit 6 and put carry in bit 7
-	cmpa	#$0D				;check to see if its CR to set Z
-	rts					;and return
+		cmpa	#$22				;check to see if its '"'
+		beq	LEA2A				;if so EA2A (carry set)
+		leax	-1,X				;decrement Y
+		CLC					;clear carry
+LEA2A		ror	zp_mos_GSREAD_quoteflag		;move bit 7 to bit 6 and put carry in bit 7
+		cmpa	#$0D				;check to see if its CR to set Z
+		rts					;and return
 ;; ----------------------------------------------------------------------------
 ;; new API - read string at X (should have been inited with GSINIT)  
 mos_GSREAD
-	lda	#$00					; A=0
-LEA31	sta	zp_mos_GSREAD_characc			; store A
-	lda	,X					; peek first character
-	cmpa	#$0D					; is it CR
-	bne	GSREAD_notCR1				; if not goto EA3F
-	tst	zp_mos_GSREAD_quoteflag			; if bit 7=1 no 2nd '"' found
-	bmi	brkBadString				; goto EA8F
-	bra	mos_GSREAD_cr					; if not EA5A
+		lda	#$00					; A=0
+LEA31		sta	zp_mos_GSREAD_characc			; store A
+		lda	,X					; peek first character
+		cmpa	#$0D					; is it CR
+		bne	GSREAD_notCR1				; if not goto EA3F
+		tst	zp_mos_GSREAD_quoteflag			; if bit 7=1 no 2nd '"' found
+		bmi	brkBadString				; goto EA8F
+		bra	mos_GSREAD_cr					; if not EA5A
 GSREAD_notCR1						; LEA3F
-	cmpa	#$20					; is less than a space?
-	blo	brkBadString				; goto EA8F
-	bne	LEA4B					; if its not a space EA4B
-	tst	zp_mos_GSREAD_quoteflag			; is bit 7 of &E4 =1
-	bmi	LEA89					; if so goto EA89
-	tim	#$40, zp_mos_GSREAD_quoteflag		; 
-	beq	LEA5A					; if bit 6 = 0 EA5A
-LEA4B	cmpa	#$22					; is it '"'
-	bne	LEA5F					; if not EA5F
-	tst	zp_mos_GSREAD_quoteflag			; if so and Bit 7 of &E4 =0 (no previous ")
-	bpl	LEA89					; then EA89
-	leax	1,X					; else point at next character
-	lda	,X					; get it
-	cmpa	#$22					; is it '"'
-	beq	LEA89					; if so then EA89
-LEA5A	jsr	mos_skip_spaces_at_X			; read a byte from text
+		cmpa	#$20					; is less than a space?
+		blo	brkBadString				; goto EA8F
+		bne	LEA4B					; if its not a space EA4B
+		tst	zp_mos_GSREAD_quoteflag			; is bit 7 of &E4 =1
+		bmi	LEA89					; if so goto EA89
+	IF CPU_6809
+		pshs	B
+		ldb	#$40
+		andb	zp_mos_GSREAD_quoteflag
+		puls	B
+	ELSE
+		tim	#$40, zp_mos_GSREAD_quoteflag		; 
+	ENDIF
+		beq	LEA5A					; if bit 6 = 0 EA5A
+LEA4B		cmpa	#$22					; is it '"'
+		bne	LEA5F					; if not EA5F
+		tst	zp_mos_GSREAD_quoteflag			; if so and Bit 7 of &E4 =0 (no previous ")
+		bpl	LEA89					; then EA89
+		leax	1,X					; else point at next character
+		lda	,X					; get it
+		cmpa	#$22					; is it '"'
+		beq	LEA89					; if so then EA89
+LEA5A		jsr	mos_skip_spaces_at_X			; read a byte from text
 mos_GSREAD_cr
-	SEC						; and return with
-	rts						; carry set
+		SEC						; and return with
+		rts						; carry set
 ;; ----------------------------------------------------------------------------
-LEA5F	cmpa	#'|'					; is it '|'
-	bne	LEA89					; if not EA89
-	leax	1,X					; if so increase Y to point to next character
-	lda	,X					; get it
-	cmpa	#'|'					; and compare it with '|' again
-	beq	LEA89					; if its '|' then EA89
-	cmpa	#'"'					; else is it '"'
-	beq	LEA89					; if so then EA89
-	cmpa	#'!'					; is it !
-	bne	LEA77					; if not then EA77
-	leax	1,X					; increment Y again
-	lda	#$80					; set bit 7
-	bra	LEA31					; loop back to EA31 to set bit 7 in next CHR
-LEA77	cmpa	#' '					; is it a space
-	bcc	brkBadString				; if less than EA8F Bad String Error
-	cmpa	#'?'					; is it '?'
-	beq	LEA87					; if so EA87
-	jsr	x_Implement_CTRL_codes			; else modify code as if CTRL had been pressed
+LEA5F		cmpa	#'|'					; is it '|'
+		bne	LEA89					; if not EA89
+		leax	1,X					; if so increase Y to point to next character
+		lda	,X					; get it
+		cmpa	#'|'					; and compare it with '|' again
+		beq	LEA89					; if its '|' then EA89
+		cmpa	#'"'					; else is it '"'
+		beq	LEA89					; if so then EA89
+		cmpa	#'!'					; is it !
+		bne	LEA77					; if not then EA77
+		leax	1,X					; increment Y again
+		lda	#$80					; set bit 7
+		bra	LEA31					; loop back to EA31 to set bit 7 in next CHR
+LEA77		cmpa	#' '					; is it a space
+		bcc	brkBadString				; if less than EA8F Bad String Error
+		cmpa	#'?'					; is it '?'
+		beq	LEA87					; if so EA87
+		jsr	x_Implement_CTRL_codes			; else modify code as if CTRL had been pressed
 ;;	bit	mostbl_SYSVAR_DEFAULT_SETTINGS+65	; if bit 6 set
 ;;	bvs	LEA8A					; then EA8A
-	; exit with overflow set carry clear
-	leax	1,X
-	ora	zp_mos_GSREAD_characc
-	SEV
-	rts
+		; exit with overflow set carry clear
+		leax	1,X
+		ora	zp_mos_GSREAD_characc
+		SEV
+		rts
 
 
-LEA87	lda	#$7F					; else set bits 0 to 6 in A
-LEA89	CLV						; clear V
-LEA8A	leax	1,X					; increment Y
-	ora	zp_mos_GSREAD_characc			;
-	CLC						; clear carry
-	rts						; Return
+LEA87		lda	#$7F					; else set bits 0 to 6 in A
+LEA89		CLV						; clear V
+LEA8A		leax	1,X					; increment Y
+		ora	zp_mos_GSREAD_characc			;
+		CLC						; clear carry
+		rts						; Return
 ;; ----------------------------------------------------------------------------
 brkBadString					; LEA8F
-	DO_BRK	$FD, "Bad String"
+		DO_BRK	$FD, "Bad String"
 
 ;; Modify code as if SHIFT pressed
 x_Modify_code_as_if_SHIFT			; LEA9c
@@ -7314,22 +7266,22 @@ STARRUNPLINGBOOT
 
 ;; OSBYTE &F7 (247) INTERCEPT BREAK
 mos_OSBYTE_247
-	lda	sysvar_BREAK_VECTOR_JMP
-	eora	#$4C
-	bne	LEAF3rts				;	EADE
-	jmp	sysvar_BREAK_VECTOR_JMP
+		lda	sysvar_BREAK_VECTOR_JMP
+		eora	#$4C
+		bne	LEAF3rts				;	EADE
+		jmp	sysvar_BREAK_VECTOR_JMP
 ;; ----------------------------------------------------------------------------
 ;; OSBYTE &90 (144)   *TV; X=display delay ; Y=interlace flag 
 mos_OSBYTE_144
-	lda	oswksp_VDU_VERTADJ		;	EAE3
-	STX_B	oswksp_VDU_VERTADJ
-	m_tax
-	m_tya					;	EAEA
-	anda	#$01				;	EAEB
-	LDY_B	oswksp_VDU_INTERLACE		;	EAED
-	sta	oswksp_VDU_INTERLACE		;	EAF0
+		lda	oswksp_VDU_VERTADJ		;	EAE3
+		STX_B	oswksp_VDU_VERTADJ
+		m_tax
+		m_tya					;	EAEA
+		anda	#$01				;	EAEB
+		LDY_B	oswksp_VDU_INTERLACE		;	EAED
+		sta	oswksp_VDU_INTERLACE		;	EAF0
 LEAF3rts	
-	rts
+		rts
 ;; ----------------------------------------------------------------------------
 ;; OSBYTE &93 (147)  WRITE TO FRED; X is offset within page ; Y is byte to write 
 ;mos_OSBYTE_147:
@@ -7387,7 +7339,7 @@ snd_poke_flags_stacked					; LEB22
 ;; ----------------------------------------------------------------------------
 ;; : Sound parameters look up table ???CHECK???
 mostbl_sound_params
-	FCB	$E0, $C0, $A0, $80
+		FCB	$E0, $C0, $A0, $80
 
 
 *************************************************************************
@@ -7568,7 +7520,7 @@ jmp_snd_get_from_buff
 		jmp	snd_get_from_buff
 
 ;; ----------------------------------------------------------------------------
-	; API change channel no + 4 in X (i.e. buffer #), not A,B are trashed!
+		; API change channel no + 4 in X (i.e. buffer #), not A,B are trashed!
 snd_clear_chan_API				; LECA2
 		jsr	x_Silence_a_sound_channel	;silence the channel
 		clr	snd_duration_ctr-4,x		;zero main count
@@ -7593,7 +7545,7 @@ snd_check_silence_and_finish					; LECBC
 		jsr	mos_OSBYTE_152			;else examine buffer
 		bcc	1F				;if not empty ECCF
 							;else mark channel dormant
-		clr	snd_q_occupied,x		;
+		clr	snd_q_occupied-4,x		;
 1		puls	CC				;get back flags
 
 snd_silence_if_not_env					; LECD0
@@ -7759,12 +7711,12 @@ snd_get_from_buff_setdurrts			; LEDF7
 ;; ----------------------------------------------------------------------------
 ;; Pitch look up table 1
 mostbl_Pitch_lookup1
-	FCB	$F0,$B7,$82,$4F,$20,$F3,$C8,$A0 ;	EDFB
-	FCB	$7B,$57,$35,$16			;	EE03
+		FCB	$F0,$B7,$82,$4F,$20,$F3,$C8,$A0 ;	EDFB
+		FCB	$7B,$57,$35,$16			;	EE03
 ;; Pitch look up table 2
 mostbl_Pitch_lookup2
-	FCB	$E7,$D7,$CB,$C3,$B7,$AA,$A2,$9A ;	EE07
-	FCB	$92,$8A,$82,$7A			;	EE0F
+		FCB	$E7,$D7,$CB,$C3,$B7,$AA,$A2,$9A ;	EE07
+		FCB	$92,$8A,$82,$7A			;	EE0F
 ;; ----------------------------------------------------------------------------
 ;; : set current filing system ROM/PHROM
 ;x_set_current_filing_system_ROM_PHROM:
@@ -7925,9 +7877,12 @@ x_Turn_on_Keyboard_indicators				; LEEEB
 1		bpl	1F
 		ora	#$80
 1		
-;;;		ldb	#8
-;;;		bitb	,S+
+	IF CPU_6809
+		ldb	#8
+		bitb	,S+
+	ELSE
 		tim	#$08, ,S+
+	ENDIF
 		beq	1F
 		ora	#$40
 1		puls	B,PC				;get back flags	in A! and return
@@ -8020,7 +7975,7 @@ LEF74		sta	sysvar_KEYB_STATUS		;reset keyboard status
 		clra					;and set timer
 		sta	zp_mos_autorep_countdown	;to 0
 		bra	LEFE9
-	
+		
 LEF7E		cmpb	#$C0				;if not CAPS LOCK
 		bne	x_get_ASCII_code		;goto EF91
 		ora	#$A0				;sets shift enabled and disables SHIFT LOCK
@@ -8032,7 +7987,7 @@ LEF7E		cmpb	#$C0				;if not CAPS LOCK
 LEF8C		eora	#$90				;reverse both SHIFT enabled and CAPs Lock
 		bra	LEF74				;reset keyboard status and set timer
 ;; ----------------------------------------------------------------------------
-;; get ASCII code; on entry X=key pressed internal number 
+;; get ASCII code; on entry B=key pressed internal number 
 x_get_ASCII_code
 		ldx	#key2ascii_tab - $10
 		andb	#$7F
@@ -8122,18 +8077,18 @@ keyb_set_autorepeat_countdown
 		rts					;
 ;; ----------------------------------------------------------------------------
 ;; Interrogate Keyboard routine;
-	; NOTE: API change B now contains key code to scan, A is preserved
-	; NB: needs to preserve carry!
+		; NOTE: API change B now contains key code to scan, A is preserved
+		; NB: needs to preserve carry!
 keyb_check_key_code_API
-	pshs	A
-	lda	#$03				;stop Auto scan
-	sta	sheila_SYSVIA_orb		;by writing to system VIA
-	lda	#$7F				;set bits 0 to 6 of port A to input on bit 7
+		pshs	A
+		lda	#$03				;stop Auto scan
+		sta	sheila_SYSVIA_orb		;by writing to system VIA
+		lda	#$7F				;set bits 0 to 6 of port A to input on bit 7
 						;output on bits 0 to 6
-	sta	sheila_SYSVIA_ddra		;
-	stb	sheila_SYSVIA_ora_nh		;write X to Port A system VIA
-	ldb	sheila_SYSVIA_ora_nh		;read back &80 if key pressed (M set)
-	puls	A,PC				;and return
+		sta	sheila_SYSVIA_ddra		;
+		stb	sheila_SYSVIA_ora_nh		;write X to Port A system VIA
+		ldb	sheila_SYSVIA_ora_nh		;read back &80 if key pressed (M set)
+		puls	A,PC				;and return
 ;; ----------------------------------------------------------------------------
 
 *************************************************************************
@@ -8145,50 +8100,50 @@ keyb_check_key_code_API
                                          
  *key data block 1
 key2ascii_tab					; LF03B
-	FCB	$71,$33,$34,$35,$84,$38,$87,$2D,$5E,$8C
-	;	 q , 3 , 4 , 5 , f4, 8 , f7, - , ^ , <-
+		FCB	$71,$33,$34,$35,$84,$38,$87,$2D,$5E,$8C
+		;	 q , 3 , 4 , 5 , f4, 8 , f7, - , ^ , <-
 
-	RMB	6	; TODO - spare gap in key2ascii map
+		RMB	6	; TODO - spare gap in key2ascii map
 
 *key data block 2
  
-LF04B	FCB	$80,$77,$65,$74,$37,$69,$39,$30,$5F,$8E
-	;	 f0, w , e , t , 7 , i , 9 , 0 , _ ,lft
+LF04B		FCB	$80,$77,$65,$74,$37,$69,$39,$30,$5F,$8E
+		;	 f0, w , e , t , 7 , i , 9 , 0 , _ ,lft
 
-	RMB	6	; TODO - spare gap in key2ascii map
+		RMB	6	; TODO - spare gap in key2ascii map
 
  *key data block 3
  
-LF05B	FCB	$31,$32,$64,$72,$36,$75,$6F,$70,$5B,$8F
-	;	 1 , 2 , d , r , 6 , u , o , p , [ , dn
+LF05B		FCB	$31,$32,$64,$72,$36,$75,$6F,$70,$5B,$8F
+		;	 1 , 2 , d , r , 6 , u , o , p , [ , dn
 
-	RMB	6	; TODO - spare gap in key2ascii map
+		RMB	6	; TODO - spare gap in key2ascii map
 
 *key data block 4
  
-LF06B	FCB	$01,$61,$78,$66,$79,$6A,$6B,$40,$3A,$0D
-	;	 CL, a , x , f , y , j , k , @ , : ,RET		N.B CL=CAPS LOCK
+LF06B		FCB	$01,$61,$78,$66,$79,$6A,$6B,$40,$3A,$0D
+		;	 CL, a , x , f , y , j , k , @ , : ,RET		N.B CL=CAPS LOCK
 
 *speech routine data
-LF075	FCB	$00,$FF,$01,$02,$09,$0A
+LF075		FCB	$00,$FF,$01,$02,$09,$0A
 
 *key data block 5
 
 F07B	FCB	$02,$73,$63,$67,$68,$6E,$6C,$3B,$5D,$7F
-	;	 SL, s , c , g , h , n , l , ; , ] ,DEL		N.B. SL=SHIFT LOCK
+		;	 SL, s , c , g , h , n , l , ; , ] ,DEL		N.B. SL=SHIFT LOCK
 
-	RMB	6	; TODO - spare gap in key2ascii map
+		RMB	6	; TODO - spare gap in key2ascii map
 
  *key data block 6
  
 F08B	FCB	$00,$7A,$20,$76,$62,$6D,$2C,$2E,$2F,$8B
-	;	TAB, Z ,SPC, v , b , m , , , . , / ,CPY
+		;	TAB, Z ,SPC, v , b , m , , , . , / ,CPY
 
-	RMB	6	; TODO - spare gap in key2ascii map
+		RMB	6	; TODO - spare gap in key2ascii map
 
 *key data block 7
 F09B	FCB	$1B,$81,$82,$83,$85,$86,$88,$89,$5C,$8D
-	;	ESC, f1, f2, f3, f5, f6, f8, f9, \ , ->
+		;	ESC, f1, f2, f3, f5, f6, f8, f9, \ , ->
 
 
 
@@ -8227,9 +8182,9 @@ F09B	FCB	$1B,$81,$82,$83,$85,$86,$88,$89,$5C,$8D
 ;	FCB	$8F				;	F064
 ;; Main entry to keyboard routines
 mos_enter_keyboard_routines
-	orcc	#CC_V+CC_N			;set V and M
+		orcc	#CC_V+CC_N			;set V and M
 jmpKEYV	
-	jmp	[KEYV]
+		jmp	[KEYV]
 ;; ----------------------------------------------------------------------------
 ;	ora	(zp_lang+97,x)			;	F06B
 ;	sei					;	F06D
@@ -8254,11 +8209,11 @@ jmpKEYV
 ;	FCB	$7F				;	F084
 ;; OSBYTE 131  READ OSHWM  (PAGE in BASIC)
 mos_OSBYTE_131
-	lda	sysvar_CUR_OSHWM		;	F085
-	clrb
-	m_tay
-	tfr	D,X
-	rts					;	F08A
+		lda	sysvar_CUR_OSHWM		;	F085
+		clrb
+		m_tay
+		tfr	D,X
+		rts					;	F08A
 ;; ----------------------------------------------------------------------------
 ;	brk					;	F08B
 ;	FCB	$7A				;	F08C
@@ -8268,8 +8223,8 @@ mos_OSBYTE_131
 ;	FCB	$8B				;	F094
 ;; set input buffer number and flush it
 x_set_input_buffer_number_and_flush_it
-	ldx	sysvar_CURINSTREAM		;	F095
-LF098	jmp	x_Buffer_handling		;	F098
+		ldx	sysvar_CURINSTREAM		;	F095
+LF098		jmp	x_Buffer_handling		;	F098
 ;; ----------------------------------------------------------------------------
 ;	FCB	$1B				;	F09B
 ;	sta	(zp_lang+130,x)			;	F09C
@@ -8294,28 +8249,28 @@ LF098	jmp	x_Buffer_handling		;	F098
 
 
 mos_OSBYTE_15						; LF0A8
-	bne	x_set_input_buffer_number_and_flush_it;if X<>1 flush input buffer only
+		bne	x_set_input_buffer_number_and_flush_it;if X<>1 flush input buffer only
 mos_flush_all_buffers					; LF0AA
-	ldx	#$08				;else load highest buffer number (8)
-1	CLI					;allow interrupts 
-	SEI					;briefly!
-	jsr	mos_OSBYTE_21			;flush buffer
-	leax	-1,X				;decrement X to point at next buffer
-	cmpx	#$FFFF
-	bne	1B
+		ldx	#$08				;else load highest buffer number (8)
+1		CLI					;allow interrupts 
+		SEI					;briefly!
+		jsr	mos_OSBYTE_21			;flush buffer
+		leax	-1,X				;decrement X to point at next buffer
+		cmpx	#$FFFF
+		bne	1B
 ;; OSBYTE 21  FLUSH SPECIFIC BUFFER; on entry X=buffer number 
 mos_OSBYTE_21
-	cmpx	#$09				;	F0B4
-	blo	LF098				;	F0B6
-	rts					;	F0B8
+		cmpx	#$09				;	F0B4
+		blo	LF098				;	F0B6
+		rts					;	F0B8
 ;; ----------------------------------------------------------------------------
 ;; Issue *HELP to ROMS
 mos_STAR_HELP
-	ldb	#SERVICE_9_HELP			;	F0B9
-	jsr	mos_OSBYTE_143_b_cmd_x_param			;	F0BB
-	jsr	mos_PRTEXT
-	FCB	$0D, "OS 1.09", $0D,0
-	rts					;	F0CB
+		ldb	#SERVICE_9_HELP			;	F0B9
+		jsr	mos_OSBYTE_143_b_cmd_x_param			;	F0BB
+		jsr	mos_PRTEXT
+		FCB	$0D, "OS 1.09", $0D,0
+		rts					;	F0CB
 ;; ----------------------------------------------------------------------------
 ;; OSBYTE 122  KEYBOARD SCAN FROM &10 (16);  
 clc_then_mos_OSBYTE_122
@@ -8337,7 +8292,7 @@ KEYV_keyboard_scan
 		bpl	LF0D9				;
 		tfr	A,B
 		jsr	keyb_check_key_code_API		;else interrogate keyboard
-LF0D7		bcs	keyb_hw_enable_scan		;if carry set F12E to set Auto scan else
+LF0D7		bcs	keyb_hw_enable_scan2		;if carry set F12E to set Auto scan else
 LF0D9		pshs	CC				;push flags
 		bcc	LF0DE				;if carry clear goto FODE 
 							;else (keep Y passed in to clc_then_mos_OSBYTE_122)
@@ -8382,17 +8337,23 @@ LF123		decb					;decrement X
 		tfr	b,a				;
 LF127		m_tax_se				;
 		puls	CC				;pull flags
-keyb_enable_scan_IRQonoff			; LF129
+keyb_enable_scan_IRQonoff				; LF129
 		jsr	keyb_hw_enable_scan		;call autoscan
 		CLI					;allow interrupts 
 		SEI					;disable interrupts
 ;; Enable counter scan of keyboard columns; called from &EEFD, &F129 
-	
+		
 keyb_hw_enable_scan
-		stb	,-S				; store B on stack
-		lda	#$0B				;	F12E
-		sta	sheila_SYSVIA_orb		;	F130
-		puls	A,PC				; return with B in A
+		pshs	B
+		ldb	#$0B				;	F12E
+		stb	sheila_SYSVIA_orb		;	F130
+		puls	B,PC				; return with B in X
+keyb_hw_enable_scan2
+		tfr	B,A
+		m_tax_se
+		bra	keyb_hw_enable_scan
+
+
 ;; ----------------------------------------------------------------------------
 ;; selects ROM filing system
 ;mos_selects_ROM_filing_system:
@@ -8412,7 +8373,7 @@ keyb_hw_enable_scan
 ;	plp					;	F14A
 ;LF14B:	php					;	F14B
 ;	lda	#$06				;	F14C
-;	jsr	mos_jmp_FSCV				;	F14E
+;	jsr	mos_jmp_FSCV			;	F14E
 ;	ldx	#$06				;	F151
 ;	plp					;	F153
 ;	beq	LF157				;	F154
@@ -8427,62 +8388,62 @@ keyb_hw_enable_scan
 ;	ldx	#$0F				;	F166
 
 mos_OSBYTE_143
-	; b == original X, put Y (param) in X
-	tfr	Y,X
-	jsr	mos_OSBYTE_143_b_cmd_x_param
-	tfr	X,Y
-	rts
+		; b == original X, put Y (param) in X
+		tfr	Y,X
+		jsr	mos_OSBYTE_143_b_cmd_x_param
+		tfr	X,Y
+		rts
 
 
 mos_OSBYTE_143_b_cmd_x_param
-	lda	zp_mos_curROM			; get current Rom number
-	sta	,-S				; store it on stack along with command # (passed in B)
-	tfr	B,A				; service call # in A
-	ldb	#$0F				; set X=15
-LF16E	ldy	#oswksp_ROMTYPE_TAB		
-	tst	B,Y				; read bit 7 on rom map (no rom has type 254 &FE)
-	bpl	1F				; skip if bit 7 not set (no service entry)
-	stb	zp_mos_curROM			; switch in paged ROM
-	stb	SHEILA_ROMCTL_SWR
-	jsr	$8003				; call service routine
-	tsta					; check to see if A is reset
-	beq	2F				; if it is do no more roms
-	ldb	zp_mos_curROM			; get current rom #
-1	decb					; decrement
-	bpl	LF16E				; go again?
-2	ldb	,S+				; get back original rom #
-	stb	zp_mos_curROM			; switch in paged ROM
-	stb	SHEILA_ROMCTL_SWR
-	tsta					; set Z if A=0
-	rts					; return result still in A, B corrupted (original low byte of X)
+		lda	zp_mos_curROM			; get current Rom number
+		sta	,-S				; store it on stack along with command # (passed in B)
+		tfr	B,A				; service call # in A
+		ldb	#$0F				; set X=15
+LF16E		ldy	#oswksp_ROMTYPE_TAB		
+		tst	B,Y				; read bit 7 on rom map (no rom has type 254 &FE)
+		bpl	1F				; skip if bit 7 not set (no service entry)
+		stb	zp_mos_curROM			; switch in paged ROM
+		stb	SHEILA_ROMCTL_SWR
+		jsr	$8003				; call service routine
+		tsta					; check to see if A is reset
+		beq	2F				; if it is do no more roms
+		ldb	zp_mos_curROM			; get current rom #
+1		decb					; decrement
+		bpl	LF16E				; go again?
+2		ldb	,S+				; get back original rom #
+		stb	zp_mos_curROM			; switch in paged ROM
+		stb	SHEILA_ROMCTL_SWR
+		tsta					; set Z if A=0
+		rts					; return result still in A, B corrupted (original low byte of X)
 
 
 
 
 ;; ----------------------------------------------------------------------------
 ;; start of data for save, 0E EndFDBess /attributes
-;mos_start_of_data_for_save:
-;	ora	#$00				;	F18E
-;	bne	LF1A2				;	F190
-;	cpy	#$00				;	F192
-;	bne	LF1A2				;	F194
-;	lda	zp_fs_w+6			;	F196
-;	and	#$FB				;	F198
-;	ora	sysvar_CFSRFS_SWITCH		;	F19A
-;	asl	a				;	F19D
-;	ora	sysvar_CFSRFS_SWITCH		;	F19E
-;	lsr	a				;	F1A1
-;LF1A2:	rts					;	F1A2
+mos_OSARGS
+	tsta						;	F18E
+	bne	LF1A2					;	F190
+	cmpy	#$00					;	F192
+	bne	LF1A2					;	F194
+	lda	zp_fs_w+6				;	F196
+	anda	#$FB					;	F198
+	ora	sysvar_CFSRFS_SWITCH			;	F19A
+	asla						;	F19D
+	ora	sysvar_CFSRFS_SWITCH			;	F19E
+	lsra						;	F1A1
+LF1A2	rts						;	F1A2
 ;; ----------------------------------------------------------------------------
 ;; FSC	  VECTOR  TABLE
 mos_FSC_VECTOR_TABLE
-	FDB	mos_FSCV_OPT			; *OPT          (F54C)  
-	FDB	mos_FSCV_EOF			; check EOF     (F61D)
-	FDB	mos_FSCV_RUN			; */            (F304)
-	FDB	x_Bad_command_error		; Bad Command   (E30F) if roms and FS don't want it 
-	FDB	mos_FSCV_RUN			; *RUN          (F304)
-	FDB	mos_FSCV_CAT			; *CAT          (F32A)
-	FDB	mos_CLOSE_SPOOL_EXEC		; osbyte 77     (E274)
+		FDB	mos_FSCV_OPT			; *OPT          (F54C)  
+		FDB	mos_FSCV_EOF			; check EOF     (F61D)
+		FDB	mos_FSCV_RUN			; */            (F304)
+		FDB	x_Bad_command_error		; Bad Command   (E30F) if roms and FS don't want it 
+		FDB	mos_FSCV_RUN			; *RUN          (F304)
+		FDB	mos_FSCV_CAT			; *CAT          (F32A)
+		FDB	mos_OSBYTE_119			; osbyte 77     (E274)
 
 ;; A= index 0 to 7;
 ; on entry A is reason code 
@@ -8497,13 +8458,13 @@ mos_FSC_VECTOR_TABLE
 ; A=8    OS about to process *command
 
 mos_FSCV_default_handler
-	cmpa	#$07				; if >= 7
-	bhs	1F				; POH
-	stx	zp_fs_s+12			;	F1B5
-	asla					;	F1B7
-	ldx	#mos_FSC_VECTOR_TABLE
-	jmp	[A,X]
-1	rts					;	F1C3
+		cmpa	#$07				; if >= 7
+		bhs	1F				; POH
+		stx	zp_fs_s+12			;	F1B5
+		asla					;	F1B7
+		ldx	#mos_FSC_VECTOR_TABLE
+		jmp	[A,X]
+1		rts					;	F1C3
 ;; ----------------------------------------------------------------------------
 ;; LOAD FILE
 ;mos_LOAD_FILE:
@@ -8681,7 +8642,7 @@ mos_FSCV_default_handler
 ;	bne	LF2C8				;	F303
 ;; *RUN	  ENTRY
 mos_FSCV_RUN
-	TODO	"mos_FSCV_RUN"
+		TODO	"mos_FSCV_RUN"
 ;	jsr	x_Read_Filename_using_Command_Line_Interpreter;	F305
 ;	ldx	#$FF				;	F308
 ;	stx	L03C2				;	F30A
@@ -8701,7 +8662,7 @@ mos_FSCV_RUN
 ;; ----------------------------------------------------------------------------
 ;; *CAT	  ENTRY; CASSETTE OPTIONS in &E2 ; bit 0  input file open ; bit 1  output file open ; bit 2,4,5	 not used ; bit 3  current CATalogue status ; bit 6  EOF reached ; bit 7  EOF warning given 
 mos_FSCV_CAT
-	TODO	"mos_FSCV_CAT"
+		TODO	"mos_FSCV_CAT"
 ;	lda	#$08				;	F32B
 ;	jsr	LF344				;	F32D
 ;	jsr	mos_claim_serial_system_for_cass;	F330
@@ -8781,8 +8742,8 @@ mos_FSCV_CAT
 ;	bpl	LF370				;	F3C8
 ;; file handling; on entry A determines Action Y may contain file handle or  ; X/Y point to filename terminated by &0D in memory ; A=0	 closes file in channel Y if Y=0 closes all files ; A=&40  open a file for input  (reading) X/Y points to filename ; A=&8
 mos_FINDV_default_handler
-	TODOSKIP "mos_FINDV_default_handler"
-	rts
+		TODOSKIP "mos_FINDV_default_handler"
+		rts
 ;	sta	zp_fs_s+12			;	F3CA
 ;	txa					;	F3CC
 ;	pha					;	F3CD
@@ -8794,7 +8755,7 @@ mos_FINDV_default_handler
 ;x_close_a_file:
 ;	tya					;	F3D4
 ;	bne	LF3E3				;	F3D5
-;	jsr	mos_CLOSE_SPOOL_EXEC		;	F3D7
+;	jsr	mos_OSBYTE_119		;	F3D7
 ;	jsr	LF478				;	F3DA
 ;LF3DD:	lsr	zp_cfs_w			;	F3DD
 ;	asl	zp_cfs_w			;	F3DF
@@ -9066,7 +9027,7 @@ LF57E		ldy	#0				;	assume A always 0 and was a tay
 
 ;; DEFAULT OPT VALUES TABLE
 x_DEFAULT_OPT_VALUES_TABLE
-	FCB	$A1, $00, $22, $11, $00, $88, $CC	; LF587
+		FCB	$A1, $00, $22, $11, $00, $88, $CC	; LF587
 
 ;LF588:	dec	zp_fs_w				;	F588
 ;	lda	sysvar_CFSRFS_SWITCH		;	F58A
@@ -9075,7 +9036,7 @@ x_DEFAULT_OPT_VALUES_TABLE
 ;	tay					;	F592
 ;	clc					;	F593
 ;	bcc	LF5B0				;	F594
-;LF596:	lda	LFE08				;	F596
+;LF596:	lda	sheila_ACIA_CTL				;	F596
 ;	pha					;	F599
 ;	and	#$02				;	F59A
 ;	beq	LF5A9				;	F59C
@@ -9143,14 +9104,14 @@ x_DEFAULT_OPT_VALUES_TABLE
 ;	jsr	x_perform_CRC			;	F60F
 ;	dec	zp_fs_s+12			;	F612
 ;	bpl	LF61D				;	F614
-;LF616:	jsr	LFB46				;	F616
+;LF616:	jsr	ACIA_rst_ctl3				;	F616
 ;	ldy	#$00				;	F619
 ;LF61B:	sty	zp_fs_w+2			;	F61B
 ;LF61D:	rts					;	F61D
 ;; ----------------------------------------------------------------------------
 ;; OSBYTE 127 check for end of file;  
 mos_FSCV_EOF
-	TODO	"mos_FSCV_EOF"
+		TODO	"mos_FSCV_EOF"
 ;	pha					;	F61E
 ;	tya					;	F61F
 ;	pha					;	F620
@@ -9203,37 +9164,37 @@ mos_FSCV_EOF
 ;	beq	LF685				;	F670
 ;	bvs	LF685				;	F672
 brkFileNotFound						; LF674
-	DO_BRK  $D6, "File Not found"
+		DO_BRK  $D6, "File Not found"
 ;LF685:	ldy	#$FF				;	F685
 ;	sty	$03DF				;	F687
 ;	rts					;	F68A
 ;; ----------------------------------------------------------------------------
 mos_CLOSE_EXEC_FILE
-	clra					; A=0 means close any current file
+		clra					; A=0 means close any current file
 ; * EXEC
-	; always entered with A=0 but Z=1 flag decided whether to close????
-	; Y ignored
-	; X filename to open in Z=0
+		; always entered with A=0 but Z=1 flag decided whether to close????
+		; Y ignored
+		; X filename to open in Z=0
 mos_STAR_EXEC
-	pshs	CC,Y				; save flags on stack
+		pshs	CC,Y				; save flags on stack
 						; save Y
-	ldb	sysvar_EXEC_FILE		; EXEC file handle
-	sta	sysvar_EXEC_FILE		; EXEC file handle
-	tstb					; DB: need extra TST here as STA sets Z	
-	beq	1F				
-	clra
-	tfr	D,Y				; if original file is not 0 close file via OSFIND
-	jsr	OSFIND				; Y=original file handle, A=0 on entry!?
+		ldb	sysvar_EXEC_FILE		; EXEC file handle
+		sta	sysvar_EXEC_FILE		; EXEC file handle
+		tstb					; DB: need extra TST here as STA sets Z	
+		beq	1F				
+		clra
+		tfr	D,Y				; if original file is not 0 close file via OSFIND
+		jsr	OSFIND				; Y=original file handle, A=0 on entry!?
 1
 ;;;	ldy	zp_mos_OS_wksp			;else Y= original Y
-	puls	CC,Y				;get back flags and Y
-	beq	1F				;if Z set on entry exit else
-	lda	#$40				;A=&40
-	jsr	OSFIND				;to open an input file, file name passed in X
-	tsta					;Y=A
-	beq	brkFileNotFound			;If Y=0 'File not found' else store
-	sta	sysvar_EXEC_FILE		;EXEC file handle
-1	rts					;return
+		puls	CC,Y				;get back flags and Y
+		beq	1F				;if Z set on entry exit else
+		lda	#$40				;A=&40
+		jsr	OSFIND				;to open an input file, file name passed in X
+		tsta					;Y=A
+		beq	brkFileNotFound			;If Y=0 'File not found' else store
+		sta	sysvar_EXEC_FILE		;EXEC file handle
+1		rts					;return
 ;; ----------------------------------------------------------------------------
 ;; read a block
 ;x_read_a_block:
@@ -9412,7 +9373,28 @@ FILL1
 		IF NOICE==0
 			FILL	$FF,NOICE_CODE_LEN
 		ELSE
-			INCLUDEBIN "../noice/noice_beeb6309/noice6309-ovr.bin"
+		IF MACH_BEEB
+		IF NOICE_MY
+		IF CPU_6809
+			INCLUDEBIN "../noice/noice/mon-noice-my-6809-beeb-ovr.ovr"
+		ELSE
+			INCLUDEBIN "../noice/noice/mon-noice-my-6309-beeb-ovr.ovr"
+		ENDIF
+		ELSE
+		IF CPU_6809
+			INCLUDEBIN "../noice/noice/mon-noice-6809-beeb-ovr.ovr"
+		ELSE
+			INCLUDEBIN "../noice/noice/mon-noice-6309-beeb-ovr.ovr"
+		ENDIF
+		ENDIF
+		ENDIF
+		IF MACH_CHIPKIT
+		IF CPU_6809
+			INCLUDEBIN "../noice/noice/mon-noice-6809-chipkit-ovr.ovr"
+		ELSE
+			INCLUDEBIN "../noice/noice/mon-noice-6309-chipkit-ovr.ovr"
+		ENDIF
+		ENDIF
 FILLNOICE		FILL	$FF,NOICE_CODE_BASE+NOICE_CODE_LEN-FILLNOICE
 		ENDIF
 
@@ -9431,24 +9413,29 @@ FILLNOICE		FILL	$FF,NOICE_CODE_BASE+NOICE_CODE_LEN-FILLNOICE
 *************************************************************
 *     R E M A P P E D    H A R D W A R E    V E C T O R S   *
 *************************************************************
-XRESV		FDB	mos_handle_res	; $FFF0   ; Hardware vectors, paged in to $F7Fx from $FFFx
-XSWI3V		FDB	mos_handle_swi3	; $FFF2		; on 6809 we use this instead of 6502 BRK
-XSWI2V		FDB	mos_handle_irq	; $FFF4
-XFIRQV		FDB	mos_handle_irq	; $FFF6
-XIRQV		FDB	mos_handle_irq	; $FFF8
-	IF NOICE==0
-XSWIV		FDB	mos_handle_irq	; $FFFA
-XNMIV		FDB	vec_nmi		; $FFFC
+	IF CPU_6309
+XDIV0		FDB	mos_handle_div0			; $FFF0   	; Hardware vectors, paged in to $F7Fx from $FFFx
 	ELSE
-XSWIV		FDB	noice_handle_swi	; $FFFA
-XNMIV		FDB	noice_handle_nmi	; $FFFC
+		FDB	0
 	ENDIF
-XRESETV		FDB	mos_handle_res	; $FFFE
+XSWI3V		FDB	mos_handle_swi3			; $FFF2		; on 6809 we use this instead of 6502 BRK
+XSWI2V		FDB	mos_handle_swi2			; $FFF4
+XFIRQV		FDB	vec_nmi				; $FFF6
+XIRQV		FDB	mos_handle_irq			; $FFF8
+	IF NOICE==0
+XSWIV		FDB	mos_handle_swi			; $FFFA
+XNMIV		FDB	mos_handle_nmi			; $FFFC
+	ELSE
+XSWIV		FDB	noice_handle_swi		; $FFFA
+XNMIV		FDB	noice_handle_nmi		; $FFFC
+	ENDIF
+XRESETV		FDB	mos_handle_res			; $FFFE
 
 		IF NOICE
 noice_handle_nmi	JMP	[NOICE_CODE_BASE+0]
 noice_handle_swi	JMP	[NOICE_CODE_BASE+2]
-noice_handle_res	JMP	NOICE_CODE_BASE+4
+noice_handle_ch		JMP	[NOICE_CODE_BASE+4]
+noice_handle_res	JMP	NOICE_CODE_BASE+6
 		ENDIF
 
 
@@ -9457,74 +9444,482 @@ noice_handle_res	JMP	NOICE_CODE_BASE+4
 *******************************************************************************
 
 _ytoa	pshs	Y
-	leas	1,S
-	puls	A,PC
+		leas	1,S
+		puls	A,PC
 
 _m_tax_se		; sign extend A into X
-	sta	,-S
-	bmi	1F
-	clr	,-S
-	puls	X,PC
-1	clr	,-S
-	dec	,S
-	puls	X,PC
+		sta	,-S
+		bmi	1F
+		clr	,-S
+		puls	X,PC
+1		clr	,-S
+		dec	,S
+		puls	X,PC
 
+	IF MACH_BEEB && NOICE && !NOICE_MY
+debug_init_beeb
+		; force pre-init of ACIA
+		jsr	ACIA_rst_ctl3		; master reset of ACIA
+		lda	#$40			; 19,200/19,200/serial
+		sta	sheila_SERIAL_ULA
+		lda	#$56			; div 64, 8N1, RTS, TX irq disable
+		sta	sheila_ACIA_CTL
+		clr	sheila_ACIA_DATA	; send a zero byte to wake it up!
+		rts
+	ENDIF
 
-	; send characters after call to the UART
+		; send characters after call to the UART
 debug_print
-	PSHS	X
-	LDX	2,S
-	jsr	debug_printX
-	STX	2,S
-	PULS	X,PC
+		PSHS	X
+		LDX	2,S
+		jsr	debug_printX
+		STX	2,S
+		PULS	X,PC
 
 debug_printX
-	pshs	A
-1	LDA	,X+	
-	BEQ	2F
-	ANDA	#$7F
-	JSR	debug_print_ch
-	BRA	1B
-2	puls	A,PC
+		pshs	A
+1		LDA	,X+	
+		BEQ	2F
+		ANDA	#$7F
+		JSR	debug_print_ch
+		BRA	1B
+2		puls	A,PC
 
 debug_print_newl
-	pshs	A
+		pshs	A
 ;;	lda	#13
 ;;	jsr	debug_print_ch
-	lda	#10
-	jsr	debug_print_ch
-	puls	A,PC
+		lda	#10
+		jsr	debug_print_ch
+		puls	A,PC
 
 debug_print_hex
-	sta	,-S
-	lsra
-	lsra
-	lsra
-	lsra
-	jsr	debug_print_hex_digit
-	lda	,S
-	jsr	debug_print_hex_digit
-	puls	A,PC
+		sta	,-S
+		lsra
+		lsra
+		lsra
+		lsra
+		jsr	debug_print_hex_digit
+		lda	,S
+		jsr	debug_print_hex_digit
+		puls	A,PC
 debug_print_hex_digit
-	anda	#$F
-	adda	#'0'
-	cmpa	#'9'
-	bls	1F
-	adda	#'A'-'9'-1
-1
-debug_print_ch
-	pshs	B
-3	LDB	S16550_LSR	; CHECK TX STATUS
-	ANDB	#SER_BIT_TXRDY	; RX READY ?
-	BEQ	3B
-	STA	S16550_TXR	; TRANSMIT CHAR.
-	cmpa	#$D
-	bne	1F
-	pshs	A
-	lda	#$A
-	jsr	debug_print_ch
-	puls	A
-1	puls	B,PC
+		anda	#$F
+		adda	#'0'
+		cmpa	#'9'
+		bls	1F
+		adda	#'A'-'9'-1
+1		jmp	debug_print_ch
+
+
+	IF NOICE
+debug_print_ch	equ	noice_handle_ch			; use noice's built in ch print
+	ELSE
+debug_print_ch	jmp	OSASCI
+	ENDIF	
+
+;;;mostbl_BUFFER_ADDRESS_LO_LOOK_UP_TABLE
+;;;mostbl_BUFFER_ADDRESS_HI_LOOK_UP_TABLE
+mostbl_BUFFER_ADDRESS_PTR_LUT
+		BUFFER_PTR_ADDR		BUFFER_KEYB_START,BUFFER_KEYB_END
+		BUFFER_PTR_ADDR		BUFFER_SERI_START,BUFFER_SERI_END
+		BUFFER_PTR_ADDR		BUFFER_SERO_START,BUFFER_SERO_END
+		BUFFER_PTR_ADDR		BUFFER_LPT_START,BUFFER_LPT_END
+		BUFFER_PTR_ADDR		BUFFER_SND0_START,BUFFER_SND0_END
+		BUFFER_PTR_ADDR		BUFFER_SND1_START,BUFFER_SND1_END
+		BUFFER_PTR_ADDR		BUFFER_SND2_START,BUFFER_SND2_END
+		BUFFER_PTR_ADDR		BUFFER_SND3_START,BUFFER_SND3_END
+		BUFFER_PTR_ADDR		BUFFER_SPCH_START,BUFFER_SPCH_END
+
+;;;mostbl_BUFFER_START_ADDRESS_OFFSET
+mostbl_BUFFER_ADDRESS_OFFS
+		BUFFER_ACC_OFF		BUFFER_KEYB_START,BUFFER_KEYB_END
+		BUFFER_ACC_OFF		BUFFER_SERI_START,BUFFER_SERI_END
+		BUFFER_ACC_OFF		BUFFER_SERO_START,BUFFER_SERO_END
+		BUFFER_ACC_OFF		BUFFER_LPT_START,BUFFER_LPT_END
+		BUFFER_ACC_OFF		BUFFER_SND0_START,BUFFER_SND0_END
+		BUFFER_ACC_OFF		BUFFER_SND1_START,BUFFER_SND1_END
+		BUFFER_ACC_OFF		BUFFER_SND2_START,BUFFER_SND2_END
+		BUFFER_ACC_OFF		BUFFER_SND3_START,BUFFER_SND3_END
+		BUFFER_ACC_OFF		BUFFER_SPCH_START,BUFFER_SPCH_END
+
+
+mc_logo
+		FCB	$03,$0F,$1F,$3B,$71,$71,$F0,$E4
+		FCB	$80,$E0,$F0,$B8,$1C,$1C,$1E,$4E
+		FCB	$EF,$6F,$6F,$3F,$1F,$0F,$03,$00
+		FCB	$EE,$EC,$EC,$F8,$F0,$E0,$80,$00
+
+mc_logo_0
+		FCB	$00,$03,$0F,$3F,$7F,$7E,$FC,$F9
+		FCB	$3F,$FF,$DF,$8F,$07,$03,$73,$FC
+		FCB	$F8,$FF,$F7,$E3,$C1,$80,$3C,$7F
+		FCB	$00,$80,$E0,$F8,$FC,$FC,$7E,$3E
+
+		FCB	$F3,$77,$77,$3F,$0F,$03,$00,$00
+		FCB	$FE,$FF,$FF,$FF,$FF,$FF,$3F,$00
+		FCB	$FF,$FF,$FF,$FF,$FF,$FF,$F8,$00
+		FCB	$9E,$DC,$DC,$F8,$E0,$80,$00,$00
+
+
+	IF MACH_CHIPKIT
+mos_STAR_TIME
+		;TODO - find somewhere else to put this?
+		ldx	#stack
+		jsr	mos_OSWORD_E_read_rtc_0
+		ldx	#stack
+
+1		lda	,X+
+		jsr	OSASCI
+		cmpa	#$D
+		bne	1B
+		rts
+
+mos_OSWORD_F_write_rtc
+		leax	1,X
+		pshs	CC
+		SEI
+		jsr	rtc_wait
+		cmpa	#8
+		beq	mos_OSWORD_F_write_rtc_8
+		cmpa	#15
+		beq	mos_OSWORD_F_write_rtc_15
+		cmpa	#24
+		beq	mos_OSWORD_F_write_rtc_24
+mos_OSWORD_F_fin
+		puls	CC,PC
+
+		; date and time
+mos_OSWORD_F_write_rtc_24
+		jsr	mos_OSWORD_F_write_rtc_15_x
+mos_OSWORD_F_write_rtc_8
+		jsr	bcd_at_X
+		ldb	#RTC_REG_HOURS
+		jsr	rtc_write
+		leax	1,X
+		jsr	bcd_at_X
+		ldb	#RTC_REG_MINUTES
+		jsr	rtc_write
+		leax	1,X
+		jsr	bcd_at_X
+		ldb	#RTC_REG_SECONDS
+		jsr	rtc_write
+		bra	mos_OSWORD_F_fin
+
+mos_OSWORD_F_write_rtc_15_x
+		pshs	CC
+mos_OSWORD_F_write_rtc_15
+		pshsw
+		ldw	,X			; D contains first two letters of day
+		ldy	#tbl_days
+		ldb	#7
+		jsr	day_find
+		ldb	#RTC_REG_DOW
+		jsr	rtc_write
+
+		leax	4,X
+		jsr	bcd_at_X
+		ldb	#RTC_REG_DAY
+		jsr	rtc_write
+		
+		leax	1,X
+		ldw	1,X			; D contains second two letters of month
+		ldy	#tbl_months+1
+		ldb	#12
+		jsr	day_find
+		ldb	#RTC_REG_MONTH
+		jsr	rtc_write
+
+		leax	6,X
+		jsr	bcd_at_X
+		ldb	#RTC_REG_YEAR
+		jsr	rtc_write
+		
+		leax	1,X
+		pulsw
+		bra	mos_OSWORD_F_fin
+
+
+;  0123456789ABCDEF012345678
+;  Day,DD Mon Year.HH:MM:SS£
+;  YMDWhms
+
+
+day_find
+		clra
+1		cmpw	,Y++
+		beq	2F
+		leay	1,Y
+		inca
+		decb
+		bpl	1B
+		clra
+2		inca
+		rts
+
+bcd_at_X	jsr	bcd_digit
+		asla
+		asla
+		asla
+		asla
+		sta	,-S
+		jsr	bcd_digit
+		adda	,S+
+		rts
+
+
+bcd_digit	lda	,X+
+		suba	#'0'
+1		cmpa	#9
+		bls	1F
+		suba	#20
+		bra	1B
+1		rts
+
+
+mos_OSWORD_E_read_rtc
+		;; lda	,X
+		tsta
+		beq	mos_OSWORD_E_read_rtc_0
+		cmpa	#1
+		beq	mos_OSWORD_E_read_rtc_1
+		cmpa	#2
+		beq	mos_OSWORD_E_read_rtc_2
+		rts
+mos_OSWORD_E_read_rtc_0
+		stx	,--S
+		jsr	mos_OSWORD_E_read_rtc_1		; get BCD time
+		ldx	,S++
+		leax	-1,X
+		bra	mos_OSWORD_E_read_rtc_2
+mos_OSWORD_E_read_rtc_1
+
+		jsr	rtc_wait
+
+		pshs	CC
+		SEI					; we mustn't be interrupted
+		ldb	#9
+1		jsr	rtc_read
+		sta	,X+
+		decb
+		cmpb	#5
+		bgt	1B
+		decb
+		bpl	1B
+
+		puls	CC,PC
+
+mos_OSWORD_E_read_rtc_2
+		; seconds
+		leay	$17,X
+		lda	7,x
+		jsr	mos_hexstr_Y
+		;minutes
+		leay	$14,X
+		lda	6,X
+		jsr	mos_hexstr_Y
+		;hours
+		leay	$11,X
+		lda	5,X
+		jsr	mos_hexstr_Y
+		; YY
+		leay	$E,X
+		lda	1,X
+		jsr	mos_hexstr_Y
+		; century
+		ldb	1,X
+		lda	#$19
+		cmpa	#$80
+		adca	#0
+		daa
+		leay	$C,X
+		jsr	mos_hexstr_Y
+		; DD
+		leay	$5,X
+		lda	3,X
+		jsr	mos_hexstr_Y
+		; Mon
+		stx	,--S
+		ldb	$2,X
+		cmpb	#$10				; convert BCD to binary
+		blo	1F
+		subb	#6
+1		leay	8,X
+		ldx	#tbl_months
+		jsr	domonth
+
+		ldx	,S
+		; Day
+		ldb	$4,X
+		leay	1,X
+		ldx	#tbl_days
+		jsr	doday
+
+		ldx	,S++
+
+		; puntuation
+		lda	#$D
+		sta	$19,X
+		lda	#':'
+		sta	$13,X
+		sta	$16,X
+		lda	#'.'
+		sta	$10,X
+		lda	#','
+		sta	$4,X
+		lda	#' '
+		sta	$7,X
+		sta	$B,X
+
+
+		rts
+
+domonth
+doday
+		decb
+		stb	,-S
+		aslb
+		addb	,S+
+		abx
+		ldb	#3
+1		lda	,X+
+		sta	,Y+
+		decb
+		bne	1B
+		rts
+
+
+
+tbl_days	fcb	"SunMonTueWedThuFriSat"
+tbl_months	fcb	"JanFebMarAprMayJumJulAugSepOctNovDec"
+
+
+rtc_wait					; wait for a UIP clear or if set wait for it to end
+		std	,--S
+		ldb	#$A
+		jsr	rtc_read
+		tsta
+		bpl	2F			; if not UIP we have 240uS to read clock
+
+1		ldb	#$A
+		jsr	rtc_read
+		tsta
+		bmi	1B			; wait for UIP to go low
+
+2		puls	D,PC
+
+
+		; rtc_write A=data, B=address
+rtc_write
+		pshs	CC,A
+
+		SEI					; disable interrupts
+
+		; AS low
+		lda	#BITS_RTC_AS_OFF
+		sta	sheila_SYSVIA_orb
+
+		; DS low
+		lda	#BITS_RTC_DS
+		sta	sheila_SYSVIA_orb
+
+		; AS hi
+		lda	#BITS_RTC_AS_ON
+		sta	sheila_SYSVIA_orb
+
+		lda	#$FF
+		sta	sheila_SYSVIA_ddra
+
+		; rtc address
+		stb	sheila_SYSVIA_ora_nh
+
+		; CS low
+		lda	#BITS_RTC_CS 
+		sta	sheila_SYSVIA_orb
+
+		; RnW lo
+		lda	#BITS_RTC_RnW
+		sta	sheila_SYSVIA_orb
+
+		; AS low
+		lda	#BITS_RTC_AS_OFF
+		sta	sheila_SYSVIA_orb
+
+		; DS hi
+		lda	#BITS_RTC_DS + BITS_LAT_ON
+		sta	sheila_SYSVIA_orb
+
+		lda	1,S
+		sta	sheila_SYSVIA_ora_nh
+
+		; DS low
+		lda	#BITS_RTC_DS
+		sta	sheila_SYSVIA_orb
+
+		; CS hi
+		lda	#BITS_RTC_CS + BITS_LAT_ON
+		sta	sheila_SYSVIA_orb
+
+		puls	CC,A,PC
+
+
+rtc_read	
+		pshs	CC,A
+
+		SEI					; disable interrupts
+
+		; AS low
+		lda	#BITS_RTC_AS_OFF
+		sta	sheila_SYSVIA_orb
+
+		; DS low
+		lda	#BITS_RTC_DS
+		sta	sheila_SYSVIA_orb
+
+		; AS hi
+		lda	#BITS_RTC_AS_ON
+		sta	sheila_SYSVIA_orb
+
+		lda	#$FF
+		sta	sheila_SYSVIA_ddra
+
+		; rtc address
+		stb	sheila_SYSVIA_ora_nh
+
+		; CS low
+		lda	#BITS_RTC_CS 
+		sta	sheila_SYSVIA_orb
+
+		; slow D all in
+		clr	sheila_SYSVIA_ddra
+
+		; RnW hi
+		lda	#BITS_RTC_RnW + BITS_LAT_ON
+		sta	sheila_SYSVIA_orb
+
+		; AS low
+		lda	#BITS_RTC_AS_OFF
+		sta	sheila_SYSVIA_orb
+
+		; DS hi
+		lda	#BITS_RTC_DS + BITS_LAT_ON
+		sta	sheila_SYSVIA_orb
+
+		lda	sheila_SYSVIA_ora_nh
+		sta	1,S
+
+		; DS low
+		lda	#BITS_RTC_DS
+		sta	sheila_SYSVIA_orb
+
+		; CS hi
+		lda	#BITS_RTC_CS + BITS_LAT_ON
+		sta	sheila_SYSVIA_orb
+
+		puls	CC,A,PC
+
+	ENDIF
+
 
 
 ;; ----------------------------------------------------------------------------
@@ -9579,7 +9974,7 @@ debug_print_ch
 ;	jsr	x_save_checksum_to_TAPE_reset_buffer_flag;	F852
 ;LF855:	jsr	x_check_for_Escape_and_loop_till_bit_7_of_FS_buffer_flag;	F855
 ;	jsr	x_check_for_Escape_and_loop_till_bit_7_of_FS_buffer_flag;	F858
-;	jsr	LFB46				;	F85B
+;	jsr	ACIA_rst_ctl3				;	F85B
 ;	lda	#$01				;	F85E
 ;	jsr	x_generate_delay		;	F860
 ;	plp					;	F863
@@ -9880,15 +10275,15 @@ debug_print_ch
 ;	tay					;	FA49
 ;; Print 0 terminated string after jsr, return after string
 mos_PRTEXT
-	puls	X				; get return address back from stack
-	jsr	mos_PRSTRING
-2	jmp	,X
+		puls	X				; get return address back from stack
+		jsr	mos_PRSTRING
+2		jmp	,X
 mos_PRSTRING
-1	lda	,X+
-	beq	2F
-	jsr	OSASCI
-	bra	1B
-2	rts
+1		lda	,X+
+		beq	2F
+		jsr	OSASCI
+		bra	1B
+2		rts
 ;; ----------------------------------------------------------------------------
 ;; compare filenames
 ;x_compare_filenames:
@@ -9929,7 +10324,7 @@ mos_PRSTRING
 ;	lda	#$22				;	FAB5
 ;	bit	zp_fs_s+11			;	FAB7
 ;	beq	LFAD3				;	FAB9
-;	jsr	LFB46				;	FABB
+;	jsr	ACIA_rst_ctl3				;	FABB
 ;	tay					;	FABE
 ;	jsr	mos_PRTEXT			;	FABF
 ;	FCB	$0D,$07				;	FAC2
@@ -9961,14 +10356,17 @@ mos_PRSTRING
 ;LFAFC:	php					;	FAFC
 ;	sei					;	FAFD
 ;	lda	sysvar_SERPROC_CTL_CPY		;	FAFE
-;	sta	LFE10				;	FB01
+;	sta	sheila_SERIAL_ULA				;	FB01
 ;	lda	#$00				;	FB04
 ;	sta	zp_mos_rs423timeout		;	FB06
 ;	beq	LFB0B				;	FB08
-;LFB0A:	php					;	FB0A
-;LFB0B:	jsr	LFB46				;	FB0B
-;	lda	sysvar_RS423_CTL_COPY		;	FB0E
-;	jmp	LE189				;	FB11
+	IF MACH_BEEB
+ACIA_reset_from_CTL_COPY			; LFB0A
+		pshs	CC				;save flags on stacksave flags
+LFB0B		jsr	ACIA_rst_ctl3			;release ACIA (by &FE08=3)
+		lda	sysvar_RS423_CTL_COPY		;get last setting of ACIA
+		jmp	ACIA_set_CTL_and_copy				;set ACIA and &250 from A before exit
+	ENDIF
 ;; ----------------------------------------------------------------------------
 ;LFB14:	plp					;	FB14
 ;	bit	zp_mos_ESC_flag			;	FB15
@@ -10001,12 +10399,15 @@ mos_PRSTRING
 ;	bmi	LFB14				;	FB3B
 ;	lda	#$01				;	FB3D
 ;	sta	zp_mos_rs423timeout		;	FB3F
-;	jsr	LFB46				;	FB41
+;	jsr	ACIA_rst_ctl3				;	FB41
 ;	plp					;	FB44
 ;	rts					;	FB45
 ;; ----------------------------------------------------------------------------
-;LFB46:	lda	#$03				;	FB46
-;	bne	LFB65				;	FB48
+	IF MACH_BEEB
+
+ACIA_rst_ctl3					; LFB46
+		lda	#$03				;	FB46
+		bra	ACIA_set_ctl			;	FB48
 ;; set ACIA control register
 ;x_set_ACIA_control_register:
 ;	lda	#$30				;	FB4A
@@ -10015,17 +10416,19 @@ mos_PRSTRING
 ;; control cassette system
 ;x_control_cassette_system:
 ;	lda	#$05				;	FB50
-;	sta	LFE10				;	FB52
+;	sta	sheila_SERIAL_ULA				;	FB52
 ;	ldx	#$FF				;	FB55
 ;LFB57:	dex					;	FB57
 ;	bne	LFB57				;	FB58
 ;	stx	zp_fs_w+10			;	FB5A
 ;	lda	#$85				;	FB5C
-;	sta	LFE10				;	FB5E
+;	sta	sheila_SERIAL_ULA				;	FB5E
 ;	lda	#$D0				;	FB61
 ;LFB63:	ora	zp_fs_w+6			;	FB63
-;LFB65:	sta	LFE08				;	FB65
-;	rts					;	FB68
+ACIA_set_ctl						; LFB65
+		sta	sheila_ACIA_CTL			; FB65
+		rts					; FB68
+	ENDIF
 ;; ----------------------------------------------------------------------------
 ;LFB69:	ldx	$03C6				;	FB69
 ;	ldy	$03C7				;	FB6C
@@ -10115,12 +10518,12 @@ mos_PRSTRING
 ;; control ACIA and Motor
 ;x_control_ACIA_and_Motor:
 ;	lda	#$85				;	FBE2
-;	sta	LFE10				;	FBE4
-;	jsr	LFB46				;	FBE7
+;	sta	sheila_SERIAL_ULA				;	FBE4
+;	jsr	ACIA_rst_ctl3				;	FBE7
 ;	lda	#$10				;	FBEA
 ;	jsr	LFB63				;	FBEC
 ;LFBEF:	jsr	x_confirm_CFS_not_operating_nor_ESCAPE_flag_set;	FBEF
-;	lda	LFE08				;	FBF2
+;	lda	sheila_ACIA_CTL				;	FBF2
 ;	and	#$02				;	FBF5
 ;	beq	LFBEF				;	FBF7
 ;	lda	#$AA				;	FBF9
@@ -10268,9 +10671,9 @@ FILL5
 ;	FCB	"d"				;	FE00
 ;sheila_CRTC_rw:
 ;	FCB	" Kitson"			;	FE01
-;LFE08:	FCB	","				;	FE08
+;sheila_ACIA_CTL:	FCB	","				;	FE08
 ;LFE09:	FCB	"Paul Kr"			;	FE09
-;LFE10:	FCB	"iwaczek,Computer"		;	FE10
+;sheila_SERIAL_ULA:	FCB	"iwaczek,Computer"		;	FE10
 ;						;	FE18
 ;sheila_VIDULA_ctl:
 ;	FCB	" "				;	FE20
@@ -10373,137 +10776,139 @@ FILL5
 ; a three byte vector table whose address is given by osbyte A8, X=0, Y=&FF 
 ; this is set up as lo-hi byte in ROM and ROM number	 
 ;x_EXTENDED_VECTOR_ENTRY_POINTS
-	jsr	x_enter_extended_vector			;Extended USERV
-	jsr	x_enter_extended_vector			;Extended BRKV
-	jsr	x_enter_extended_vector			;Extended IRQ1V
-	jsr	x_enter_extended_vector			;Extended IRQ2V
-	jsr	x_enter_extended_vector			;Extended CLIV
-	jsr	x_enter_extended_vector			;Extended BYTEV
-	jsr	x_enter_extended_vector			;Extended WORDV
-	jsr	x_enter_extended_vector			;Extended WRCHV
-	jsr	x_enter_extended_vector			;Extended RDCHV
-	jsr	x_enter_extended_vector			;Extended FILEV
-	jsr	x_enter_extended_vector			;Extended ARGSV
-	jsr	x_enter_extended_vector			;Extended BGETV
-	jsr	x_enter_extended_vector			;Extended BPUTV
-	jsr	x_enter_extended_vector			;Extended GBPBV
-	jsr	x_enter_extended_vector			;Extended FINDV
-	jsr	x_enter_extended_vector			;Extended FSCV
-	jsr	x_enter_extended_vector			;Extended EVENTV
-	jsr	x_enter_extended_vector			;Extended UPTV
-	jsr	x_enter_extended_vector			;Extended NETV
-	jsr	x_enter_extended_vector			;Extended VDUV
-	jsr	x_enter_extended_vector			;Extended KEYV
-	jsr	x_enter_extended_vector			;Extended INSV
-	jsr	x_enter_extended_vector			;Extended REMV
-	jsr	x_enter_extended_vector			;Extended CNPV
-	jsr	x_enter_extended_vector			;Extended IND1V
-	jsr	x_enter_extended_vector			;Extended IND2V
-	jsr	x_enter_extended_vector			;Extended IND3V
+		jsr	x_enter_extended_vector			;Extended USERV
+		jsr	x_enter_extended_vector			;Extended BRKV
+		jsr	x_enter_extended_vector			;Extended IRQ1V
+		jsr	x_enter_extended_vector			;Extended IRQ2V
+		jsr	x_enter_extended_vector			;Extended CLIV
+		jsr	x_enter_extended_vector			;Extended BYTEV
+		jsr	x_enter_extended_vector			;Extended WORDV
+		jsr	x_enter_extended_vector			;Extended WRCHV
+		jsr	x_enter_extended_vector			;Extended RDCHV
+		jsr	x_enter_extended_vector			;Extended FILEV
+		jsr	x_enter_extended_vector			;Extended ARGSV
+		jsr	x_enter_extended_vector			;Extended BGETV
+		jsr	x_enter_extended_vector			;Extended BPUTV
+		jsr	x_enter_extended_vector			;Extended GBPBV
+		jsr	x_enter_extended_vector			;Extended FINDV
+		jsr	x_enter_extended_vector			;Extended FSCV
+		jsr	x_enter_extended_vector			;Extended EVENTV
+		jsr	x_enter_extended_vector			;Extended UPTV
+		jsr	x_enter_extended_vector			;Extended NETV
+		jsr	x_enter_extended_vector			;Extended VDUV
+		jsr	x_enter_extended_vector			;Extended KEYV
+		jsr	x_enter_extended_vector			;Extended INSV
+		jsr	x_enter_extended_vector			;Extended REMV
+		jsr	x_enter_extended_vector			;Extended CNPV
+		jsr	x_enter_extended_vector			;Extended IND1V
+		jsr	x_enter_extended_vector			;Extended IND2V
+		jsr	x_enter_extended_vector			;Extended IND3V
 x_enter_extended_vector	
-	;at this point the stack will hold 4 bytes (at least)
-	;S 0,1 extended vector address
-	;S 2,3 address of calling routine
-	;A,X,Y,P will be as at entry
+		;at this point the stack will hold 4 bytes (at least)
+		;S 0,1 extended vector address
+		;S 2,3 address of calling routine
+		;A,X,Y,P will be as at entry
 
-	leas	-5,S				; reserve 7 bytes on the stack
-	pshs	CC,B,X				; save 
+		leas	-5,S				; reserve 7 bytes on the stack
+		pshs	CC,B,X				; save 
 
-	; stack now has
-	;	12	Caller addr (lo)
-	;	11	Caller addr (hi)
-	;	10	Extended vector addr (lo)
-	;	9	Extended vector addr (hi)
-	;	8	?
-	;	7	?
-	;	6	?
-	;	5	?
-	;	4	?
-	;	3	X (lo)
-	;	2	X (hi)
-	;	1	B
-	;	0	CC
+		; stack now has
+		;	12	Caller addr (lo)
+		;	11	Caller addr (hi)
+		;	10	Extended vector addr (lo)
+		;	9	Extended vector addr (hi)
+		;	8	?
+		;	7	?
+		;	6	?
+		;	5	?
+		;	4	?
+		;	3	X (lo)
+		;	2	X (hi)
+		;	1	B
+		;	0	CC
 
-	ldx	#x_return_addess_from_ROM_indirection
-	stx	6,S
+		ldx	#x_return_addess_from_ROM_indirection
+		stx	6,S
 
-	; stack now has
-	;	12	Caller addr (lo)
-	;	11	Caller addr (hi)
-	;	10	Extended vector addr (lo)
-	;	9	Extended vector addr (hi)
-	;	8	?
-	;	7	x_return_addess_from_ROM_indirection (lo)
-	;	6	x_return_addess_from_ROM_indirection (hi)
-	;	5	?
-	;	4	?
-	;	3	X (lo)
-	;	2	X (hi)
-	;	1	B
-	;	0	CC
+		; stack now has
+		;	12	Caller addr (lo)
+		;	11	Caller addr (hi)
+		;	10	Extended vector addr (lo)
+		;	9	Extended vector addr (hi)
+		;	8	?
+		;	7	x_return_addess_from_ROM_indirection (lo)
+		;	6	x_return_addess_from_ROM_indirection (hi)
+		;	5	?
+		;	4	?
+		;	3	X (lo)
+		;	2	X (hi)
+		;	1	B
+		;	0	CC
 
-	ldb	zp_mos_curROM
-	stb	8,S				; store current ROM on stack
+		ldb	zp_mos_curROM
+		stb	8,S				; store current ROM on stack
 
-	ldb	10,S				; get low byte of ext vector addr + 3
-	ldx	#EXT_USERV - 3
-	abx					; X now points at extended vector
-	ldb	2,X				; get new rom #
-	ldx	,X				; get routine address
+		ldb	10,S				; get low byte of ext vector addr + 3
+		ldx	#EXT_USERV - 3
+		abx					; X now points at extended vector
+		ldb	2,X				; get new rom #
+		ldx	,X				; get routine address
 
-	stx	4,S				; store as return address from this routine on stack
+		stx	4,S				; store as return address from this routine on stack
 
-	; stack now has
-	;	12	Caller addr (lo)
-	;	11	Caller addr (hi)
-	;	10	Extended vector addr (lo)
-	;	9	Extended vector addr (hi)
-	;	8	cur SWR#
-	;	7	x_return_addess_from_ROM_indirection (lo)
-	;	6	x_return_addess_from_ROM_indirection (hi)
-	;	5	rom vector handle (lo)
-	;	4	rom vector handle (hi)
-	;	3	X (lo)
-	;	2	X (hi)
-	;	1	B
-	;	0	CC
+		; stack now has
+		;	12	Caller addr (lo)
+		;	11	Caller addr (hi)
+		;	10	Extended vector addr (lo)
+		;	9	Extended vector addr (hi)
+		;	8	cur SWR#
+		;	7	x_return_addess_from_ROM_indirection (lo)
+		;	6	x_return_addess_from_ROM_indirection (hi)
+		;	5	rom vector handle (lo)
+		;	4	rom vector handle (hi)
+		;	3	X (lo)
+		;	2	X (hi)
+		;	1	B
+		;	0	CC
 
 
-	stb	zp_mos_curROM			; Set OS copy and hardware
-	stb	SHEILA_ROMCTL_SWR		; SWR #
+		stb	zp_mos_curROM			; Set OS copy and hardware
+		stb	SHEILA_ROMCTL_SWR		; SWR #
 
-	puls	CC,B,X,PC			; jump to ROM routine
+		puls	CC,B,X,PC			; jump to ROM routine
 
 ;; ----------------------------------------------------------------------------
 ;; returnFDBess from ROM indirection; at this point stack comprises original ROM number,return from JSR &FF51, ; return from original call the return from FF51 is garbage so; 
 x_return_addess_from_ROM_indirection
 
-	; stack now has
-	;	4	Caller addr (lo)
-	;	3	Caller addr (hi)
-	;	2	Extended vector addr (lo)
-	;	1	Extended vector addr (hi)
-	;	0	cur SWR#
+		; stack now has
+		;	4	Caller addr (lo)
+		;	3	Caller addr (hi)
+		;	2	Extended vector addr (lo)
+		;	1	Extended vector addr (hi)
+		;	0	cur SWR#
 
-	pshs	CC,B
+		pshs	CC,B
 
 
-	; stack now has
-	;	6	Caller addr (lo)
-	;	5	Caller addr (hi)
-	;	4	Extended vector addr (lo)
-	;	3	Extended vector addr (hi)
-	;	2	cur SWR#
-	;	1	B
-	;	0	CC
+		; stack now has
+		;	6	Caller addr (lo)
+		;	5	Caller addr (hi)
+		;	4	Extended vector addr (lo)
+		;	3	Extended vector addr (hi)
+		;	2	cur SWR#
+		;	1	B
+		;	0	CC
 
-	ldb	2,S				; get back saved SWR #
-	stb	zp_mos_curROM			; reset MOS SWR #
-	stb	SHEILA_ROMCTL_SWR		; and hardware
-	puls	B,CC				; restore flags and B
-	leas	3,S				; skip unwanted
+		ldb	2,S				; get back saved SWR #
+		stb	zp_mos_curROM			; reset MOS SWR #
+		stb	SHEILA_ROMCTL_SWR		; and hardware
+		puls	B,CC				; restore flags and B
+		leas	3,S				; skip unwanted
 dummy_vector_RTS				; LFFA6
-	rts					;	FFA6
+		rts					;	FFA6
+dummy_vector_RTI
+		rti
 ;; ----------------------------------------------------------------------------
 ;; OSBYTE &9D	FAST BPUT
 ;mos_OSBYTE_157:
@@ -10525,15 +10930,15 @@ dummy_vector_RTS				; LFFA6
 ;	RTS
 
 
-	ORG	DOM_DEBUG_ENTRIES
+		ORG	DOM_DEBUG_ENTRIES
 _DEBUGPRINTNEWL	jmp	debug_print_newl		; FF8C
 _DEBUGPRINTHEX	jmp	debug_print_hex			; FF8F
 _DEBUGPRINTA	jmp	debug_print_ch			; FF92
 _DEBUGPRINTX	jmp	debug_printX			; FF95
 
 
-	ORG	JGH_OSENTRIESLOC
-_OSRDRM		jmp	mos_get_SWROM_B_X_A_API		; FF98	!!! not same as Beeb
+		ORG	JGH_OSENTRIESLOC
+_OSRDRM		jmp	mos_OSRDRM			; FF98	!!! not same as Beeb
 _PRSTRING	jmp	mos_PRSTRING			; FF9B
 _OSEVEN		jmp	x_CAUSE_AN_EVENT		; FF9E	!!! not same as Beeb
 _SCANHEX	jmp	jgh_SCANHEX			; FFA1
@@ -10544,11 +10949,11 @@ _PR2HEX		jmp	jgh_PR2HEX			; FFAD
 _USERINT	jmp	jgh_USERINT			; FFB0
 _PRTEXT		jmp	mos_PRTEXT			; FFB3
 
-	ORG	OSENTRIESLOC
+		ORG	OSENTRIESLOC
 VETAB_len
-	FCB	vec_table_end-vec_table				;	FFB6
+		FCB	vec_table_end-vec_table				;	FFB6
 VETAB_addr
-	FDB	vec_table			;	FFB7
+		FDB	vec_table			;	FFB7
 ;; ----------------------------------------------------------------------------
 _CLICOM		jmp	jgh_CLICOM			;	FFB9
 _ERRJMP		jmp	jgh_ERRJMP			;	FFBC

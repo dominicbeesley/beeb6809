@@ -1,0 +1,2652 @@
+MACRO DEBUG num
+	IF DODEBUG
+	PHA	
+	LDA #num
+	JSR debug1
+	PLA
+	ENDIF
+ENDMACRO
+
+\ See README.txt for details of what this code is
+\ (Basically a JGH HostFS.ROM code base mangled for UPURS)
+\ As with JGH's original comments, the code may be freely reused
+\ with acknowledgements.
+\
+\
+\*** JGH ORIGINAL COMMENTS ***
+\
+\ > Serial.6502/src
+\ Source for Single Port Tube Client MOS for 6502
+\ ===============================================
+\ J.G.Harston, 16-Nov-2010
+\ This code may be freely reused, with acknowledgements
+\
+\ This implements a Tube client communicating with a host
+\ via a single port, such as a serial port, a parallel port,
+\ or even a single Tube register, all in less than 2K.
+\
+\ The link is a text channel that escapes out to send
+\ commands and receive data transfers.
+\
+\ This versions assumes a clean, error-free link channel
+\
+\ Includes code for accessing BBC memory map, should really
+\ have assembly options for this.
+\
+\******
+
+\ System vectors
+\ ==============
+IF	SWEH_EXTENSION <> 200
+USERV = &200
+BRKV = &202
+IRQ1V = &204
+IRQ2V = &206
+CLIV = &208
+BYTEV = &20A
+WORDV = &20C
+WRCHV = &20E
+RDCHV = &210
+FILEV = &212
+ARGSV = &214
+BGetV = &216
+BPutV = &218
+GBPBV = &21A
+FINDV = &21C
+FSCV = &21E
+EVNTV = &220
+UPTV = &222
+NETV = &224
+VduV = &226
+KEYV = &228
+INSV = &22A
+RemV = &22C
+CNPV = &22E
+IND1V = &230
+IND2V = &232
+IND3V = &234
+ENDIF
+
+\ Memory addresses
+\ ================
+ERRBUF = &100
+INPBUF = &100
+
+PROG = &C0 \  PROG   - Current program
+NUM = &C2 \  NUM    - hex accumulator
+MEMTOP = &C4 \  MEMTOP - top of memory
+DADR = &C6 \  ADDR   - Data transfer address
+DADRhi = &C8 \  ADDR+2 - Data transfer address high word
+LPTR = &CA \  String pointer, OSWORD control block
+CTRL = &CC \  CTRL   - OSFILE, OSGBPB control block
+CMD = &CE \  CMD    - Address of command line parameters
+TEXT = &F6 \  TEXT   - PrText string pointer
+IRQA = &FC \  IRQ A store
+FAULT = &FD \  last error
+ESCFLG = &FF \  Escape flag
+
+\ Serial Tube system values
+\ =========================
+esc = &7F
+
+\ OS Entry Addresses
+\ ==================
+IF	SWEH_EXTENSION <> 200
+OSRDCH = &FFE0
+OSASCI = &FFE3
+OSNEWL = &FFE7
+OSWRCH = &FFEE
+OSWORD = &FFF1
+OSBYTE = &FFF4
+OSCLI = &FFF7
+NVWRCH = &FFCB
+ENDIF
+
+\ Filing System values
+\ ====================
+myfs = &9
+chanlo = &80
+chanhi = &9F
+
+IF	SWEH_EXTENSION <> 200
+	ORG &8000
+
+.start
+\ ----------
+\ ROM HEADER
+\ ----------
+	JMP Language
+	JMP Service
+	EQUB &82
+	EQUB LO(Copyright)
+	VERSION_BYTE
+ENDIF
+.hostfs_name
+	VERSION_NAME
+	EQUB 0
+        VERSION_STRING
+        EQUS " ("
+	VERSION_DATE
+	EQUS ")"
+.Copyright
+	BRK
+        EQUS "(C)"
+IF	UPURS
+	EQUS "Stephen Harris (sweh), with code from MartinB, HostFS core"
+ELSE
+	EQUS "J.G.Harston"
+ENDIF
+	BRK
+
+.Language
+	JSR HostFSOn
+	JMP STARTUP2   \ Enter with A=0
+
+\ ----------------
+\ SERVICE ROUTINES
+\ ----------------
+.Service
+	CMP #1
+	BEQ Serv1
+	CMP #3
+	BEQ Serv3
+	CMP #4
+IF	SWEH_EXTENSION
+	BNE *+5
+	JMP Serv4
+ELSE
+	BEQ Serv4
+ENDIF
+	CMP #&09
+	BNE *+5
+	JMP Serv9
+	CMP #&0F
+	BNE *+5
+	JMP ServF
+	CMP #&10
+	BNE *+5
+	JMP Serv10
+	CMP #&12
+	BNE *+5
+	JMP Serv12
+	CMP #&25
+	BNE *+5
+	JMP Serv25
+	RTS
+
+\ --------------------------------------
+\ SERVICE 1 - Claim workspace/initialise
+\ --------------------------------------
+.Serv1
+	RTS
+
+\ ---------------------------------------
+\ SERVICE 3 - Boot filing system on Break
+\ ---------------------------------------
+.Serv3
+	TYA
+	PHA
+	LDA #&7A
+	JSR OSBYTE \ Get key pressed
+	CPX #&FF   \ Nothing pressed?
+IF DEFAULT_FS
+	BEQ Serv3Select
+ELSE
+	BEQ notMyFilesystem
+ENDIF
+	CPX #BreakKey
+IF SWEH_EXTENSION
+	BEQ Serv3Select0
+ELSE
+	BEQ Serv3Select
+ENDIF
+.notMyFilesystem
+	PLA
+	TAY
+	LDA #3
+	RTS
+IF	SWEH_EXTENSION
+.Serv3Select0
+	LDA #&78
+	JSR OSBYTE  \ Reset keyboard buffer so U doesn't display
+ENDIF
+.Serv3Select
+IF	SWEH_EXTENSION
+	\ If no RTS, do not select us
+	JSR	TestRTS
+	BNE	SelectMyFilesystem
+	LDY	#0
+.skiplp
+	LDA	skipfstxt,Y
+	BEQ	notMyFilesystem
+	JSR	OSWRCH
+	INY
+	BNE	skiplp
+.skipfstxt
+	EQUS	"UPURSFS not selected; no RTS"
+	EQUB	10,13,10,13,0	
+ENDIF
+.SelectMyFilesystem
+	JSR SelectFS
+	JSR Serv9a     \ Select FS, print title
+	JSR OSNEWL
+IF	SWEH_EXTENSION
+IF	SWEH_BREAK
+	\ Tell the the host that we've done a control-break or
+        \ shift-break.  If the host is smart enough it'll close
+        \ all filehandles, do other resets as necessary.
+        \ (sweh TubeHost will reset dir and lib)
+	\ On a shift-break we'll also look at the response from
+        \ the server and decide what to do about it.  A non-smart
+        \ server following JGH's spec will return Y=0 so we can use
+        \ this for compatibility
+	PLA
+	PHA
+	BEQ	ShCtlBreak
+	LDA	#&FD
+	LDX	#0
+	LDY	#&FF
+	JSR	OSBYTE
+	CPX	#0
+	BNE	ShCtlBreak
+ENDIF
+	PLA
+	JMP	Serv3Ok
+.ShCtlBreak
+	JSR	TestRTS
+	BNE	breakRTSOk
+	PLA
+	JMP	Serv3Ok
+.breakRTSOk
+	LDY	#0
+	LDA	#&FF
+	JSR	CallFSCV
+	PLA
+	BNE	Serv3Ok  \ we did control-break, ignore return code
+
+	\ Y now holds the *OPT4 value
+	CPY	#0
+	BEQ	Serv3Ok  \ *OPT 4 0; boring!
+	CPY	#2
+	BCC	do_loadboot
+	BEQ	do_runboot
+	LDX	#LO(execboot)
+	LDY	#HI(execboot)
+	BNE	do_boot
+.do_loadboot
+	LDX	#LO(loadboot)
+	LDY	#HI(loadboot)
+	BNE	do_boot
+.do_runboot
+	LDX	#LO(runboot)
+	LDY	#HI(runboot)
+.do_boot
+	JSR	OSCLI
+	LDA	#0
+	RTS
+
+.loadboot
+	EQUS "L.!BOOT"
+	EQUB 13
+.execboot
+	EQUS "E."
+.runboot
+	EQUS "!BOOT"
+	EQUB 13
+ELSE
+	PLA
+	BNE Serv3Ok  \ No boot
+	TAY
+	LDA #&FF
+	JSR CallFSCV   \ Pass 'Booting' to host, Y=0
+ENDIF
+.Serv3Ok
+	LDA #0
+	RTS                  \ Claim
+
+\ --------------------
+\ SERVICE 4 - *Command
+\ --------------------
+.Serv4
+	TYA
+	PHA
+	DEY
+	LDX #&FF
+.Serv4Lp
+	INX
+	INY
+	LDA (&F2),Y
+	CMP #'.'
+	BEQ Serv4Dot
+	CMP #'!'
+	BCC Serv4End
+	CMP Serv25Table,X
+	BEQ Serv4Lp \ Match with Filing System command
+	EOR #&20
+	CMP Serv25Table,X
+	BEQ Serv4Lp
+.Serv4Quit
+	PLA
+	TAY
+	LDA #4
+	RTS
+.Serv4End
+	LDA Serv25Table,X
+	CMP #32
+	BNE Serv4Quit         \ Check for end of command
+	DEY
+.Serv4Dot
+	INY
+	LDA (&F2),Y
+	CMP #32
+	BEQ Serv4Dot          \ Skip spaces
+	AND #&DF
+	CMP #'O'
+	BNE Serv4FS       \ Not *HostFS Oxxx, select HostFS
+	INY
+	LDA (&F2),Y
+	AND #&DF
+	CMP #'N'
+	BEQ HostFSOn      \ *HostFS ON
+	CMP #'F'
+	BEQ HostFSOff     \ *HostFS OFF
+.Serv4FS
+	JSR SelectFS
+	PLA
+	LDA #0
+	RTS
+
+
+\ -----------------
+\ SERVICE 9 - *Help
+\ -----------------
+.Serv9
+	LDA (&F2),Y
+	CMP #13
+	BNE Serv9Exit       \ Not *Help<cr>
+	JSR OSNEWL
+.Serv9a
+	LDX #0
+.Serv9Lp
+	LDA hostfs_name,X
+	BNE Serv9Chk    \ Display ROM title
+	LDA #' '
+	BNE Serv9Char
+.Serv9Chk
+	CMP #' '
+	BEQ Serv9Done
+.Serv9Char
+	JSR OSWRCH
+	INX
+	BNE Serv9Lp
+.Serv9Done
+IF SWEH_EXTENSION
+IF UPURS
+IF USER_PORT <> $FE60
+	LDX #0
+.display_port
+	LDA at_port,X
+	BEQ display_port_done
+	JSR OSWRCH
+	INX
+	BNE display_port
+.at_port
+	EQUS " at port &"
+	BRK
+.display_port_done
+	LDA #>USER_PORT
+	JSR PrHex
+	LDA #<USER_PORT
+	JSR PrHex
+ENDIF
+ENDIF
+	JSR TestRTS
+	BNE Serv9RTS
+	LDX #0
+.Serv9NoRTSLoop
+	LDA Serv9NoRTS,X
+	BEQ Serv9RTS
+	JSR OSWRCH
+	INX
+	JMP Serv9NoRTSLoop
+.Serv9NoRTS
+	EQUS " (No RTS)"
+	BRK
+.Serv9RTS
+ENDIF
+	JSR OSNEWL
+.Serv9Exit
+	LDA #9
+	RTS
+
+\ -----------------------------
+\ SERVICE &0F - Vectors changed
+\ -----------------------------
+.ServF
+	RTS
+
+
+\ --------------------------------
+\ SERVICE &10 - SPOOL/EXEC closing
+\ --------------------------------
+.Serv10
+	RTS
+
+
+\ --------------------------------------------
+\ *HostFS ON|OFF command - connect Tube client
+\ --------------------------------------------
+\ NB, *HostFS ON doesn't catch errors correctly
+\
+.HostFSOff
+	PLA
+	LDA #0
+	RTS
+.HostFSOn
+	PLA
+	LDX #0
+	LDY #12
+.Serv12LpA
+	TYA
+	STA &208,X               \ Vect->ExVec
+	LDA #&FF
+	STA &209,X		\ ?? STA &211,X
+	LDA IOVectors+0,X
+	STA &D9F,Y \ ExVec->MyRoutine
+	LDA IOVectors+1,X
+	STA &DA0,Y
+	LDA &F4
+	STA &DA1,Y
+	INY
+	INY
+	INY
+	INX
+	INX
+	CPX #8
+	BNE Serv12LpA
+	BEQ Serv12Serial             \ Take over Serial system
+
+	LDA &F4
+	STA &190+252         \ ROM to enter on BRK
+
+
+\ ----------------------------------
+\ SERVICE &12 - Select filing system
+\ ----------------------------------
+.Serv12
+	CPY Serv25Table+10
+	BEQ *+3
+	RTS
+	LDA #6
+	JSR CallFSCV          \ New filing system taking over
+	LDX #0
+	LDY #27
+.Serv12Lp
+	TYA
+	STA &212,X               \ Vect->ExVec
+	LDA #&FF
+	STA &213,X
+	LDA FSVectors+0,X
+	STA &D9F,Y \ ExVec->MyRoutine
+	LDA FSVectors+1,X
+	STA &DA0,Y
+	LDA &F4
+	STA &DA1,Y
+	INY
+	INY
+	INY
+	INX
+	INX
+	CPX #14
+	BNE Serv12Lp
+	LDA #143
+	LDX #15
+	JSR OSBYTE  \ Vectors changed
+	                             
+\ We're taking over Serial system
+.Serv12Serial
+IF	UPURS
+	LDA	#&FF
+	STA	upddrb
+	STA	upiob
+	LDA	#&7D	\ 6522 Inputs (RxD and RTS on D7 and D1)
+	STA	upddrb
+	STA	upiob	\ Ensure CTS is off
+	LDA	#0	\ ACR reset; latched, no interrupts
+	STA	upacr
+
+	LDA	#0
+	STA	sbuft
+	LDA	#LO(serbuf)
+	STA	sbufl
+	LDA	#HI(serbuf)
+	STA	sbufh
+ELSE
+	LDA #156
+	LDX #RxInit
+	LDY #0
+	JSR OSBYTE  \ Disable ACIA IRQs, raise RTS
+	LDA #232
+	LDX #0
+	LDY #0
+	JSR OSBYTE       \ Mask out all ACIA IRQs
+ENDIF
+	LDA #0
+	RTS
+.CallFSCV
+	JMP (FSCV)
+
+
+\ ---------------------------------------
+\ SERVICE &25 - Filing system information
+\ ---------------------------------------
+.Serv25
+	LDX #0
+.Serv25Lp
+	LDA Serv25Table,X
+	STA (&F2),Y
+	INY
+	INX
+	CPX #11
+	BNE Serv25Lp
+	LDA #&25
+	RTS
+.Serv25Table
+IF	UPURS
+	EQUS "UPURSFS "
+ELSE
+	EQUS "HOSTFS  "
+ENDIF
+	EQUB chanlo
+	EQUB chanhi
+	EQUB myfs
+
+\ ------------------
+\ Filing system code
+\ ------------------
+.SelectFS
+	LDY Serv25Table+10
+	LDX #18
+	LDA #143
+	JMP OSBYTE
+
+
+\ ----------------------------
+\ I/O system routine addresses
+\ ----------------------------
+.IOVectors
+	EQUW MyosCLI
+	EQUW MyosBYTE
+	EQUW MyosWORD
+	EQUW MyosWRCH
+	EQUW MyosRDCH_IO
+\ Could do with some way of seeing that Host has not actioned
+\ a CLI/BYTE/WORD and pass them on locally.
+
+
+\ -------------------------------
+\ Filing system routine addresses
+\ -------------------------------
+.FSVectors
+	EQUW MyosFILE
+	EQUW HostARGS
+	EQUW MyosBGET
+	EQUW MyosBPUT
+	EQUW MyosGBPB  
+	EQUW HostFIND
+	EQUW HostFSC
+
+
+\ ------------------------------
+\ Precheck OSARGS for local info
+\ ------------------------------
+\ Need to return filing system number and address of
+\ command line parameters locally. Master FileSwitch
+\ does this check itself, so these two calls are never
+\ passed here.
+\
+.HostARGS
+	CPY #0
+	BNE TubeARGS
+	CMP #1
+	BCC HostARGS0
+	BEQ HostARGS1
+.TubeARGS
+	JMP MyosARGS
+
+\ OSARGS 0,0 - Return FS number
+\ -----------------------------
+\ Return fs=HostFS
+.HostARGS0
+	LDA Serv25Table+10
+	RTS
+
+\ OSARGS 1,0 - Return command line address
+\ ----------------------------------------
+.HostARGS1
+	LDA CMD+0
+	STA 0,X
+	LDA CMD+1
+	STA 1,X
+	LDA #&FF
+	STA 2,X
+	STA 3,X
+	LDA #&00
+	RTS
+
+\ ---------------------------
+\ Precheck OSFIND for CLOSE#0
+\ ---------------------------
+.HostFIND
+	CMP #0
+	BNE TubeFind		\ Not CLOSE
+	CPY #0
+	BNE TubeFind		\ Not CLOSE#0
+	TXA
+	PHA
+	LDA #&77
+	JSR OSBYTE		\ Close Exec and Spool files
+	PLA
+	TAX
+	LDA #0
+	TAY			\ Restore for CLOSE#0
+.TubeFind
+	JMP MyosFIND
+
+\ ----------------
+\ Precheck for FSC
+\ ----------------
+\ Need to find parameters on *commands to return
+\ later with OSARGS 1,0. Master FileSwitch does
+\ this itself, client does this within FSC.
+.HostFSC
+	CMP #6
+	BEQ HostFSC6
+	CMP #7
+	BEQ HostFSC7
+	CMP #8
+	BEQ HostFSCQuit
+	JMP MyosFSC
+.HostFSC6
+	LDA #156
+	LDX #&56
+	LDY #0
+	JSR OSBYTE  \ Release the Serial system
+	LDA #232
+	LDX #255
+	LDY #0
+	JSR OSBYTE  \ Pass ACIA IRQs back to MOS
+.HostFSC7
+	LDX Serv25Table+8            \ Lowest handle
+	LDY Serv25Table+9            \ Highest handle
+.HostFSCQuit
+	RTS
+
+
+\ -----------------------------
+\ Generate a sideways ROM error
+\ -----------------------------
+.Error
+	PLA
+	STA FAULT
+	PLA
+	STA FAULT+1
+	LDY #0
+	STY ERRBUF
+	INY
+	LDA (FAULT),Y
+	STA ERRBUF,Y
+.ErrorLp
+	INY
+	LDA (FAULT),Y
+	STA ERRBUF,Y
+	BNE ErrorLp
+	JMP ERRBUF
+
+
+\ ----------
+\ Debug code
+\ ----------
+IF DODEBUG
+.debug1
+	PHP
+	PHA
+	LDA #'<':JSR OSWRCH
+	PLA
+	JSR PrHex
+	LDA #'>':JSR OSWRCH
+	PLP
+	RTS
+ENDIF
+
+.PrHex
+	PHP
+	PHA
+	JSR PrHex2
+	PLA
+	PLP
+	RTS
+.PrHex2
+	PHA
+	LSR A
+	LSR A
+	LSR A
+	LSR A
+	JSR PrNyb
+	PLA
+.PrNyb
+	AND #15
+	CMP #10
+	BCC PrDig
+	ADC #6
+.PrDig
+	ADC #48
+	JMP NVWRCH
+
+.PrStack
+	PHP
+	PHA
+	TXA
+	PHA
+	TSX
+	LDA &106,X
+	JSR PrHex
+	LDA &107,X
+	JSR PrHex
+	LDA &108,X
+	JSR PrHex
+	LDA &109,X
+	JSR PrHex
+	LDA &10A,X
+	JSR PrHex
+	LDA &10B,X
+	JSR PrHex
+	LDA &10C,X
+	JSR PrHex
+	LDA &10D,X
+	JSR PrHex
+	LDA &10E,X
+	JSR PrHex
+	LDA &10F,X
+	JSR PrHex
+	PLA
+	TAX
+	PLA
+	PLP
+	RTS
+
+\ Tube Client Startup Code
+\ ========================
+.RESET
+	LDX #&00
+.LF802
+	LDA &FF00,X
+	STA &FF00,X    \ Copy entry block to RAM
+	DEX
+	BNE LF802
+	LDX #&36
+.LF80D
+	LDA LFF80,X
+	STA USERV,X    \ Set up default vectors
+	DEX
+	BPL LF80D
+	TXS
+	LDX #&F0               \ Clear stack
+
+\ The following code copies the page with the I/O registers in
+\ it without accessing the I/O registers. Modify according to
+\ where the I/O registers actually are.
+
+.LF819
+	LDA &FDFF,X
+	STA &FDFF,X    \ Copy &FE00-&FEEF to RAM, avoiding
+	DEX
+	BNE LF819              \  Tube registers at &FEFx
+
+	LDY #LO(RESET)
+	STY LPTR+0 \ Point to start of ROM
+	LDA #HI(RESET)
+	STA LPTR+1
+.LF82A
+                        \ Copy rest of ROM to RAM
+	LDA (LPTR),Y
+	STA (LPTR),Y     \ Copy a page to RAM
+	INY
+	BNE LF82A                 \ Loop for 256 bytes
+	INC LPTR+1
+	LDA LPTR+1         \ Inc. address high byte
+	CMP #&FE
+	BNE LF82A            \ Loop from &F800 to &FDFF
+	LDX #&10
+.LF83B
+	LDA LF859,X
+	STA &0100,X       \ Copy jump code to &100
+	DEX
+	BPL LF83B
+	LDA PROG+0
+	STA DADR+0         \ Copy PROG to ADDR
+	LDA PROG+1
+	STA DADR+1
+	LDA #&00
+	STA ESCFLG           \ Clear Escape flag
+	STA MEMTOP+0
+	LDA #HI(RESET)
+	STA MEMTOP+1 \ Set memtop to start of ROM at &F800
+	JMP &0100                       \ Jump via low memory to page ROM out
+
+\ Executed in low memory to page ROM out
+\ --------------------------------------
+.LF859
+IF	NOT(UPURS)
+	LDA RxStatus
+ENDIF
+	CLI           \ Check Tube status to page ROM out
+.LF85D
+	JMP LF860                  \ Jump to initilise I/O with banner
+
+.LF860
+.STARTUP
+	LDX #&FF
+	TXS               \ Clear stack
+IF	UPURS
+	LDA	#&7D	\ 6522 Inputs (RxD and RTS on D7 and D1)
+	STA	upddrb
+	STA	upiob	\ Ensure CTS is off
+	LDA	#0	\ ACR reset; latched, no interrupts
+	STA	upacr
+
+	LDA	#0
+	STA	sbuft
+	LDA	#LO(serbuf)
+	STA	sbufl
+	LDA	#HI(serbuf)
+	STA	sbufh
+ELSE
+	LDA TxInit
+	STA TxStatus    \ Initialise port
+	LDA RxInit
+	STA RxStatus
+ENDIF
+	JSR InitError              \ Claim error handler
+	INX
+	LDA #&FF
+	TAY
+	JSR MyosFSC \ As we are using a serial link, send a Soft Reset
+	                           \ Sends FSC &FF,&00,&FF
+	TXA
+.STARTUP2
+	PHA                        \ Save returned Ack byte, will be &00 if no response
+	JSR PrText                 \ Display startup banner
+	EQUB 10
+	EQUS "Serial TUBE 6502 64K"
+	EQUB 10
+	EQUB 10
+	EQUB 13
+	EQUB 0
+	NOP
+	LDA #LO(CmdOSLoop) \ Next time RESET is soft entered,
+	STA LF85D+1                \ banner not printed
+	LDA #HI(CmdOSLoop) 
+	STA LF85D+2
+	PLA
+	JSR WaitCheckCode      \ Check Ack code, if &80 enter code,
+
+
+\ Minimal Command prompt
+\ ======================
+.CmdOSLoop
+	LDX #&FF
+	TXS               \ Clear stack
+	JSR InitError              \ Claim error handler
+	LDA #'*'
+	JSR OSWRCH     \ Print '*' prompt
+	LDX #LO(LF95D)
+	LDY #HI(LF95D)
+	LDA #&00
+	JSR ummOSWORD        \ Read line to INPBUF
+	BCS CmdOSEscape
+	LDX #LO(INPBUF)
+	LDY #HI(INPBUF) \ Execute command
+	JSR ummOS_CLI
+	JMP CmdOSLoop   \  and loop back for another
+.CmdOSEscape
+	LDA #&7E
+	JSR OSBYTE        \ Acknowledge Escape state
+	JSR	Error
+	EQUB 17
+	EQUS "Escape"
+	BRK
+
+\ Control block for command prompt input
+\ --------------------------------------
+.LF95D
+	EQUW INPBUF                \ Input text to INPBUF at &236
+	EQUB &CA                   \ Up to &CA characters
+	EQUB &20
+	EQUB &FF          \ Min=&20, Max=&FF
+
+
+\ Print embedded string
+\ =====================
+\ Mustn't use LPTR so can be called from OSCLI
+\
+.PrText
+	PLA
+	STA CTRL+0
+	PLA
+	STA CTRL+1    \ &FA/B=>embedded string
+	LDY #&00
+.LFEA0
+	INC CTRL+0
+	BNE LFEA6
+	INC CTRL+1  \ Increment address
+.LFEA6
+	LDA (CTRL),Y
+	BMI LFEB0     \ Get character, exit if >&7F
+	JSR OSWRCH
+	JMP LFEA0       \ Print character and loop back for more
+.LFEB0
+	JMP (CTRL)                 \ Jump back to code after string
+
+
+\ Error handler
+\ =============
+.ErrorHandler
+	LDX #&FF
+	TXS               \ Clear stack
+	JSR OSNEWL
+	LDY #&01
+.LF94D
+	LDA (FAULT),Y
+	BEQ LF957    \ Print error string
+	JSR OSWRCH
+	INY
+	BNE LF94D
+.LF957
+	JSR OSNEWL
+	JMP CmdOSLoop   \ Jump to command prompt
+
+
+\ Interrupt handlers
+\ ==================
+.InterruptHandler
+	STA IRQA
+	PLA
+	PHA           \ Save A, get flags from stack
+	AND #&10
+	BNE BRKHandler    \ If BRK, jump to BRK handler
+	JMP (IRQ1V)                \ Continue via IRQ1V handler
+
+.IRQ1Handler
+	JMP (IRQ2V)                \ Pass on to IRQ2V
+
+.BRKHandler
+	TXA
+	PHA                    \ Save X
+	TSX
+	LDA &0103,X            \ Get address from stack
+	CLD
+	SEC
+	SBC #&01
+	STA FAULT
+	LDA &0104,X
+	SBC #&00
+	STA FAULT+1       \ &FD/E=>after BRK opcode
+	PLA
+	TAX
+	LDA IRQA           \ Restore X, get saved A
+	CLI
+	JMP (BRKV)             \ Restore IRQs, jump to Error Handler
+
+.NMIHandler
+	RTI
+
+.Unsupported
+	JSR	Error
+	EQUB 255
+	EQUS "Bad"
+	EQUB 0
+
+
+\ Skip Spaces
+\ ===========
+.SkipSpaces1
+	INY
+.SkipSpaces
+	LDA (LPTR),Y
+	CMP #&20
+	BEQ SkipSpaces1
+.NullReturn
+	RTS
+
+
+\ Scan hex
+\ ========
+.ScanHex
+	LDX #&00
+	STX NUM+0
+	STX NUM+1 \ Clear hex accumulator
+.LF98C
+	LDA (LPTR),Y               \ Get current character
+	CMP #&30
+	BCC LF9B1         \ <'0', exit
+	CMP #&3A
+	BCC LF9A0         \ '0'..'9', add to accumulator
+	AND #&DF
+	SBC #&07
+	BCC LF9B1\* Convert letter, if <'A', exit
+	CMP #&40
+	BCS LF9B1         \ >'F', exit
+.LF9A0
+	ASL A
+	ASL A
+	ASL A
+	ASL A    \ *16
+	LDX #&03                   \ Prepare to move 3+1 bits
+.LF9A6
+	ASL A
+	ROL NUM+0
+	ROL NUM+1  \ Move bits into accumulator
+	DEX
+	BPL LF9A6              \ Loop for four bits, no overflow check
+	INY
+	BNE LF98C              \ Move to next character
+.LF9B1
+	RTS
+
+
+\ MOS INTERFACE
+\ =============
+\
+\
+\ OSRDCH - Wait for character from input stream
+\ =============================================
+\ On exit, A =char, Cy=Escape flag
+\
+.MyosRDCH
+	JSR WaitByte
+	PHA           \ Wait for character
+	LDA ESCFLG
+	ASL A           \ Get Escape flag to carry
+	PLA
+	RTS                    \ Get character to A and return
+
+
+\ OSRDCH - Request character via Tube
+\ ===================================
+\ On exit, A =char, Cy=Escape flag
+\
+\ Tube data  &00  --  Carry Char
+\
+.MyosRDCH_IO
+	LDA #&00
+	JSR SendCommand   \ Send command &00 - OSRDCH
+.WaitCarryChar             
+			  \  Wait for Carry and A
+	JSR WaitByte
+	ASL A         \ Wait for carry
+	JMP WaitByte
+
+
+\ OSCLI - Execute command
+\ =======================
+\ On entry, XY=>command string
+\ On exit,  All registers corrupted
+\
+.MyosCLI
+	STX LPTR+0
+	STY LPTR+1      \ Save A, &F8/9=>command string
+	LDY #&00
+.LF9D1
+	JSR SkipSpaces
+	INY
+	CMP #'*'
+	BEQ LF9D1      \ Skip spaces and stars
+	AND #&DF
+	TAX               \ Ignore case, and save in X
+	LDA (LPTR),Y               \ Get next character
+	CPX #'G'
+	BEQ CmdGO      \ Jump to check '*GO'
+	CPX #'H'
+	BNE MyosCLI_IO   \ Not "H---", jump to pass to Tube
+	CMP #'.'
+	BEQ CmdHELP    \ "H.", jump to do *Help
+	AND #&DF                   \ Ignore case
+	CMP #'E'
+	BNE MyosCLI_IO   \ Not "HE---", jump to pass to Tube
+	INY
+	LDA (LPTR),Y           \ Get next character
+	CMP #'.'
+	BEQ CmdHELP    \ "HE.", jump to do *Help
+	AND #&DF                   \ Ignore case
+	CMP #'L'
+	BNE MyosCLI_IO   \ Not "HEL---", jump to pass to Tube
+	INY
+	LDA (LPTR),Y           \ Get next character
+	CMP #'.'
+	BEQ CmdHELP    \ "HEL.", jump to do *Help
+	AND #&DF                   \ Ignore case
+	CMP #'P'
+	BNE MyosCLI_IO   \ Not "HELP---", jump to pass to Tube
+	INY
+	LDA (LPTR),Y           \ Get next character
+	AND #&DF                   \ Ignore case
+	CMP #'A'
+	BCC CmdHELP    \ "HELP" terminated by non-letter, do *Help
+	CMP #'['
+	BCC MyosCLI_IO   \ "HELP" followed by letter, pass to Tube
+
+\ *Help - Display help information
+\ --------------------------------
+.CmdHELP
+	JSR PrText                 \ Print help message
+	EQUB 10
+	EQUB 13
+	EQUS "Serial 6502 TUBE "
+	VERSION_STRING
+	EQUB 10
+	EQUB 13
+	NOP                        \ Continue to pass '*Help' command to Tube
+
+
+\ OSCLI - Send command line to host
+\ =================================
+\ On entry, &F8/9=>command string
+\
+\ Tube data  &02 string &0D  --  &7F or &80
+\
+.MyosCLI_IO
+	LDA #&02
+	JSR SendCommand   \ Send command &02 - OSCLI
+	JSR SendStringF8           \ Send command string at &F8/9
+	JMP WaitEnterCode          \ Jump to wait for Ack and enter code
+
+
+\ *GO - call machine code
+\ -----------------------
+.CmdGO
+	AND #&DF                   \ Ignore case, balance stack
+	CMP #'O'
+	BNE MyosCLI_IO   \ Not '*GO', jump to pass to Tube
+	JSR SkipSpaces1            \ Move past any spaces
+	JSR ScanHex
+	JSR SkipSpaces \ Read hex value and move past spaces
+	CMP #&0D
+	BNE MyosCLI_IO      \ More parameters, pass to Tube to deal with
+	TXA
+	BEQ SaveEnterCode      \ If no address given, jump to current program
+	LDA NUM+0
+	STA DADR+0       \ Set program start to address read
+	LDA NUM+1
+	STA DADR+1
+	JMP SaveEnterCode
+
+.WaitEnterCode
+	JSR WaitByte               \ Wait for Ack from Tube
+.WaitCheckCode
+	ASL A
+	BCC SaveEnterDone    \ If <&80, exit
+.SaveEnterCode
+	LDA PROG+1
+	PHA
+	LDA PROG+0
+	PHA \ Save current program
+	JSR EnterCode                 \ Enter code
+	TAX
+	PLA
+	STA PROG+0
+	STA MEMTOP+0   \ Restore current program and
+	PLA
+	STA PROG+1
+	STA MEMTOP+1   \  set address top of memory to it
+	TXA
+.SaveEnterDone
+	RTS
+
+
+\ FSC - FSC Functions
+\ ===================
+\ On entry, A, X, Y=FSC parameters
+\ On exit,  A, X, Y=return values
+\
+\ Tube data  &18 X Y A  --  &FF Y X or
+\                           &7F then string -- respsonse
+\
+.MyosFSC
+	PHA
+	LDA #&18
+	SEC
+	BCS ByteHi2
+
+
+\ OSBYTE - Byte MOS functions
+\ ===========================
+\ On entry, A, X, Y=OSBYTE parameters
+\ On exit,  A  preserved
+\           If A<&80, X=returned value
+\           If A>&7F, X, Y, Carry=returned values
+\
+.MyosBYTE
+	CMP #&80
+	BCS ByteHigh      \ Jump for long OSBYTEs
+\
+\ BYTELO
+\ Tube data  &04 X A    --  X
+\
+	PHA
+	LDA #&04
+	JSR SendCommand  \ Send command &04 - BYTELO
+	TXA
+	JSR SendByte           \ Send single parameter
+	PLA
+	PHA
+	JSR SendByte       \ Send function
+	JSR WaitByte
+	TAX           \ Get return value
+	PLA
+	RTS                    \ Restore A and return
+
+.ByteHigh
+	CMP #&82
+	BEQ Byte82        \ Read memory high word
+	CMP #&83
+	BEQ Byte83        \ Read bottom of memory
+	CMP #&84
+	BEQ Byte84        \ Read top of memory
+\
+\ BYTEHI
+\ Tube data  &06 X Y A  --  Cy Y X
+\
+	PHA
+	LDA #&06
+	CLC
+.ByteHi2
+	PHP
+	JSR SendCommand
+	PLP    \ Send command &06 or &18 - BYTEHI or FSC
+	TXA
+	JSR SendByte           \ Send first parameter
+	TYA
+	JSR SendByte           \ Send second parameter
+	PLA
+	JSR SendByte           \ Send function
+	BCS ByteHi3                \ Skip OSBYTE checks
+	CMP #&8E
+	BEQ WaitEnterCode \ If select language, check to enter code
+	CMP #&9D
+	BEQ LFAEF
+	CLC     \ Fast return with Fast BPUT
+.ByteHi3
+	PHA
+	JSR WaitByte
+	BCC ByteHi4 \ Get Carry or byte/string response
+	ASL A
+	BCC FSCString          \ Jump to send FSC string
+.ByteHi4
+	ASL A
+	JSR WaitByte
+	TAY     \ Get return high byte
+	JSR WaitByte
+	TAX
+	PLA       \ Get return low byte
+.LFAEF
+	RTS
+
+.Byte84
+	LDX MEMTOP+0
+	LDY MEMTOP+1
+	RTS \ Read top of memory from &F2/3
+.Byte83
+	LDX #&00
+	LDY #&08
+	RTS  \ Read bottom of memory
+.Byte82
+	LDX #&00
+	LDY #&00
+	RTS  \ Return &0000 as memory high word
+
+.FSCString
+	PLA
+	JSR SendString         \ Send string
+	LDY #&FF
+.FSCStrLp2
+	INY
+	LDA (LPTR),Y
+	CMP #'!'
+	BCS FSCStrLp2  \ Skip to ' ' or <cr>
+	DEY
+.FSCStrLp3
+	INY
+	LDA (LPTR),Y
+	CMP #' '
+	BEQ FSCStrLp3  \ Skip to non' '
+	TYA
+	CLC
+	ADC LPTR
+	STA CMD
+	LDA LPTR+1
+	ADC #0
+	STA CMD+1
+	JSR WaitEnterCode       \ Wait for Ack, enter code if needed
+	BPL LFAEF               \ Response=<&40, all done, return response
+				\ Response=&40 (&80 at this point), print text
+.FSCStrChr
+	JSR WaitByte               \ Wait for a character
+	CMP #&00
+	BEQ LFAEF         \ &00 terminates string
+	JSR OSWRCH
+	JMP FSCStrChr   \ Print character
+
+
+\ OSWORD - Various functions
+\ ==========================
+\ On entry, A =function
+\           XY=>control block
+\
+.MyosWORD
+	STX LPTR+0
+	STY LPTR+1      \ &F8/9=>control block
+	TAY
+	BEQ RDLINE             \ OSWORD 0, jump to read line
+\
+\ Tube data  &08 A in_length block out_length  --  block
+\
+	PHA
+	PHA                    \ Save function
+	LDA #&08
+	JSR SendCommand   \ Send command &08 - OSWORD
+	PLA
+	JSR SendByte           \ Send function
+	TAX
+	BPL WordSendLow        \ Jump with functions<&80
+	LDY #&00
+	LDA (LPTR),Y      \ Get send block length from control block
+	TAY
+	JMP WordSend           \ Jump to send control block
+
+.WordSendLow
+	LDY WordLengthsLo-1,X      \ Get send block length from table
+	CPX #&15
+	BCC WordSend      \ Use this length for OSWORD 1 to &14
+	LDY #&10                   \ Send 16 bytes for OSWORD &15 to &7F
+.WordSend
+	TYA
+	JSR SendByte           \ Send send block length
+	DEY
+	BMI LFB45              \ Zero or &81..&FF length, nothing to send
+.LFB38
+	LDA (LPTR),Y
+	JSR SendByte  \ Send byte from control block
+	DEY
+	BPL LFB38              \ Loop for number to be sent
+.LFB45
+	TXA
+	BPL WordRecvLow        \ Jump with functions<&80
+	LDY #&01
+	LDA (LPTR),Y      \ Get receive block length from control block
+	TAY
+	JMP WordRecv           \ Jump to receive control block
+
+.WordRecvLow
+	LDY WordLengthsHi-1,X      \ Get receive length from table
+	CPX #&15
+	BCC WordRecv      \ Use this length for OSWORD 1 to &14
+	LDY #&10                   \ Receive 16 bytes for OSWORD &15 to &7F
+.WordRecv
+	TYA
+	JSR SendByte           \ Send receive block length
+	DEY
+	BMI LFB71              \ Zero of &81..&FF length, nothing to receive
+.LFB64
+	JSR WaitByte
+	STA (LPTR),Y  \ Get byte to control block
+	DEY
+	BPL LFB64              \ Loop for number to receive
+.LFB71
+	LDY LPTR+1
+	LDX LPTR+0
+	PLA  \ Restore registers
+	RTS
+
+
+\ RDLINE - Read a line of text
+\ ============================
+\ On entry, A =0
+\           XY=>control block
+\ On exit,  A =undefined
+\           Y =length of returned string
+\           Cy=0 ok, Cy=1 Escape
+\
+\ Tube data  &0A block  --  &FF or &7F string &0D
+\
+.RDLINE
+	LDA #&0A
+	JSR SendCommand   \ Send command &0A - RDLINE
+	LDY #&04
+.LFB7E
+	LDA (LPTR),Y
+	JSR SendByte  \ Send control block
+	DEY
+	CPY #&01
+	BNE LFB7E     \ Loop for 4, 3, 2
+	LDA #&07
+	JSR SendByte      \ Send &07 as address high byte
+	LDA (LPTR),Y
+	PHA           \ Get text buffer address high byte
+	DEY
+	TYA
+	JSR SendByte       \ Send &00 as address low byte
+	LDA (LPTR),Y
+	PHA           \ Get text buffer address low byte
+	LDX #&FF
+	JSR WaitByte      \ Wait for response
+	ASL A
+	BCS RdLineEscape     \ Jump if Escape returned
+	PLA
+	STA LPTR+0
+	PLA
+	STA LPTR+1
+	LDY #&00        \ Set &F8/9=>text buffer
+.RdLineLp
+	JSR WaitByte
+	STA (LPTR),Y  \ Store returned character
+	INY
+	CMP #&0D
+	BNE RdLineLp  \ Loop until <cr>
+	LDA #&00
+	DEY
+	CLC
+	INX       \ Return A=0, Y=len, X=00, Cy=0
+	RTS
+
+.RdLineEscape
+	PLA
+	PLA
+	LDA #&00           \ Return A=0, Y=len, X=FF, Cy=1
+	RTS
+
+\ OSWORD control block lengths
+\ ----------------------------
+.WordLengthsLo
+	EQUB &00
+	EQUB &05
+	EQUB &00
+	EQUB &05
+	EQUB &04
+	EQUB &05
+	EQUB &08
+	EQUB &0E
+	EQUB &04
+	EQUB &01
+	EQUB &01
+	EQUB &05
+	EQUB &00
+	EQUB &01
+	EQUB &20
+	EQUB &10
+	EQUB &0D
+	EQUB &00
+	EQUB &04
+	EQUB &80
+.WordLengthsHi
+	EQUB &05
+	EQUB &00
+	EQUB &05
+	EQUB &00
+	EQUB &05
+	EQUB &00
+	EQUB &00
+	EQUB &00
+	EQUB &05
+	EQUB &09
+	EQUB &05
+	EQUB &00
+	EQUB &08
+	EQUB &19
+	EQUB &00
+	EQUB &01
+	EQUB &0D
+	EQUB &80
+	EQUB &04
+	EQUB &80
+
+
+\ OSARGS - Read info on open file
+\ ===============================
+\ On entry, A =function
+\           X =>data word in zero page
+\           Y =handle
+\ On exit,  A =returned value
+\           X  preserved
+\           Y  preserved
+\
+\ Tube data  &0C handle block function  --  result block
+\
+.MyosARGS
+	PHA
+	LDA #&0C
+	JSR SendCommand \ Send command &0C - OSARGS
+	TYA
+	JSR SendByte           \ Send handle
+	LDA &03,X
+	JSR SendByte     \ Send data word
+	LDA &02,X
+	JSR SendByte
+	LDA &01,X
+	JSR SendByte
+	LDA &00,X
+	JSR SendByte
+	PLA
+	JSR SendByte           \ Send function
+	JSR WaitByte
+	PHA           \ Get and save result
+	JSR WaitByte
+	STA &03,X     \ Receive data word
+	JSR WaitByte
+	STA &02,X
+	JSR WaitByte
+	STA &01,X
+	JSR WaitByte
+	STA &00,X
+	PLA
+	RTS                    \ Get result back and return
+
+
+\ OSBGET - Get a byte from open file
+\ ==================================
+\ On entry, Y =handle
+\ On exit,  A =byte Read
+\           Y =preserved
+\           Cy set if EOF
+\
+\ Tube data  &0E handle --  Carry byte
+\
+.MyosBGET
+	LDA #&0E
+	JSR SendCommand   \ Send command &0E - OSBGET
+	TYA
+	JSR SendByte           \ Send handle
+	JMP WaitCarryChar          \ Jump to wait for Carry and byte
+
+
+\ OSBPUT - Put a byte to an open file
+\ ===================================
+\ On entry, A =byte to write
+\           Y =handle
+\ On exit,  A =preserved
+\           Y =preserved
+\
+\ Tube data  &10 handle byte  --  &7F
+\
+.MyosBPUT
+	PHA
+	LDA #&10
+	JSR SendCommand \ Send command &10 - OSBPUT
+	TYA
+	JSR SendByte           \ Send handle
+	PLA
+	JSR SendByte           \ Send byte
+	PHA
+	JSR WaitByte
+	PLA
+	RTS   \ Wait for acknowledge and return
+
+
+\ OSFIND - Open or Close a file
+\ =============================
+\ On entry, A =function
+\           Y =handle or XY=>filename
+\ On exit,  A =zero or handle
+\
+\ Tube data  &12 function string &0D  --  handle
+\            &12 &00 handle  --  &7F
+\
+.MyosFIND
+	PHA
+	LDA #&12
+	JSR SendCommand \ Send command &12 - OSFIND
+	PLA
+	JSR SendByte           \ Send function
+	CMP #&00
+	BNE OPEN          \ If <>0, jump to do OPEN
+\ CLOSE
+	PHA
+	TYA
+	JSR SendByte       \ Send handle
+	JSR WaitByte
+	PLA
+	RTS       \ Wait for acknowledge, restore regs and return
+.OPEN
+	JSR SendString             \ Send pathname
+	JMP WaitByte               \ Wait for and return handle
+
+
+\ OSFILE - Operate on whole files
+\ ===============================
+\ On entry, A =function
+\           XY=>control block
+\ On exit,  A =result
+\           control block updated
+\
+\ Tube data  &14 block string <cr> function  --  result block
+\
+.MyosFILE
+	STX CTRL+0
+	STY CTRL+1        \ &FA/B=>control block
+	PHA
+	LDA #&14
+	JSR SendCommand \ Send command &14 - OSFILE
+	LDY #&11
+.LFC5F
+	LDA (CTRL),Y
+	JSR SendByte  \ Send control block
+	DEY
+	CPY #&01
+	BNE LFC5F     \ Loop for &11..&02
+	DEY
+	LDA (CTRL),Y
+	TAX
+	INY
+	LDA (CTRL),Y
+	TAY       \ Get pathname address to XY
+	JSR SendString             \ Send pathname
+	PLA
+	JSR SendByte           \ Send function
+	JSR WaitByte
+	PHA           \ Wait for result
+	LDY #&11
+.LFC7E
+	JSR WaitByte
+	STA (CTRL),Y  \ Get control block back
+	DEY
+	CPY #&01
+	BNE LFC7E     \ Loop for &11..&02
+	LDY CTRL+1
+	LDX CTRL+0      \ Restore registers
+	PLA
+	RTS                    \ Get result and return
+
+
+\ OSGBPB - Multiple byte Read and write
+\ =====================================
+\ On entry, A =function
+\           XY=>control block
+\ On exit,  A =returned value
+\              control block updated
+\
+\ Tube data  &16 block function  --   block Carry result
+\
+.MyosGBPB
+	STX CTRL+0
+	STY CTRL+1        \ &FA/B=>control block
+	PHA
+	LDA #&16
+	JSR SendCommand \ Send command &16 - OSGBPB
+	LDY #&0C
+.LFC9A
+	LDA (CTRL),Y
+	JSR SendByte  \ Send control block
+	DEY
+	BPL LFC9A              \ Loop for &0C..&00
+	PLA
+	JSR SendByte           \ Send function
+	LDY #&0C
+.LFCA8
+	JSR WaitByte
+	STA (CTRL),Y  \ Get control block back
+	DEY
+	BPL LFCA8              \ Loop for &0C..&00
+	LDY CTRL+1
+	LDX CTRL+0      \ Restore registers
+	JMP WaitCarryChar          \ Jump to get Carry and result
+
+
+\ Tube I/O routines
+\ =================
+
+\ Send a string
+\ -------------
+.SendString
+	STX LPTR+0
+	STY LPTR+1      \ Set &F8/9=>string
+.SendStringF8
+	LDY #&00
+.LF9B8
+	LDA (LPTR),Y
+	JSR SendByte  \ Send character to I/O
+	INY
+	CMP #&0D
+	BNE LF9B8     \ Loop until <cr> sent
+	LDY LPTR+1
+	RTS             
+\ Restore Y from &F9 and return
+
+
+\ OSWRCH - Send character to output stream
+\ ========================================
+\ On entry, A =character
+\ On exit,  A =preserved
+\
+\ Tube data  character  --
+\
+.MyosWRCH                    
+\ WRCH is simply SendByte
+
+
+\ Tube Core I/O Routines
+\ ======================
+\ Characters and commands are sent over the same single port
+\ Outward commands are escaped, and inward responses are escaped
+\
+\ Outward
+\   x                 VDU x
+\   esc,esc           VDU esc
+\   esc,n             MOS function, control block follows
+\
+\ Inward
+\   x                 char/byte x
+\   esc,esc           char/byte esc
+\   esc,&00           BRK, error number+text+null follows
+\   esc,<&80          read returned control block set length
+\   esc,&8n           Escape change, b0=new state
+\   esc,&9x,Y,X,A     Event
+\   esc,&Ax           reserved for networking
+\   esc,&Bx           end transfer
+\   esc,&Cx,addr      set address
+\   esc,&Dx,addr      execute address
+\   esc,&Ex,addr      start load from address
+\   esc,&Fx,addr      start save from address
+\   All commands are data inward, except esc,&Fx which is data outward
+
+
+\ Send a byte, escaping it if needed
+\ ----------------------------------
+\ On entry, A=byte to send
+\ On exit,  A,P preserved
+\
+.SendByte
+	PHP
+	JSR SendData           \ Send byte
+	CMP #esc
+	BNE SendByte2     \ If not esc, done
+	JSR SendData               \ If esc, send twice to prefix it
+.SendByte2
+	PLP
+	RTS
+
+\ Send an escaped command
+\ -----------------------
+\ On entry, A=command
+\ On exit,  A,X,Y preserved, P corrupted
+.SendCommand
+	PHA
+.SendCmdLp
+	JSR ReadByte
+	BCS SendCmdLp \ Flush input
+	LDA #esc
+	JSR SendData      \ Send esc prefix
+	PLA
+	JMP SendData           \ Send command byte (always <&80)
+
+\ Check if a byte is waiting, and read it if there
+\ ------------------------------------------------
+\ On exit, P=EQ CC - nothing waiting
+\          P=NE CS - byte waiting, returned in A
+\
+.ReadByte
+	JSR ReadData               \ See if data present
+	PHP
+	BCS WaitByte2          \ Data present, continue with it
+	PLP
+	LDA #0
+	RTS             \ No data present
+
+\ Wait for a byte, decoding escaped data
+\ --------------------------------------
+\ On exit, A =byte
+\          P =preserved
+\
+.WaitByte
+	PHP
+.WaitByteLp
+	JSR WaitData                \ Wait for data present
+.WaitByte2
+	BNE WaitByteOk              \ Not esc, return it
+	JSR WaitData
+	BEQ WaitByteOk \ esc,esc, return as esc
+	PHA
+	TYA
+	PHA
+	TXA
+	PHA
+	TSX     \ Save registers
+	LDA &103,X
+	JSR WaitCommand  \ Decode escaped command
+	PLA
+	TAX
+	PLA
+	TAY
+	PLA         \ Restore registers
+	JMP WaitByteLp              \ Loop back to wait for a byte
+.WaitByteOk
+	PLP                         \ Restore flags
+.WaitByteOk2
+	RTS                         \ Return byte
+
+\ Wait for raw byte of data
+\ -------------------------
+\ On exit, A =byte
+\          P =EQ byte=esc, NE byte<>esc
+\
+.WaitData
+	JSR ReadData
+	BCC WaitData   \ Loop until data present
+	RTS
+
+
+\ Decode escaped command
+\ ----------------------
+\ On entry, A=command, P set accordingly
+\ All registers can be trashed
+\
+.WaitCommand
+	BEQ WaitError              \ esc,&00 - error
+	BMI WaitTransfer           \ esc,>&7F - data transfer
+
+\ esc,1..127 - read a control block
+\ ---------------------------------
+	TAY                        \ Move count to Y
+.WaitLength
+	JSR WaitByte               \ Wait for a byte
+	DEY
+	STA (CTRL),Y           \ Store it
+	BPL WaitLength
+	RTS
+
+\ esc,&00 - error
+\ ---------------
+.WaitError
+	STA ERRBUF
+	TAY             \ Store error BRK
+	JSR WaitByte
+	STA ERRBUF+1  \ Store error number
+.WaitErrorLp
+	JSR WaitByte
+	STA ERRBUF+2,Y\* Store error character
+	INY
+	CMP #0
+	BNE WaitErrorLp \ Loop until final &00
+
+\* This doesn't work
+\*WaitErr1
+\*	LDA #&1E
+\*	JSR SendCommand   \ Send a SYNC command
+\*	JSR ReadByte
+\*	BCC WaitErr1  \ Wait until Host responds
+\*WaitErr2
+\*	JSR ReadByte
+\*	BCS WaitErr2  \ Flush everything from host
+
+	LDX #16
+	TAY
+.WaitErr1
+	DEY
+	BNE WaitErr1           \ Pause a while to let Host
+	DEX
+	BNE WaitErr1           \  reconnect after an error
+
+	JSR WaitExitRelease        \ Release Tube, restore Screen
+	LDA ERRBUF+1
+	ORA ERRBUF+2  \ Check for error 0,""
+	BEQ *+5
+	JMP ERRBUF        \ Jump to error, no return
+	JMP STARTUP2               \ Error 0,"" is RESET
+
+\ esc,&8n - Escape change
+\ -----------------------
+.WaitTransfer
+	CMP #&C0
+	BCS WaitStart
+	CMP #&A0
+	BCS WaitEnd
+	CMP #&90
+	BCS WaitEvent
+	LSR A
+	ROR ESCFLG
+	RTS       \ Set error flag from b0
+
+\ esc,&9x - Event
+\ ---------------
+.WaitEvent
+	JSR WaitByte
+	TAY           \ Fetch event Y parameter
+	JSR WaitByte
+	TAX           \ Fetch event X parameter
+	JSR WaitByte               \ Fetch event A parameter
+	JMP (EVNTV)                \ Dispatch to event vector
+
+\ esc,&Ax - Reserved
+\ ------------------
+.WaitEnd
+	CMP #&B0
+	BCC WaitExit      \ Return to WaitByte
+
+\ esc,&Bx - End transfer
+\ ----------------------
+	PLA
+	PLA
+	PLA
+	PLA
+	PLA
+	PLA    \ Pop JSR WaitCommand, A,Y,X,A
+	PLA
+	PLA                    \ Pop JSR Wait/ReadByte in Load/SaveLoop
+.WaitExitSave
+	PLA
+	BPL WaitExitRelease    \ Pop transfer flag, b0=0 - Tube release
+	ROR A
+	BCS WaitExitScreen   \ b0=1, Screen release
+.WaitExit
+	RTS
+.WaitExitRelease
+	JSR TubeRelChk             \ Release if Tube present
+.WaitExitScreen
+	LDY #0
+	JMP vramSelect      \ Page in main memory, return to WaitByte
+
+\ esc,&C0+ - Start transfer
+\ -------------------------
+.WaitStart
+	PHA
+	LDY #4                 \ Save command, point to DADR
+.WaitStartLp
+	JSR WaitByte
+	STA DADR-1,Y  \ Wait for 4-byte data address
+	DEY
+	BNE WaitStartLp
+	PLA
+	CMP #&D0
+	BCC WaitExit  \ esc,&Cx - set address for later entry
+	CMP #&E0
+	BCC CallCode      \ esc,&Dx - enter code immediately
+
+\ Decide what local memory to transfer data to/from
+\ -------------------------------------------------
+\ A=&Ex/&Fx - Load/Save
+\
+	LDX &27A
+	BPL WaitTransIO     \ No Tube
+	LDX DADR+3                   \ Check transfer address
+	INX
+	BNE WaitTransTube        \ Tube present, ADDR<&FFxxxxxx
+.WaitTransIO
+	AND #&F0
+	TAY                 \ Y=transfer flag with b7=1 for IO transfer
+	LDX DADR+2
+	INX
+	BEQ WaitIOGo  \ &FFFFxxxx - current IO memory
+	LDA &D0
+	INX
+	BEQ WaitIOScreen \ &FFFExxxx - current display memory
+	INX
+	BNE WaitIOGo
+	LDA #16     \ &FFFDxxxx - shadow screen memory
+.WaitIOScreen
+	AND #16
+	BEQ WaitIOGo         \ Non-shadow screen displayed, jump with Y=&E0/&F0
+	INY
+	JSR vramSelect           \ Page in video RAM, Y is now &E1/&F1
+.WaitIOGo
+	TYA
+	PHA
+	LDY #0               \ Stack IO/Screen flag, init Y=0
+	CMP #&F0
+	BCS WaitSaveIO      \ esc,&Fx - save data
+
+\ Load data from remote host
+\ --------------------------
+.WaitLoadIO
+	JSR WaitByte
+	STA (DADR),Y  \ esc,&Ex - load data
+	INY
+	BNE WaitLoadIO
+	INC DADR+1
+	JMP WaitLoadIO  \ Loop until terminated by esc,&Bx
+
+\ Save data to remote host
+\ ------------------------
+.WaitSaveIO
+	LDA (DADR),Y
+	JSR SendByte     \ esc,&Fx - save data
+	JSR ReadByte
+	BCS WaitSaveExit \ Poll input for termination
+	INY
+	BNE WaitSaveIO            \ Update checksum for 256 bytes
+	INC DADR+1
+	JMP WaitSaveIO     \ Loop until terminated by esc,&Bx
+.WaitSaveExit
+	JMP WaitExitSave
+
+
+\ Tube and ADDR<&FFxxxxxx
+\ -----------------------
+.WaitTransTube
+	CLC
+	ADC #&10
+	ROL A         \ Cy=1/0 for load/save
+	LDA #0
+	ADC #0
+	PHA          \ A=1/0 for load/save
+	JSR TubeAction             \ Claim Tube and start transfer
+\LDY #0
+\STY DADR+3        \ Use DADR+3 as checksum
+	PLA
+	PHA
+	BEQ WaitSaveTube   \ Leave flag pushed with b7=0 for Tube transfer
+.WaitLoadTube
+	JSR TubeDelay
+	JSR WaitByte
+	STA &FEE5     \ Fetch byte and send to Tube
+	JMP WaitLoadTube           \ Loop until terminated by esc,&Bx
+.WaitSaveTube
+	LDA &FEE5
+	JSR SendByte        \ Fetch byte from Tube and send it
+\CLC
+\ADC DADR+3
+\STA DADR+3  
+\ Update checksum
+	JSR ReadByte
+	BCS WaitSaveExit \ Poll input for termination
+	JSR TubeDelay
+\INY
+\BNE WaitSaveIO          \ Update checksum for 256 bytes
+\JSR WaitByte                 \ Check for acknowledge/termination
+\CMP DADR+3
+\BNE WaitSaveIO   \ Repeat if no match
+	JMP WaitSaveTube              \ Loop until terminated by esc,&Bx
+
+\ Enter code
+\ ----------
+.CallCode
+	LDA #&01
+	JMP (DADR)        \ Enter code with A=1
+
+
+\ Screen selection routines
+\ =========================
+.vramSelect
+	TYA
+	PHA
+	AND #1
+	PHA
+	TAX     \ A=0 main RAM, A=1 video RAM
+	LDA #108
+	JSR OSBYTE        \ Attempt to select Master video RAM
+	PLA
+	INX
+	BNE vramOk         \ X<>255, successful
+	EOR #1
+	TAX                 \ A=1 main RAM, A=0 video RAM
+	LDA #111
+	JSR OSBYTE        \ Attempt to select Aries/Watford RAM
+.vramOk
+	PLA
+	TAY
+	RTS
+
+
+\ Tube communication routines
+\ ===========================
+.TubeDelay                 
+\ Delay for 24us
+	JSR TubeDelay2
+	JSR TubeDelay2
+	JSR TubeDelay2
+.TubeDelay2
+	RTS
+.TubeEnterCode
+	LDA #4                     \ 4=EnterCode
+.TubeAction
+	PHA
+.TubeClaim
+	LDA #&C0+6
+	JSR &406        \ Claim with ID=6 (HostFS)
+	BCC TubeClaim
+	LDX #LO(DADR) \ Point to transfer address
+	LDY #HI(DADR)
+	PLA
+	JMP &406               \ Start transfer action
+.TubeRelChk
+	BIT &27A
+	BMI *+3
+	RTS      \ If no Tube, return
+.TubeRelease
+	LDA #&80+6
+	JMP &406        \ Release with ID=6 (HostFS)
+
+
+\ Enter Code pointed to by ADDR
+\ =============================
+\ Checks to see if code has a ROM header, and verifies
+\ it if it has.
+.EnterCode
+	LDA &27A
+	BPL EnterCodeIO           \ No Tube present
+	LDY DADR+3
+	INY
+	BNE TubeEnterCode   \ ADDR<&FFxxxxxx
+.EnterCodeIO
+	LDA DADR+0
+	STA PROG+0
+	STA MEMTOP+0 \ Set current program and memtop
+	LDA DADR+1
+	STA PROG+1
+	STA MEMTOP+1 \  to address beng entered
+	LDY #&07
+	LDA (PROG),Y              \ Get copyright offset
+	CLD
+	CLC
+	ADC PROG+0
+	STA FAULT+0
+	LDA #&00
+	ADC PROG+1
+	STA FAULT+1    \ &FD/E=>copyright message
+
+\ Now check for &00,"(C)"
+	LDY #&00
+	LDA (FAULT),Y
+	BNE LF8FA     \ Jump if no initial &00
+	INY
+	LDA (FAULT),Y
+	CMP #&28
+	BNE LF8FA \ Jump if no '('
+	INY
+	LDA (FAULT),Y
+	CMP #&43
+	BNE LF8FA \ Jump if no 'C'
+	INY
+	LDA (FAULT),Y
+	CMP #&29
+	BNE LF8FA \ Jump if no ')'
+\
+\ &00,"(C)" exists, check ROM type byte
+\ -------------------------------------
+	LDY #&06
+	LDA (PROG),Y              \ Get ROM type
+	AND #&4F
+	CMP #&40
+	BCC NotLanguage  \ b6=0, not a language
+	AND #&0D
+	BNE Not6502Code           \ type<>0 and <>2, not 6502 code
+.LF8FA
+	JSR CallCode
+	LDA #0
+	RTS            \ Enter code, return with A=0
+
+\
+\ Any existing error handler will probably have been overwritten
+\ So, set up new error handler before generating an error
+.NotLanguage
+	JSR InitError
+	JSR	Error
+	EQUB 0
+	EQUS "This is not a language"
+	EQUB 0
+
+.Not6502Code
+	JSR InitError
+	JSR	Error
+	EQUB 0
+	EQUS "I cannot run this code"
+	EQUB 0
+
+.InitError
+	LDA #LO(ErrorHandler)
+	STA BRKV+0 \ Claim error handler
+	LDA #HI(ErrorHandler)
+	STA BRKV+1
+	RTS
+
+
+\ Low level I/O routines
+\ ======================
+\ This is where detailed playful frobbing is done to ensure
+\ a clean error-free reliable link channel. All calling
+\ code assumes these routines are 100% error-free and
+\ reliable. Any handshaking, retries, error correction, etc
+\ must be done at this level.
+
+\ Send a raw byte of data
+\ -----------------------
+\ On entry, A=byte to send
+\ On exit,  A,X,Y preserved, P corrupted
+\
+IF	UPURS
+	ALIGN &100		\ ensure this route starts on page boundary
+ENDIF
+.SendData
+	PHA
+
+IF	UPURS
+	EOR	#&FF		\ High is 0, low is 1.
+
+	PHA
+	\Transmit contents of txbyte @ 115200 baud
+
+.tx	SEI			\kill all IRQ during transmission
+	LDA	upiob		\test PC RTS
+	AND	#2
+	BNE	txgo		\if set, clear to begin send
+
+.rtswait
+	LDA	upiob		\else wait for it to become set
+	AND	#2
+	BEQ	rtswait		\loop till set
+	TXA			\save X
+	LDX	#0		\after RTS becomes set, short delay
+.postrts
+	DEX			\loop X 256 times
+	BNE	postrts
+	TAX			\ restore X
+
+.txgo	LDA	#1
+	STA	upiob		\start bit
+	NOP
+	NOP
+	NOP
+        NOP
+        NOP
+	PLA			\load tx data byte into A
+	STA	upiob		\b0
+	NOP
+	NOP
+	NOP
+	NOP
+	LSR A
+	STA	upiob		\b1
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	LSR A
+	STA	upiob		\b2
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	LSR A
+	STA	upiob		\b3
+	NOP
+	NOP
+	NOP
+	NOP
+	LSR A
+	STA	upiob		\b4
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	LSR A
+	STA	upiob		\b5
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	LSR A
+	STA	upiob		\b6
+	NOP
+	NOP
+	NOP
+	NOP
+	LSR A
+	STA	upiob		\b7
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	LDA	#0
+	STA	upiob		\stop bit
+	CLI
+	PLA			\restore A
+	RTS			\return
+
+.TestRTS
+DEBUG 1
+	LDA	upiob
+	AND	#2
+	BEQ	TestRTSNo
+	LDA	upiob
+	EOR	#&FF
+	AND	#&80	\ if high bit set then we're floating
+.TestRTSNo
+	RTS
+ELSE
+.SendWait
+	LDA TxStatus               \ Get Status
+	AND #TxRDY
+	BEQ SendWait    \ Wait until data can be sent
+	PLA
+	STA TxData
+	RTS         \ Send data
+
+IF SWEH_EXTENSION
+.TestRTS
+	LDA TxStatus
+	AND #TxRDY
+	RTS
+ENDIF
+
+ENDIF
+
+
+\ Read raw data
+\ -------------
+\ On exit, P =CC, no data
+\            =CS, data present, EQ=esc, NE=not esc
+\
+IF	UPURS
+	ALIGN &100 \ ensure UPURS code is page aligned to prevent long branch
+
+\ Core User Port 115200 baud RS232 receive routine. Fills the buffer at serbuf
+\ with [(bufsize) + overrun] bytes. Cycle critical code.
+
+.getbytes
+	SEI			\ disable interrupts (critical!)
+	LDY	#0
+	LDX	#0	        \ reset buffer pointer
+	LDA	#$40            \ assert CTS
+	STA	upiob 
+.idle	LDA	upiob		\ wait for Tx line idle (low)
+	BMI	idle
+
+.sb	LDA	upiob		\ and wait for start bit
+	BMI	T0		\ via detection delay list 
+	LDA	upiob
+	BMI	T0
+	LDA	upiob
+	BMI	T0
+	LDA	upiob
+	BMI	T0
+	LDA	upiob
+	BMI	T0
+	LDA	upiob
+	BMI	T0
+	LDA	upiob
+	BMI	T0
+	LDA	upiob
+	BMI	T0
+	LDA	upiob
+	BMI	T0
+	LDA	upiob
+	BMI	T0
+	LDA	upiob
+	BMI	T0
+	LDA	upiob
+	BMI	T0
+
+	LDA	#0		\ if no start bit detected, reset CTS
+	STA	upiob
+	TXA                     \ transfer buffer pointer to A
+	CLI			\ re-enable IRQ
+	RTS                     \ and return 
+
+.T0	CPX	#bufsize	\ to implement n byte buffer, CTS is
+	BCS	xcts		\ turned off after buf top is reached
+	LDA	#$40
+	BNE	wcts
+.xcts	LDA	#0
+	NOP
+.wcts	STA	upiob           \ maintains or drops CTS
+
+                                \ sequential bit reads, Y must start at 0
+	LDA	upiob           \ bit 0
+	ASL A
+	TYA
+	ROR A
+	INX			\ inc buffer pointer in spare cycles
+	NOP
+
+	TAY			\ bit 1
+	LDA	upiob
+	ASL A
+	TYA
+	ROR A
+	NOP
+	NOP
+
+	TAY			\ bit 2
+	LDA	upiob
+	ASL A
+	TYA
+	ROR A
+	NOP
+
+	TAY			\ bit 3
+	LDA	upiob
+	ASL A
+	TYA
+	ROR A
+	NOP
+	NOP
+
+	TAY			\ bit 4
+	LDA	upiob
+	ASL A
+	TYA
+	ROR A
+	NOP
+
+	TAY			\ bit 5
+	LDA	upiob
+	ASL A
+	TYA
+	ROR A
+	NOP
+	NOP
+
+	TAY			\ bit 6
+	LDA	upiob
+	ASL A
+	TYA
+	ROR A
+	NOP
+
+	TAY			\ bit 7
+	LDA	upiob
+	ASL A
+	TYA
+	ROR A
+
+	STA	serbuf,X	\ save byte in buffer
+	JMP	sb		\ and loop for next byte start bit
+\ -----------------------------------------------------------------------------
+\ Returns one byte in A from the User Serial Port. Fills buffer as required
+\ until end of PC file.
+
+.ReadData
+	PHP
+	STY	tempY
+	STX	tempX
+	LDA	sbuft		\ any bytes waiting in serial buffer?
+	BNE	gb2		\ yes, continue
+	JSR	getbytes	\ else attempt to fill serial buffer
+	BNE	gb1		\ if bytes returned continue
+	JSR	wait		\ else allow Tx to resume in case paused
+;	JSR	wait
+;	JSR	wait
+;	JSR	wait
+	JSR	getbytes	\ second attempt to fill buffer
+	BEQ	nodata		\ no bytes, assume Tx EOF occurred, exit
+.gb1	LDA	#(LO(serbuf))+1	\ after serial buffer fill, set pointers
+	STA	sbufl
+	TXA			\ set buffer top pointer
+	CLC
+	ADC	#LO(serbuf)
+	STA	sbuft
+
+.gb2	LDY	#0                  \ zero Y (dummy offset)
+	LDA	(sbufl),Y		\ get a serial byte
+	EOR	#&FF		\ invert from RS232
+	PHA                     \ hold byte
+	LDA	sbuft		\ end of serial buffer?
+	CMP	sbufl
+	BNE	gb3		\ no, continue
+	LDA	#0		\ else mark buffer empty 
+	STA	sbuft
+
+.gb3	PLA			\ retrieve byte
+	INC	sbufl
+
+	PLP
+	CMP	#esc
+	SEC			\ and return flagging byte ready (C=1)
+	BCS	bcx
+
+.nodata	PLP
+	CLC			\ return flagging no data (C=0)
+
+.bcx
+	PHP
+	LDX	tempX
+	LDY	tempY
+	PLP
+	RTS	
+
+\ Short 256 x 256 wait loop. (Destroys X & Y)
+
+.wait	LDY	#20
+.wait1	LDX	#0
+.wait2	DEX
+	BNE	wait2
+	DEY
+	BNE	wait1
+	RTS
+
+ELSE
+.ReadData
+	PHP
+	SEI
+	TYA
+	PHA            \ Speed up by disabling IRQs
+	LDY #RxCont
+	STY RxStatus   \ Lower RTS to allow input
+	LDY #RxStop
+	LDA RxStatus   \ Get RxStatus
+	AND #RxRDY
+	BNE ReadDataOk  \ Data present
+	PLA
+	STY RxStatus
+	TAY
+	PLP   \ Raise RTS, restore Y,P
+	CLC
+	RTS                    \ CC=No data present
+.ReadDataOk
+	PLA
+	STY RxStatus
+	TAY
+	PLP   \ Raise RTS, restore Y,P
+	LDA RxData
+	CMP #esc
+	SEC
+	RTS \ CS=Data present, EQ/NE=esc
+
+	SKIP 16  \ waste space
+ENDIF
+
+.LFF80
+	EQUW Unsupported      \ &200 - USERV
+	EQUW ErrorHandler     \ &202 - BRKV
+	EQUW IRQ1Handler      \ &204 - IRQ1V
+	EQUW Unsupported      \ &206 - IRQ2V
+	EQUW MyosCLI            \ &208 - CLIV
+	EQUW MyosBYTE           \ &20A - BYTEV
+	EQUW MyosWORD           \ &20C - WORDV
+	EQUW MyosWRCH           \ &20E - WRCHV
+	EQUW MyosRDCH           \ &210 - RDCHV
+	EQUW MyosFILE           \ &212 - FILEV
+	EQUW MyosARGS           \ &214 - ARGSV
+	EQUW MyosBGET           \ &216 - BGetV
+	EQUW MyosBPUT           \ &218 - BPutV
+	EQUW MyosGBPB           \ &21A - GBPBV
+	EQUW MyosFIND           \ &21C - FINDV
+	EQUW Unsupported      \ &21E - FSCV
+	EQUW NullReturn       \ &220 - EVNTV
+	EQUW Unsupported      \ &222 - UPTV
+	EQUW Unsupported      \ &224 - NETV
+	EQUW Unsupported      \ &226 - VduV
+	EQUW Unsupported      \ &228 - KEYV
+	EQUW Unsupported      \ &22A - INSV
+	EQUW Unsupported      \ &22C - RemV
+	EQUW Unsupported      \ &22E - CNPV
+	EQUW NullReturn       \ &230 - IND1V
+	EQUW NullReturn       \ &232 - IND2V
+	EQUW NullReturn       \ &234 - IND3V
+
+.ummVECDEF \ &FFB6 
+	EQUB &36
+	EQUW LFF80
+.ummCLICOM \ &FFB9 
+	JMP CmdOSLoop
+.ummOSXXXX1 \ &FFBC 
+	JMP Unsupported
+.ummOSXXXX2 \ &FFBF 
+	JMP Unsupported
+.ummOSXXXX3 \ &FFC2 
+	JMP Unsupported
+.ummOSXXXX4 \ &FFC5 
+	JMP Unsupported
+.ummNVRDCH \ &FFC8 
+	JMP MyosRDCH
+.ummNVWRCH \ &FFCB 
+	JMP MyosWRCH
+
+.ummOSFIND \ &FFCE 
+	JMP (FINDV)
+.ummOSGBPB \ &FFD1 
+	JMP (GBPBV)
+.ummOSBPUT \ &FFD4 
+	JMP (BPutV)
+.ummOSBGET \ &FFD7 
+	JMP (BGetV)
+.ummOSARGS \ &FFDA 
+	JMP (ARGSV)
+.ummOSFILE \ &FFDD 
+	JMP (FILEV)
+
+.ummOSRDCH \ &FFE0 
+	JMP (RDCHV)
+.ummOSASCI \ &FFE3 
+	CMP #&0D
+	BNE *+9 \OSWRCH
+.ummOSNEWL \ &FFE7 
+	LDA #&0A
+	JSR *+5 \OSWRCH
+.ummOSWRCR \ &FFFC 
+	LDA #&0D
+.ummOSWRCH \ &FFFE 
+	JMP (WRCHV)
+.ummOSWORD \ &FFF1 
+	JMP (WORDV)
+.ummOSBYTE \ &FFF4 
+	JMP (BYTEV)
+.ummOS_CLI \ &FFF7 
+	JMP (CLIV)
+
+.ummNMIV   \ &FFFA 
+	EQUW NMIHandler       \ NMI Vector
+.ummRESETV \ &FFFC 
+	EQUW RESET            \ RESET Vector
+.ummIRQV   \ &FFFE 
+	EQUW InterruptHandler \ IRQ Vector
+
+IF	SWEH_EXTENSION <> 200
+.end
+
+SAVE	start,end
+ENDIF

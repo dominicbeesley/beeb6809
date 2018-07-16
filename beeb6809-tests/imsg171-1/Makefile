@@ -1,4 +1,4 @@
-TARGETS=	ims-g171-1.hex
+TARGETS_CHIPKIT=	ims-g171-1.hex
 include		../../Makefile.defs
 
 

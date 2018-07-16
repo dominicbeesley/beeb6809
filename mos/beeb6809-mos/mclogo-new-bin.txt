@@ -1,0 +1,26 @@
+mc_logo
+		FCB	$03,$0F,$1F,$3B,$71,$71,$F0,$E4
+
+		FCB	$80,$E0,$F0,$B8,$1C,$1C,$1E,$4E
+
+		FCB	$EF,$6F,$6F,$3F,$1F,$0F,$03,$00
+
+		FCB	$EE,$EC,$EC,$F8,$F0,$E0,$80,$00
+
+mc_logo_0
+		FCB	$00,$03,$0F,$3F,$7F,$7E,$FC,$F9
+
+		FCB	$3F,$FF,$DF,$8F,$07,$03,$73,$FC
+
+		FCB	$F8,$FF,$F7,$E3,$C1,$80,$3C,$7F
+
+		FCB	$00,$80,$E0,$F8,$FC,$FC,$7E,$3E
+
+		FCB	$F3,$77,$77,$3F,$0F,$03,$00,$00
+
+		FCB	$FE,$FF,$FF,$FF,$FF,$FF,$3F,$00
+
+		FCB	$FF,$FF,$FF,$FF,$FF,$FF,$F8,$00
+
+		FCB	$9E,$DC,$DC,$F8,$E0,$80,$00,$00
+

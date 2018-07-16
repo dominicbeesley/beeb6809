@@ -20,37 +20,54 @@ __STR		SET	1B
 		PULS	X
 		ENDM
 
+PRINT_STR_BRK	MACRO
+		SECTION	"tables_and_strings"
+8		DO_BRK_B
+		FCB	\2
+9		FCB	\1,0
+__STR		SET	9B
+__BRK		SET	8B
+		CODE
+		LEAX	__STR,PCR
+		JSR	PRSTRING
+		LBRA	__BRK		
+		ENDM
 
-TODODEADEND		MACRO
+
+TODODEADENDFLEX		MACRO
+	IF DEBUG
 			ABSR	PrRegs
-		IF	MATCHBOX
-			SWI			; generate a normal BRK
-			FCB	$FF,\1,0
+		ABSR		PrDeadFlex
+		PRINT_STR_BRK	\1, $7E
 		ELSE
-			PSHS	A,X,CC
-			ABSR	PrDead
-			PRINT_STR	\1
-			PULS	A,X,CC
-			SWI			; enter debugger
-
+		DO_BRK_B
+		FCB		$7E,\1,0
 		ENDIF
 			ENDM
+
+TODODEADEND		MACRO
+	IF DEBUG
+		ABSR		PrRegs
+		ABSR		PrDead
+		PRINT_STR_BRK	\1, $7E
+	ELSE
+		DO_BRK_B
+		FCB		$7E,\1,0
+	ENDIF
+		ENDM
 
 TODO_CMD		MACRO
 			TODODEADEND "\1"
 			ENDM
 
 DO_BRK_B		MACRO			; code
-*		IF DEBUG
-*			JSR	PrBrk
-*			SWI
-*		ELSE
-		IF MATCHBOX
+		IF FLEX
+			JSR	HandleBRK
+		ELSIF MATCHBOX
 			SWI
 		ELSE
 			SWI3
 		ENDIF
-*		ENDIF
 			ENDM
 
 RESET_MACH_STACK	MACRO

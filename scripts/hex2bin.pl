@@ -3,7 +3,7 @@
 $inf=@ARGV[0];
 $ouf=@ARGV[1];
 
-$minaddr=0xFFFFFF;
+$minaddr=0xFFFFFFFF;
 
 print STDERR $inf;
 
@@ -66,6 +66,11 @@ while (<IN>) {
 	} elsif ($l) {
 		die "Unrecognised SREC line $l";
 	}
+}
+
+if ($minaddr < 0xFFFF0000)
+{
+	$minaddr = 0xFFFF0000 + $minaddr;
 }
 
 printf "%04X\n", "$minaddr";

@@ -1,4 +1,4 @@
-TARGETS=	vrupt-2.hex vrupt-2.noi
+TARGETS_CHIPKIT=	vrupt-2.hex vrupt-2.noi
 include		../../Makefile.defs
 
 ASFLAGS=-3 -v

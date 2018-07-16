@@ -25,6 +25,15 @@ m_tay		MACRO
 		puls	Y
 		ENDM
 
+m_tay_c		MACRO
+		pshs	A
+		lda	#0
+		sta	,-S
+		lda	1,S
+		puls	Y
+		ENDM
+
+
 m_tbx		MACRO
 		pshs	B			;6
 		clr	,-S			;8
@@ -79,11 +88,11 @@ DO_BRK	MACRO
 
 
 CLI	MACRO
-	ANDCC	#~(CC_I+CC_F)
+	ANDCC	#~(CC_I)
 	ENDM
 
 SEI	MACRO
-	ORCC	#CC_I+CC_F
+	ORCC	#CC_I
 	ENDM
 
 CLC	MACRO
@@ -101,6 +110,15 @@ CLV	MACRO
 SEV	MACRO
 	ORCC	#CC_V
 	ENDM
+
+CLZ	MACRO
+	ANDCC	#~CC_Z
+	ENDM
+
+SEZ	MACRO
+	ORCC	#CC_Z
+	ENDM
+
 
 STX_B	MACRO
 	PSHS	D

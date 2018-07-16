@@ -1,4 +1,4 @@
-TARGETS=	vinc-2.hex vinc-2.noi
+TARGETS_CHIPKIT=	vinc-2.hex vinc-2.noi
 include		../../Makefile.defs
 
 ASFLAGS=-3 -v

@@ -1,0 +1,61 @@
+DODEBUG = FALSE
+UPURS = TRUE
+SWEH_EXTENSION = TRUE
+SWEH_BREAK = TRUE
+DEFAULT_FS = FALSE
+
+\ Change this if you want to move UPURS to a second user port
+\ (eg connected to the 1Mhz BUS)
+\ http://sweh.spuddy.org/Beeb/2nd_User_Port/
+USER_PORT = &FE60
+
+BreakKey = &35  \ U
+
+include "compile_date"
+MACRO	VERSION_BYTE
+	EQUB 1
+ENDMACRO
+MACRO	VERSION_STRING
+	EQUS "0.07"
+	IF	DODEBUG
+	COMPILE_DATE
+	ENDIF
+ENDMACRO
+MACRO	VERSION_DATE
+	EQUS "06 Apr 2013"
+ENDMACRO
+MACRO	VERSION_NAME
+	EQUS "HostFS:UPURS"
+ENDMACRO
+
+\ These values are for the User Port
+upiob   = USER_PORT    \ I/O Register B
+upddrb  = USER_PORT+2  \ Data Direction Register B
+upacr   = (USER_PORT AND &FFFE)+&B \ Auxilliary Control Register
+
+\ Would BASIC notice if we stole some of it's work space?
+\ serbuf  = $06E0  \ serial input buffer
+\ bufsize = 28
+\ This might work; the serial/tape input buffer.  
+\ serbuf = $0A00
+\ bufsize = 240
+\ NMI routines can live from &D00->&D7F.  I know Solidisk DDFS used
+\ to copy code into here, and we are a filesystem, so maybe it's safe
+\ for us as well
+serbuf = $0D10
+bufsize = $60   \ allow some overrun space
+
+\ We're a file system, so we can use memory in &C0 -> &CF
+\ Potentially &B0 -> &BF might be play space  as well
+\ since other parts of HOSTFS use &C0 area...
+; sbuft  = $F5     \ top of buffer pointer 0 (empty) - $FF
+; sbufl  = $F8     \ current buffer drain pointer
+; sbufh  = $F9     \ buffer address hi
+sbuft  = $B5     \ top of buffer pointer 0 (empty) - $FF
+sbufl  = $B8     \ current buffer drain pointer
+sbufh  = $B9     \ buffer address hi
+tempX  = &B0
+tempY  = &B1
+
+
+include "6502src.txt"

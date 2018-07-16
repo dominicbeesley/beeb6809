@@ -1,0 +1,6 @@
+../tiles/charac.til FFFF2000 FFFF2000 T.CHARAC
+../tiles/main.pal FFFF2000 FFFF2000 P.MAIN
+../tiles/over-back.til FFFF2000 FFFF2000 T.OBACK
+../tiles/over-front.til FFFF2000 FFFF2000 T.OFRONT
+../maps/home.bin FFFF2000 FFFF2000 M.HOME
+../../../BEEB/games/adventure/game.hex FFFF0E00 FFFF0E00 $.GAME

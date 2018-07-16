@@ -1,0 +1,17 @@
+VERSION_NAME	MACRO
+		FCB	"HOSTFS"
+		ENDM
+
+ACIA_BITS_TxRDY	EQU	2
+		; &13=Reset ACIA, &55=8N1, clock/16, RTS high
+ACIA_CTL_TxInit	EQU	$13
+ACIA_CTL_RxInit	EQU	$55
+
+ACIA_BITS_RxRDY	EQU	1
+		; &55=RTS high, &15=RTS low
+ACIA_CTL_RxStop	EQU	$55
+ACIA_CTL_RxCont	EQU	$15
+
+
+
+		include	"./HOSTFS-core.asm"

@@ -1,0 +1,128 @@
+(c) 2018 Dossytronics
+=====================
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Licence
+=======
+
+This licence applies to the UTILS.asm and associate files in the UTILS directory
+
+Readme
+======
+
+The utils ROM provides utilities for the 6809 cpu board in the BBC Micro and
+other computers. 
+
+Known problems
+==============
+
+* There is no provision in the code to handle the situation where this rom is
+  going to be corrupted/overwritten. In a future version the active part of the 
+  rom will be made relocatable and copy itself to RAM before executing where
+  a conflict is detected. For now many operations will crash the machine. 
+  However the SRNUKE SRAM option _does_ copy itself to RAM so a safe clean up 
+  would be (if utils is in SRAM).
+
+* SRLOAD is only part implemented, files are always loaded/saved to/from
+  &4000 overwriting main RAM i.e. the Q option is always true.
+
+* The UTILS rom cannot be running from an EEPROM slot (else it crashes during
+  flash write/erase operations). Load the utility rom in a system socket or 
+  SWRAM for testing
+
+
+Unbricking
+==========
+
+A machine can be made unuseable by bad sideway ROM images in either the Flash
+memory or battery backed areas stopping the machine from booting. 
+
+A bad soft-loaded MOS image can also cause the machine not to boot, however
+this can be cleared by powering down the machine (both system and USB power
+to the )
+
+For a bricked machine, First, try booting with the "£" key held down, this will
+attempt to run SRNUKE before any other ROMs service entries have been entered 
+(so long as this ROM is in the highest slot). If thay doesn't work try:
+  	- install the inhibit ROMS jumper (CFG9)
+  	- install a working UTILS rom in a system slot
+  	- reboot and hold "£" to enter SRNUKE
+
+It is recommended to install UTILS in slot F or E so that holding the £ key at 
+break will be detected before other ROMS are initialised, without having to
+resort to the inhibit jumper.
+
+Also, while developing ROMs keeping a known good filing system and UTILS rom in 
+the system slots is recommended so that if the inhibit jumper is used the 
+SRNUKE option can still be accessed from the SYStem slots.
+
+Commands
+========
+
+ROMS [V|A][C]
+--------
+  The roms table is printed. If no V or A switches are present only roms
+  entered in the MOS ROMS table at [&023A] (i.e. &2A1) will be used to detect
+  active ROMs.
+
+  If V inactive roms will be printed, titles will be printed for any ROM that 
+  appears to have a valid 0,"(C)" sequence in its header.
+
+  If A is specified a CRC will be generated for all slots, regardless of 
+  whether they appear to contain valid data. This can be useful for validating
+  slots that contain non-rom data.
+
+  If C is specified then a CRC will be generated for any slots printed which
+  may be used to verify the contents. The CRC used is an XMODEM/CRC-16/CCIT 
+  checksum, all bytes $8000-$C000 are included, the CRC is seeded as 0
+
+SRCOPY <dest id> <src id>
+-------------------------
+  Copies a ROM image from one slot to another. If the destination is an EEPROM
+  slot (0,2,8,A,C,E) it will be treated as being a Flash EEPROM and the flash
+  sectors erased before being copied.
+
+SRERASE <dest id> [F]
+---------------------
+  This will wipe the data in a slot. For:
+  - EEPROM slots, a set of 4 sector erases are performed, this is not verified.
+  - for other slots (including system ICs) the slot is filled with $FF, each 
+    byte is verified and the wipe will fail after the first byte that does not
+    verify (to avoid writing to read-only ROMs on the mainboard). If it is 
+    desired to continue after a failed verify specify the F switch
+
+  Note: erasing this ROM. If the currently active UTILS rom must be erased then
+  currently this will cause the machine to crash. However it should be possible
+  then to reboot and then re-erase the rom, so long as another copy of this ROM
+  is somewhere in the map. It is recommended that this ROM is set to occupy
+  slots F (SRAM) or E (Flash). 
+  To erase from flash (E) load or copy the rom to slot (F) and reboot then 
+  erase rom E
+  To erase from ram (F) load or copy the rom to slot (E), erase (F) - which
+  will crash, reboot then re-erase (F) to fully clear
+
+SRNUKE
+------
+  You will be presented with (Y/N) options to wipe:
+  - the FlashEEPROM - this will clear the whole of the EEPROM not just the
+    portions used for ROMs
+  - the SRAM - this will clear just the portion used for sideways RAM 
+    (currently physical addresses $0E0000-$0FFFFF)
+

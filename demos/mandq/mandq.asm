@@ -202,6 +202,13 @@ ROW_NEXT_CELL	clra
 		std	DP_FP_V
 		lbra	ROW_LOOP
 
+
+	IF MACH_BEEB
+PAL
+ALL_DONE
+		rts
+	ENDIF
+	IF MACH_CHIPKIT
 ALL_DONE
 
 		lda	#19
@@ -252,7 +259,7 @@ PAL_LOOP
 
 		dec	DP_pal_off
 		rts
-
+	ENDIF
 mostbl_16_colours
 	FCB	$00,$02,$08,$0A,$20,$22,$28,$2A ;	C42A
 	FCB	$80,$82,$88,$8A,$A0,$A2,$A8,$AA ;	C432

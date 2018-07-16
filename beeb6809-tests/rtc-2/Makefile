@@ -1,4 +1,4 @@
-TARGETS=	rtc-2.hex rtc-2.noi
+TARGETS_CHIPKIT=	rtc-2.hex rtc-2.noi
 include		../../Makefile.defs
 
 ASFLAGS=-3 -v

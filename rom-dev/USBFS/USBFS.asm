@@ -5,8 +5,8 @@
 			INCLUDE		"../../includes/oslib.inc"
 			INCLUDE		"../../includes/hardware.inc"
 
-DEBUG			EQU	1
-DEBUG_VERBOSE		EQU	1
+DEBUG			EQU	0
+DEBUG_VERBOSE		EQU	0
 LOADADDR		EQU 	0				; TUBE not applicable
 COMPADDR		EQU	$8000
 
@@ -68,6 +68,9 @@ DP_TR_CAT_A8_COL	EQU	$A8
 DP_TR_CAT_AA_PRDIR	EQU	$AA
 DP_TR_CAT_AB_FPTR	EQU	$AB
 
+DP_GBPB_PTR		EQU	$B4
+DP_GBPB_SEQPTR		EQU	$B6
+
 FILE_SYS_NO		EQU	$04			; Filing System Number
 FILEHANDLE_MIN		EQU	$50			; First File Handle - 1, must NOT have bit 3 set
 TUBE_ID			EQU	$0A			; See Tube Application Note No.004 Page 7
@@ -88,9 +91,14 @@ sws_DMATCH_WILD		EQU	MA+$100E
 
 sws_cat_curfile		EQU	MA+$1060			; 8 bytes, stores current filename and directory when sorting catalogue
 sws_INFO_curattr	EQU	MA+$1060			; used to store current file attributes during info pring
+sws_GBPBV_BLOCKCOPY	EQU	MA+$1060
 
 sws_FILEV_LOAD_highord	EQU	MA+$1074
 sws_FILEV_EXEC_highord	EQU	MA+$1076
+
+sws_GBPBV_PTR		EQU	MA+$107D
+sws_GBPBV_TUBEOP	EQU	MA+$107F
+sws_GBPBV_TUBEFLAG	EQU	MA+$1081
 
 sws_CurrentCat		EQU	MA+$1082			; 
 sws_Query1		EQU	MA+$1083			; dunno 
@@ -120,6 +128,7 @@ sws_fsp_match_HASH	EQU	MA+$10CD			; if set to '#' then match '#' as wildcard
 sws_fsp_match_STAR	EQU	MA+$10CE			; if set to '*' then match '*' as wildcard
 
 sws_TubePresentIf0	EQU	MA+$10D6
+sws_gpbpv_fnptr		EQU	MA+$10D7
 sws_RunCommandTail	EQU	MA+$10D9
 sws_param_ptr		EQU	MA+$10DB
 sws_error_flag_qry	EQU	MA+$10DD
@@ -134,6 +143,7 @@ VID_CHECK_CRC7		EQU	VID+$E			; 1 byte
 
 
 sws_CurDrvCat		EQU	MA+$0E00
+sws_Cat_Cycle		EQU	sws_CurDrvCat + $104
 sws_Cat_Filesx8		EQU	sws_CurDrvCat + $105		; number of catalogue entries * 8
 sws_Cat_OPT		EQU	sws_CurDrvCat + $106		; OPT/sectors hi bits
 
@@ -287,11 +297,11 @@ SetLEDS
 		puls	B,PC
 ResetLEDS
 		pshs	B
-		ldb	#$0D			; reset sysvia latch 5
+		ldb	#$0D				; reset sysvia latch 5
 		stb	$FE40
 		puls	B,PC
 errDISK
-		jsr	ReportErrorCB		; Disk Error
+		jsr	ReportErrorCB			; Disk Error
 		fcb	0, "Disc ", $80
 		bra	ErrCONTINUE
 	
@@ -541,9 +551,9 @@ rdafsp_entry
 		sta	sws_FSP_str
 		cmpa	#'.'				; C="."?
 		bne	rdafsp_notdot			; ignore leading …'s
-rdafsp_setdrv
-		stb	DP_FSW_DirectoryParam		; Save directory (X)
-		beq	rdafsp_entry			; always
+rdafsp_setdir
+		stb	DP_FSW_DirectoryParam		; Save directory (B)
+		bra	rdafsp_entry			
 rdafsp_notdot
 		cmpa	#':'				; C=":"? (Drive number follows)
 		bne	rdafsp_notcolon
@@ -561,7 +571,7 @@ rdafsp_notcolon
 		jsr	GSREAD_A			; get C
 		bcs	Rdafsp_padall			; IF end of string
 		cmpa	#'.'				; C="."?
-		beq	rdafsp_setdrv
+		beq	rdafsp_setdir
 		ldb	#1				; Read rest of filename
 		ldy	#sws_FSP_str
 rdafsp_rdfnloop
@@ -779,11 +789,11 @@ srch_cat_1000
 srch_cat_X
 		stx	,--S			; Set up $ return first
 		jsr	CheckCurDrvCat		; catalogue entry matching
-		ldx	,S++			; string at $1000+A
 srch_cat_entry2
 		ldy	#sws_CurDrvCat
 srch_cat_get_next
 srch_cat_loop
+		ldx	,S			; string at $1000+A
 		tfr	Y,D
 		cmpb	sws_Cat_Filesx8
 		bhs	srchcat_exit		; If >sws_Cat_Filesx8 Exit with C=0
@@ -795,7 +805,8 @@ srch_cat_loop
 		jsr	MatchChr
 		bne	srch_cat_loop		; If directory doesn't match
 		SEC				; Return, Y=offset-8, C=1
-srchcat_exit	rts
+srchcat_exit	leas	2,S			; ignore stacked X
+		rts
 ;; Y_sub8
 ;; 		DEY
 ;; 		DEY
@@ -817,7 +828,7 @@ MatchFilename_API
 	;			Y = catalogue entry
 	;			on exit C = 1 == match
 ***********************************************************************
-		pshs	D,X,Y			; Match filename at $1000+X
+		pshs	D,Y			; Match filename at $1000+X
 		ldb	#0			; index into catalogue entry
 matfn_loop1
 		lda	,X+			; with that at ($B6)
@@ -835,7 +846,7 @@ matfn_loop3
 matfn_exitC1
 		SEC
 matfn_exit
-		puls	D,X,Y,PC
+		puls	D,Y,PC
 matfn_notSTAR
 		cmpb	#$07
 		bhs	matfn_loop3		; If Y>=7
@@ -845,7 +856,7 @@ matfn_notSTAR
 		bne	matfn_loop1		; next chr
 matfn_exitC0
 		CLC				; exit with C=0
-		puls	D,X,Y,PC
+		puls	D,Y,PC
 
 
 
@@ -1390,13 +1401,13 @@ cat_skipspaces	inca
 ***********************************************************************
 CMD_notFound_tblUtils
 ***********************************************************************
-		DEBUG_PRINT_STR "--CMD_notFound_tblUtils"
+		
 		lda	#4		; return with A != 0 and Z=0 to indicate not handled
 		rts
 ***********************************************************************
 CMD_notFound_tblFS
 ***********************************************************************
-		DEBUG_PRINT_STR	"CMD_notFound_tblFS"
+		
 		jsr	GSINIT_A
 		lda	,X+
 		ora	#$20
@@ -1409,7 +1420,7 @@ CMD_notFound_tblFS
 ***********************************************************************
 fscv3_unreccommand
 ***********************************************************************
-		DEBUG_PRINT_STR "FSCV3 - UK COMMAND"
+		
 		ldy	#tblFSCommands
 		; and drop into next...
 			; OLD API
@@ -1672,7 +1683,15 @@ errBADCOMMAND
 		fcb	$FE, "command",0
 
 runfile_found
-		leas	2,S				; drop saved X
+		tfr	X,D
+		subd	#sws_DMATCH_STR + 1
+		addd	,S++
+		tfr	D,X
+2		lda	,x+
+		cmpa	#' '
+		beq	2B
+		leax	-1,X
+		stx	sws_RunCommandTail
 		; Y now points at cat entry, check to see if exec = FFFFFF, if so *EXEC it
 		lda	$106,Y				; New to DFS
 		anda	#$C0
@@ -1712,7 +1731,6 @@ runfile_run
 		sta	DP_BE_FILEV_EXEC + 1	; use catalogue address
 
 		jsr	LoadFile_Ycatoffset	; Load file (host|sp)
-		ldx	sws_RunCommandTail
 ;; **				CLC
 ;; **				LDA MA+$10D9			; Word $10D9 += text ptr
 ;; **				TAY 				; i.e. -> parameters
@@ -1752,20 +1770,19 @@ runfile_inhost
  **				STA $BB
  **				RTS
  **			
-		TODOCMD	"CMD_DIR"
- **			.CMD_DIR
- **				LDX #$00			; ** Set DEFAULT DIR/DRV
- **				BEQ setdirlib
- **			
-		TODOCMD	"CMD_LIB"
- **			.CMD_LIB
- **				LDX #$02			; ** Set LIBRARY DIR/DRV
- **			.setdirlib
- **				JSR ReadDirDrvParameters
- **				STA sws_default_drive,X
- **				LDA DP_FSW_DirectoryParam
- **				STA sws_default_dir,X
- **				RTS
+CMD_DIR
+		ldb	#$00			; ** Set DEFAULT DIR/DRV
+		beq	setdirlib
+CMD_LIB
+		ldb	#$02			; ** Set LIBRARY DIR/DRV
+setdirlib
+		jsr	ReadDirDrvParameters
+		ldx	#sws_default_drive
+		sta	B,X
+		lda	DP_FSW_DirectoryParam
+		ldx	#sws_default_dir
+		sta	B,X
+		rts
 
 ***********************************************************************
 SaveStaticToPrivateWorkspace
@@ -1793,44 +1810,37 @@ SaveStaticToPrivateWorkspace
 		pulsw
 		puls	D,X,Y,PC
 
- **			
- **			
- **			.ReadDirDrvParameters
- **				LDA sws_default_dir			; Read drive/directory from
- **				STA DP_FSW_DirectoryParam		; command line
- **				JSR GSINIT_A
- **				BNE ReadDirDrvParameters2	; If not null string
- **				LDA #$00
- **				JSR SetCurrentDrive_Adrive	; Drive 0!
- **				BEQ rdd_exit1			; always
- **			
- **			.ReadDirDrvParameters2
- **			{
- **				LDA sws_default_drive
- **				JSR SetCurrentDrive_Adrive
- **			.rdd_loop
- **				JSR GSREAD_A
- **				BCS errBADDIRECTORY		; If end of string
- **				CMP #$3A			; ":"?
- **				BNE rdd_exit2
- **				JSR Param_DriveNo_BadDrive	; Get drive
- **				JSR GSREAD_A
- **				BCS rdd_exit1			; If end of string
- **				CMP #$2E			; "."?
- **				BEQ rdd_loop
-errBADDIRECTORY
-		jsr	errBAD
+	
+	
+ReadDirDrvParameters
+		lda	sws_default_dir			; Read drive/directory from
+		sta	DP_FSW_DirectoryParam		; command line
+		jsr	GSINIT_A
+		bne	ReadDirDrvParameters2		; If not null string
+		lda	#$00
+		jsr	SetCurrentDrive_Adrive		; Drive 0!
+		bra	rdd_exit1			; always
+	
+ReadDirDrvParameters2
+		lda	sws_default_drive
+		jsr	SetCurrentDrive_Adrive
+rdd_loop	jsr	GSREAD_A
+		bcs	errBADDIRECTORY			; If end of string
+		cmpa	#$3A				; ":"?
+		bne	rdd_exit2
+		jsr	Param_DriveNo_BadDrive		; Get drive
+		jsr	GSREAD_A
+		bcs	rdd_exit1			; If end of string
+		cmpa	#$2E				; "."?
+		beq	rdd_loop
+errBADDIRECTORY	jsr	errBAD
 		fcb	$CE,  "dir",0
- **			
- **			.rdd_exit2
- **				STA DP_FSW_DirectoryParam
- **				JSR GSREAD_A			; Check end of string
- **				BCC errBADDIRECTORY		; If not end of string
- **			}
- **			.rdd_exit1
- **				LDA DP_FSW_CurrentDrv
- **				RTS
- **			
+rdd_exit2	sta	DP_FSW_DirectoryParam
+		jsr	GSREAD_A			; Check end of string
+		bcc	errBADDIRECTORY			; If not end of string
+rdd_exit1	lda	DP_FSW_CurrentDrv
+		rts
+	
  **			
  **			
  **				\ ** RETITLE DISK
@@ -2381,13 +2391,15 @@ noesc		rts
  **			ENDIF
  **				LDA swrom_wksp_tab,X
  **				AND #$40
- **				BEQ CMD_CARD
+ **				BEQ CMD_USBFS
  **				RTS
  **			ENDIF
  **			
-		TODOCMD	"CMD_USBFS"
- **			.CMD_CARD
- **				LDA #$FF
+
+CMD_USBFS	lda 	#$FF				; don't boot
+		jsr	initMMFS
+		clra					; indicate cmd handled
+		rts
 ***********************************************************************
 initMMFS
 ; On entry: if A=0 then boot file
@@ -2478,7 +2490,7 @@ setchansloop
 		; Initialise SWS (Static Workspace)
 	
 initdfs_reset
-		DEBUG_PRINT_STR "initdfs_reset"
+		
 		jsr	ClaimStaticWorkspace
 setdefaults
 		jsr	FSDefaults
@@ -2489,7 +2501,7 @@ setdefaults
 		jsr	VIDRESET
 	
 initdfs_noreset
-		DEBUG_PRINT_STR "initdfs_noreset"
+		
 		jsr	TUBE_CheckIfPresent		; Tube present?
 	
 		tst	,S+				; Get back boot flag
@@ -2549,7 +2561,7 @@ FSDefaults
 
 	
 VIDRESET				; Reset VID
-		DEBUG_PRINT_STR "VIDRESET"
+		
 		ldb	#VID_CHECK_CRC7-VID
 		ldx	#VID
 		clra
@@ -2620,7 +2632,7 @@ SVC_NULL
  **				CPY #FILE_SYS_NO			; Y=ID no. (4=dfs etc.)
  **				BNE label3
  **				JSR RememberAXY
- **				JMP CMD_CARD
+ **				JMP CMD_USBFS
  **			}
  **			
 SVC_1_abswksp_req					; A=1 Claim absolute workspace
@@ -2707,19 +2719,15 @@ AUTOBOOT
 SVC_4_ukcmd			; A=4 Unrec Command, X=command pointer
 ***********************************************************************
 		pshs	A,X,Y
-		DEBUG_PRINT_STR "->SVC_4_ukcmd"
 		ldy	#tblSelectCommands
 		jsr	UnrecCommandTextPointerAPI
 		beq	1F
-		DEBUG_PRINT_STR "<-SVC_4_ukcmd (not handled)"
 		puls	A,X,Y,PC
 1
-		DEBUG_PRINT_STR "<-SVC_4_ukcmd (handled)"
 		clr	,S
 		puls	A,X,Y,PC
 
 CMD_notFound_tblSelect
-		DEBUG_PRINT_STR "--CMD_notFound_tblSelect"
 		ldy	#tblUtilsCommands
 		jmp	UnrecCommandTextPointerAPI
 
@@ -2804,7 +2812,7 @@ help_check_end	jsr	GSINIT_A
 SVC_A_claimabswksp
 ***********************************************************************
 		pshs	B,X,Y
-		DEBUG_PRINT_STR "->SVC_A_claimabswksp"
+		
 
 		; Do I own sws?
 		jsr	SetPrivateWorkspacePointerB0
@@ -2815,13 +2823,13 @@ SVC_A_claimabswksp
 		bpl	1F				; If pws "full" then sws is not mine
 		pshs	X
 		clrb		
-		DEBUG_PRINT_STR "--SaveStatic"			
+		
 		jsr	ChannelBufferToDisk_Bhandle_API ; flush all files out to disk
 		jsr	SaveStaticToPrivateWorkspace	; copy valuable data to private wsp
 		clra					; return A=0 to indicate we responded
 		sta	[,S++]				; clear private full (pointer stacked earlier)
 1
-		DEBUG_PRINT_STR "<-SVC_A_claimabswksp"
+		
 		puls	B,X,Y,PC
  **			
  **			IF _MASTER_
@@ -2951,217 +2959,226 @@ FSCV_ENTRY
 gbpbv_unrecop
 		RTS
  **		
- 		TODOCMD "GBPBV_ENTRY"
- **			.GBPBV_ENTRY
- **			{
- **				CMP #$09
- **				BCS gbpbv_unrecop
- **				JSR RememberAXY
- **				JSR ReturnWithA0
- **				STX MA+$107D
- **				STY MA+$107E
- **				TAY
- **				JSR gbpb_gosub
- **				PHP
- **				BIT MA+$1081
- **				BPL gbpb_nottube
- **				JSR TUBE_RELEASE_NoCheck
- **			.gbpb_nottube
- **				PLP
- **				RTS
- **			}
- **			
- **			.gbpb_gosub
- **			{
- **				LDA gbpbv_table1,Y
- **				STA MA+$10D7
- **				LDA gbpbv_table2,Y
- **				STA MA+$10D8
- **				LDA gbpbv_table3,Y		; 3 bit flags: bit 2=tube op
- **				LSR A
- **				PHP 				; Save bit 0 (0=write new seq ptr)
- **				LSR A
- **				PHP 				; Save bit 1 (1=read/write seq ptr)
- **				STA MA+$107F			; Save Tube operation
- **				JSR gbpb_wordB4_word107D	; (B4) -> param blk
- **				LDY #$0C
- **			.gbpb_ctlblk_loop
- **				LDA ($B4),Y			; Copy param blk to 1060
- **				STA MA+$1060,Y
- **				DEY
- **				BPL gbpb_ctlblk_loop
- **				LDA MA+$1063			; Data ptr bytes 3 $ 4
- **				AND MA+$1064
- **				ORA sws_TubePresentIf0
- **				CLC
- **				ADC #$01
- **				BEQ gbpb_nottube1		; If not tube
+GBPBV_ENTRY
+		cmpa	#$09
+		bhs	gbpbv_unrecop
+		pshs	X,Y
+		clr	,-S
+		stx	sws_GBPBV_PTR
+		jsr	gbpb_gosub
+		pshs	CC
+		tst	sws_GBPBV_TUBEFLAG
+		bpl	gbpb_nottube
+		jsr	TUBE_RELEASE_NoCheck
+gbpb_nottube	puls	CC,A,X,Y,PC
+
+
+gbpb_noop_returnA4
+		lda	#4
+		sta	,S				; change saved (0) for A
+		rts
+		
+gbpb_gosub
+		stx	sws_GBPBV_PTR
+		ldb	#3
+		mul
+		ldx	#gbpbv_table1
+		abx
+		lda	2,X				; get flags
+		ldx	0,X				; get subroutine addr
+		stx	sws_gpbpv_fnptr
+		lsra
+		pshs	CC 				; Save bit 0 (0=write new seq ptr)
+		lsra
+		pshs	CC				; Save bit 1 (1=read/write seq ptr)
+		sta	sws_GBPBV_TUBEOP		; Save Tube operation
+		jsr	gbpb_copy_word107D_to_wordB4	; (B4) -> param blk
+		ldb 	#$0C
+		ldx	sws_GBPBV_PTR
+		ldy	#sws_GBPBV_BLOCKCOPY
+gbpb_ctlblk_loop
+		lda	B,X				; Copy param blk to 1060
+		sta	B,Y
+		decb
+		bpl	gbpb_ctlblk_loop
+		
+		lda	sws_GBPBV_BLOCKCOPY+3		; Data ptr bytes 3 $ 4 (high order bytes FF for not tube)
+		anda	sws_GBPBV_BLOCKCOPY+4		; TODO: little-endian (as per HOSTFS)
+		ora	sws_TubePresentIf0
+		adda	#1				; need an add not an inc so Cy gets set for later
+		beq	gbpb_nottube1			; If not tube
+		TODOSTOP "Tube transfer in GBPBV"
  **				JSR TUBE_CLAIM
  **				CLC
  **				LDA #$FF
- **			.gbpb_nottube1
- **				STA MA+$1081			; GBPB to TUBE IF >=$80
- **				LDA MA+$107F			; Tube op: 0 or 1
- **				BCS gbpb_nottube2		; If not tube
- **				LDX #$61
- **				LDY #MP+$10
- **				JSR TUBE_CODE_QRY 			; (YX=addr,A=0:initrd,A=1:initwr,A=4:strexe) ; Init TUBE addr @ 1061
- **			.gbpb_nottube2
- **				PLP 				; Bit 1
- **				BCS gbpb_rw_seqptr
- **				PLP 				; Bit 0, here always 0
- **			}
- **			.gbpb_jmpsub
- **				JMP (MA+$10D7)
- **			
- **			.gbpb_rw_seqptr
- **			{
- **				LDX #$03			; GBPB 1,2,3 or 4
- **			.gbpb_seqptr_loop1
- **				LDA MA+$1069,X			; !B6=ctl blk seq ptr
- **				STA $B6,X
- **				DEX
- **				BPL gbpb_seqptr_loop1		; on exit A=file handle=?$1060
- **				LDX #$B6
- **				LDY MA+$1060
- **				LDA #$00
- **				PLP				; bit 0
- **				BCS gpbp_dontwriteseqptr
- **				JSR argsv_WriteSeqPointer	; If GBPB 1 $ 3
- **			.gpbp_dontwriteseqptr
- **				JSR argsv_rdseqptr_or_filelen	; read seq ptr to $B6
- **				LDX #$03
- **			.gbpb_seqptr_loop2
- **				LDA $B6,X			; ctl blk seq prt = !B6
- **				STA MA+$1069,X
- **				DEX
- **				BPL gbpb_seqptr_loop2
- **			}
- **			
- **			.gbpb_rwdata
- **			{
- **				JSR gbpb_bytesxferinvert	; Returns with N=1
- **				BMI gbpb_data_loopin		; always
- **			.gbpb_data_loop
- **				LDY MA+$1060			; Y=file handle
- **				JSR gbpb_jmpsub			; *** Get/Put BYTE
- **				BCS gbpb_data_loopout		; If a problem occurred
- **				LDX #$09
- **				JSR gbpb_incdblword1060X	; inc. seq ptr
- **			.gbpb_data_loopin
- **				LDX #$05
- **				JSR gbpb_incdblword1060X	; inc. bytes to txf
- **				BNE gbpb_data_loop
- **				CLC
- **			.gbpb_data_loopout
- **				PHP
- **				JSR gbpb_bytesxferinvert	; bytes to txf XOR $FFFFFFFF
- **				LDX #$05
- **				JSR gbpb_incdblword1060X	; inc. bytes to txf
- **				LDY #$0C	 		; Copy parameter back
- **				JSR gbpb_wordB4_word107D	; (B4) -> param blk
- **			.gbpb_restorectlblk_loop
- **				LDA MA+$1060,Y
- **				STA ($B4),Y
- **				DEY
- **				BPL gbpb_restorectlblk_loop
- **				PLP 				; C=1=txf not completed
- **				RTS 				; **** END GBPB 1-4
- **			}
- **			
- **				\\ READ FILENAMES IN CURRENT CAT
- **			.gbpb8_rdfilescurdir
- **				JSR Set_CurDirDrv_ToDefaults	; GBPB 8
- **				JSR CheckCurDrvCat
- **				LDA #LO(gbpb8_getbyte)
- **				STA MA+$10D7
- **				LDA #HI(gbpb8_getbyte)
- **				STA MA+$10D8
- **				BNE gbpb_rwdata			; always
- **			
- **			.gbpb8_getbyte
- **			{
- **				LDY MA+$1069			; GBPB 8 - Get Byte
- **			.gbpb8_loop
- **				CPY sws_Cat_Filesx8
- **				BCS gbpb8_endofcat		; If end of catalogue, C=1
- **				LDA MA+$0E0F,Y			; Directory
- **				JSR IsAlphaChar
- **				EOR DP_FSW_DirectoryParam
- **				BCS gbpb8_notalpha
- **				AND #$DF
- **			.gbpb8_notalpha
- **				AND #$7F
- **				BEQ gbpb8_filefound		; If in current dir
- **				JSR Y_add8
- **				BNE gbpb8_loop			; next file
- **			.gbpb8_filefound
- **				LDA #$07			; Length of filename
- **				JSR gbpb_gb_SAVEBYTE
- **				STA $B0				; loop counter
- **			.gbpb8_copyfn_loop
- **				LDA MA+$0E08,Y			; Copy fn
- **				JSR gbpb_gb_SAVEBYTE
- **				INY
- **				DEC $B0
- **				BNE gbpb8_copyfn_loop
- **				CLC 				; C=0=more to follow
- **			.gbpb8_endofcat
- **				STY MA+$1069			; Save offset (seq ptr)
- **				LDA MA+$0F04
- **				STA MA+$1060			; Cycle number (file handle)
- **				RTS 				; **** END GBPB 8
- **			}
- **			
- **			
- **				\\ GET MEDIA TITLE
- **			.gbpb5_getmediatitle
- **			{
- **				JSR Set_CurDirDrv_ToDefaults	; GBPB 5
- **				JSR CheckCurDrvCat
- **				LDA #$0C			; Length of title
- **				JSR gbpb_gb_SAVEBYTE
- **				LDY #$00
- **			.gbpb5_titleloop
- **				CPY #$08			; Title
- **				BCS gbpb5_titlehi
- **				LDA MA+$0E00,Y
- **				BCC gbpb5_titlelo
- **			.gbpb5_titlehi
- **				LDA MA+$0EF8,Y
- **			.gbpb5_titlelo
- **				JSR gbpb_gb_SAVEBYTE
- **				INY
- **				CPY #$0C
- **				BNE gbpb5_titleloop
- **				LDA sws_Cat_OPT			; Boot up option
- **				JSR A_rorx4
- **				JSR gbpb_gb_SAVEBYTE
- **				LDA DP_FSW_CurrentDrv			; Current drive
- **				JMP gbpb_gb_SAVEBYTE
- **			}
- **			
- **				\\ READ CUR DRIVE/DIR
- **			.gbpb6_rdcurdirdevice
- **				JSR gbpb_SAVE_01		; GBPB 6
- **				LDA sws_default_drive		; Length of dev.name=1
- **				ORA #$30			; Drive no. to ascii
- **				JSR gbpb_gb_SAVEBYTE
- **				JSR gbpb_SAVE_01		; Lendgh of dir.name=1
- **				LDA sws_default_dir			; Directory
- **				BNE gbpb_gb_SAVEBYTE
- **			
- **				\\ READ LIB DRIVE/DIR
- **			.gbpb7_rdcurlibdevice
- **				JSR gbpb_SAVE_01		; GBPB 7
- **				LDA sws_lib_drive			; Length of dev.name=1
- **				ORA #$30			; Drive no. to ascii
- **				JSR gbpb_gb_SAVEBYTE
- **				JSR gbpb_SAVE_01		; Lendgh of dir.name=1
- **				LDA sws_lib_dir			; Directory
- **				BNE gbpb_gb_SAVEBYTE
+gbpb_nottube1
+		sta	sws_GBPBV_TUBEFLAG		; GBPB to TUBE IF >=$80
+		lda	sws_GBPBV_TUBEOP		; Tube op: 0 or 1
+		bcs	gbpb_nottube2			; If not tube
+		TODOSTOP "Tube exec in GBPBV"
+ ** 		ldx	#$61
+ ** 		ldy	#MP+$10
+ ** 		jsr	TUBE_CODE_QRY 			; (YX=addr,A=0:initrd,A=1:initwr,A=4:strexe) ; Init TUBE addr @ 1061
+gbpb_nottube2
+		puls 	CC 				; Bit 1
+		bcs	gbpb_rw_seqptr
+		puls	CC				; Bit 0, here always 0
+ 		jmp	[sws_gpbpv_fnptr]
+	
+gbpb_rw_seqptr
+		ldd	sws_GBPBV_BLOCKCOPY + 9
+		std	DP_GBPB_SEQPTR
+		ldd	sws_GBPBV_BLOCKCOPY + 11
+		std	DP_GBPB_SEQPTR + 2
+
+		ldx	#DP_GBPB_SEQPTR
+		ldy	sws_GBPBV_BLOCKCOPY		; get filehandle
+		clra
+		puls	CC				; bit 0
+		bcs	gpbp_dontwriteseqptr
+		jsr	argsv_WriteSeqPointer		; If GBPB 1 $ 3
+gpbp_dontwriteseqptr
+		jsr	argsv_rdseqptr_or_filelen	; read seq ptr to $B6
+		ldd	DP_GBPB_SEQPTR
+		std	sws_GBPBV_BLOCKCOPY+9
+		ldd	DP_GBPB_SEQPTR+2
+		std	sws_GBPBV_BLOCKCOPY+11
+	
+gbpb_rwdata
+		jsr	gbpb_bytesxferinvertAPI		; Returns with N=1
+		bra	gbpb_data_loopin		; always
+gbpb_data_loop
+		ldb	sws_GBPBV_BLOCKCOPY+0		; Y=file handle
+		clra
+		tfr	D,Y
+		jsr	[sws_gpbpv_fnptr]		; *** Get/Put BYTE
+		bcs	gbpb_data_loopout		; If a problem occurred
+		ldb	#$09
+		jsr	gbpb_incdblword1060B		; inc. seq ptr
+gbpb_data_loopin
+		ldb	#$05
+		jsr	gbpb_incdblword1060B		; inc. bytes to txf
+		bne	gbpb_data_loop
+		CLC
+gbpb_data_loopout
+		pshs	CC
+		jsr	gbpb_bytesxferinvertAPI		; bytes to txf XOR $FFFFFFFF
+		ldb	#$05
+		jsr	gbpb_incdblword1060B		; inc. bytes to txf
+		jsr	gbpb_copy_word107D_to_wordB4	; (B4) -> param blk
+		ldb	#$0C	 			; Copy parameter back
+		ldx	#sws_GBPBV_BLOCKCOPY
+		ldy	DP_GBPB_PTR
+gbpb_restorectlblk_loop
+		lda	,X+
+		sta	,Y+
+		decb
+		bpl	gbpb_restorectlblk_loop
+		puls	CC				; C=1=txf not completed
+		rts 					; **** END GBPB 1-4
+
+		* READ FILENAMES IN CURRENT CAT
+gbpb8_rdfilescurdir
+		jsr	Set_CurDirDrv_ToDefaults	; GBPB 8
+		jsr	CheckCurDrvCat
+		leax	gbpb8_getbyte,PCR
+		stx	sws_gpbpv_fnptr			; point to get catalog function
+		bne	gbpb_rwdata			; always
+
+gbpb8_getbyte						; GBPB 8 - Get Byte
+		ldb	sws_GBPBV_BLOCKCOPY+9		; get sequence number from block (directory entry to read*8)
+gbpb8_loop
+		cmpb	sws_Cat_Filesx8
+		bhs	gbpb8_endofcat			; If end of catalogue, C=1
+		ldx	#sws_CurDrvCat+$0F		; first file
+		abx					; add pointer
+
+		lda	,X				; points at file entry
+		jsr	IsAlphaChar
+		eora	DP_FSW_DirectoryParam
+		bcs	gbpb8_notalpha
+		anda	#$DF				; to upper
+gbpb8_notalpha
+		anda	#$7F
+		beq	gbpb8_filefound			; If in current dir
+		leax	8,X
+		addb	#8
+		stb	sws_GBPBV_BLOCKCOPY+9		; update seq
+		bra	gbpb8_loop			; next file
+gbpb8_filefound
+		leay	-7,X				; use Y as SAVEBYTE tramples X - point at start of filename
+		lda	#$07				; Length of filename
+		jsr	gbpb_gb_SAVEBYTE
+		ldb	#$07				; loop counter
+gbpb8_copyfn_loop
+		lda	,Y+				; Copy fn
+		jsr	gbpb_gb_SAVEBYTE
+		decb
+		bne	gbpb8_copyfn_loop
+		CLC					; C=0=more to follow
+gbpb8_endofcat2
+		pshs	CC
+		lda	sws_GBPBV_BLOCKCOPY + 9
+		adda	#7				; needs to be 7 as this gets inc'd in outer loop		
+		sta	sws_GBPBV_BLOCKCOPY + 9
+		puls	CC
+		lda 	sws_Cat_Cycle
+		sta	sws_GBPBV_BLOCKCOPY + 0		; Cycle number (file handle)
+		rts 					; **** END GBPB 8
+gbpb8_endofcat
+		SEC
+		bra	gbpb8_endofcat2	
+	
+		* GET MEDIA TITLE
+gbpb5_getmediatitle
+		jsr	Set_CurDirDrv_ToDefaults	; GBPB 5
+		jsr	CheckCurDrvCat
+		lda	#$0C				; Length of title
+		jsr	gbpb_gb_SAVEBYTE
+		clrb
+		ldx	#sws_CurDrvCat			; current catalogue
+gbpb5_titleloop
+		cmpb	#$08				; Title
+		beq	gbpb5_titlehi
+1		lda	B,X
+gbpb5_titlelo
+		jsr	gbpb_gb_SAVEBYTE
+		incb
+		cmpb	#$0C
+		bne	gbpb5_titleloop
+		lda	sws_Cat_OPT			; Boot up option
+		jsr	A_rorx4
+		jsr	gbpb_gb_SAVEBYTE
+		lda	DP_FSW_CurrentDrv		; Current drive
+		jmp	gbpb_gb_SAVEBYTE
+gbpb5_titlehi
+		leax	$F8,X				; move to upper part of title
+		bra	1B
+
+
+ 	
+ 		* READ CUR DRIVE/DIR
+gbpb6_rdcurdirdevice
+ 		jsr	gbpb_SAVE_01			; GBPB 6
+ 		lda	sws_default_drive		; Length of dev.name=1
+ 		ora	#$30				; Drive no. to ascii
+ 		jsr	gbpb_gb_SAVEBYTE
+ 		jsr	gbpb_SAVE_01			; Lendgh of dir.name=1
+ 		lda	sws_default_dir			; Directory
+ 		bne	gbpb_gb_SAVEBYTE
+ 	
+ 		* READ LIB DRIVE/DIR
+gbpb7_rdcurlibdevice
+ 		jsr	gbpb_SAVE_01			; GBPB 7
+ 		lda	sws_lib_drive			; Length of dev.name=1
+ 		ora	#$30				; Drive no. to ascii
+ 		jsr	gbpb_gb_SAVEBYTE
+ 		jsr	gbpb_SAVE_01			; Lendgh of dir.name=1
+ 		lda	sws_lib_dir			; Directory
+ 		bne	gbpb_gb_SAVEBYTE
  **			
  **			.gpbp_B8memptr
+gbpb_memptrX
  **				PHA	 			; Set word $B8 to
  **				LDA MA+$1061			; ctl blk mem ptr (host)
  **				STA $B8
@@ -3170,58 +3187,62 @@ gbpbv_unrecop
  **				LDX #$00
  **				PLA
  **				RTS
- **			
- **			.gbpb_incDataPtr
- **				JSR RememberAXY			; Increment data ptr
- **				LDX #$01
- **			.gbpb_incdblword1060X
- **			{
- **				LDY #$04			; Increment double word
- **			.gbpb_incdblword_loop
- **				INC MA+$1060,X
- **				BNE gbpb_incdblworkd_exit
- **				INX
- **				DEY
- **				BNE gbpb_incdblword_loop
- **			.gbpb_incdblworkd_exit
- **				RTS
- **			}
- **			
- **			.gbpb_bytesxferinvert
- **			{
- **				LDX #$03			; Bytes to tranfer XOR $FFFF
- **			.gbpb_bytesxferinvert_loop
- **				LDA #$FF
- **				EOR MA+$1065,X
- **				STA MA+$1065,X
- **				DEX
- **				BPL gbpb_bytesxferinvert_loop
- **				RTS
- **			}
- **			
- **			.gbpb_wordB4_word107D
- **				LDA MA+$107D
- **				STA $B4
- **				LDA MA+$107E
- **				STA $B5
- **			.gpbp_exit
- **				RTS
- **			
- **			.gbpb_SAVE_01
- **				LDA #$01
- **				BNE gbpb_gb_SAVEBYTE		; always
+ 			tfr	D,X
+ 			ldd	sws_GBPBV_BLOCKCOPY + 1
+ 			exg	A,B			; little endian to big endian pointer
+ 			exg	D,X
+ 			rts
+
+ 			
+gbpb_incDataPtr
+ 		pshs	D,X,Y
+ 		ldb	#$01
+ 		jsr	gbpb_incdblword1060B
+ 		puls	D,X,Y,PC
+gbpb_incdblword1060B
+		lda	#$04			; Increment double word, return with Z=1 if increments to 0
+		ldx	#sws_GBPBV_BLOCKCOPY
+		abx
+gbpb_incdblword_loop
+		inc	,X+
+		bne	gbpb_incdblworkd_exit		
+		deca
+		bne	gbpb_incdblword_loop
+gbpb_incdblworkd_exit
+		rts
+	
+ 		; api change - used to return with N=1
+gbpb_bytesxferinvertAPI
+gbpb_bytesxferinvert_loop
+		com	sws_GBPBV_BLOCKCOPY + 5	; invert block length
+		com	sws_GBPBV_BLOCKCOPY + 6
+		com	sws_GBPBV_BLOCKCOPY + 7
+		com	sws_GBPBV_BLOCKCOPY + 8
+		rts
+
+gbpb_copy_word107D_to_wordB4
+		ldd	sws_GBPBV_PTR
+		std	DP_GBPB_PTR
+gpbp_exit
+		rts
+
+gbpb_SAVE_01
+		lda	#$01
+		bne	gbpb_gb_SAVEBYTE		; always
+ 		TODOSTOP "gbpb_getbyteSAVEBYTE"
  **			.gbpb_getbyteSAVEBYTE
  **				JSR BGETV_ENTRY
- **				BCS gpbp_exit			; If EOF
- **			.gbpb_gb_SAVEBYTE
- **				BIT MA+$1081
- **				BPL gBpb_gb_fromhost
- **				STA TUBE_R3_DATA		; fast Tube Bget
- **				BMI gbpb_incDataPtr
- **			.gBpb_gb_fromhost
- **				JSR gpbp_B8memptr
- **				STA ($B8,X)
- **				JMP gbpb_incDataPtr
+ **				BCS gpbp_exit		; If EOF
+gbpb_gb_SAVEBYTE
+		tst	sws_GBPBV_TUBEFLAG
+		bpl	gBpb_gb_fromhost
+		sta	sheila_TUBE_R3_DATA			; fast Tube Bget
+		bmi	gbpb_incDataPtr
+gBpb_gb_fromhost
+		jsr	gbpb_memptrX
+		sta	,X
+		bra	gbpb_incDataPtr
+ 		TODOSTOP "gbpb_putbytes"
  **			.gbpb_putbytes
  **				JSR gpbp_pb_LOADBYTE
  **				JSR BPUTV_ENTRY
@@ -3230,7 +3251,7 @@ gbpbv_unrecop
  **			.gpbp_pb_LOADBYTE
  **				BIT MA+$1081
  **				BPL gbpb_pb_fromhost
- **				LDA TUBE_R3_DATA		; fast Tube Bput
+ **				LDA sheila_TUBE_R3_DATA		; fast Tube Bput
  **				JMP gbpb_incDataPtr
  **			.gbpb_pb_fromhost
  **				JSR gpbp_B8memptr
@@ -3262,12 +3283,12 @@ parameter_afsp
 		lda	#'#'	; "#"
 		bne	param_out
 	
-		TODOCMD "osfile5_rdcatinfo"
- **			.osfile5_rdcatinfo
- **				JSR CheckFileExists		; READ CAT INFO
- **				JSR ReadFileAttributesToX_YCat_API
- **				LDA #$01			; File type: 1=file found
- **				RTS
+osfile5_rdcatinfo
+		jsr	CheckFileExists			; READ CAT INFO
+		jsr	ReadFileAttributesToX_YCat_API
+		lda	#$01				; File type: 1=file found
+		rts
+
 		TODOCMD "osfile6_delfile"
  **			.osfile6_delfile
  **				JSR CheckFileNotLocked		; DELETE FILE
@@ -3366,29 +3387,24 @@ errFILELOCKED
  **				JSR IsFileOpen_Yoffset
  **				BCC checkexit
  **				JMP errFILEOPEN
- **			.CheckFileExists
- **				JSR read_fspBA_findcatentry	; exit:X=Y=offset
- **				BCS checkexit			; If file found
- **			.ExitCallingSubroutine
- **				PLA 				; Ret. To caller's caller
- **				PLA
- **				LDA #$00
- **			.chklock_exit
- **				RTS
- **			
- **			.read_fspBA_findcatentry
- **				JSR read_fspBA_reset
- **				JSR srch_cat_1000
- **				BCC checkexit
- **				TYA
- **				TAX 				; X=Y=offset
+CheckFileExists
+		jsr	read_fspBA_findcatentry		; exit:X=Y=offset
+		bcs	checkexit			; If file found
+ExitCallingSubroutine
+		leas	2,S				; Ret. To caller's caller
+		clra
+chklock_exit	rts
+	
+read_fspBA_findcatentry
+		jsr	read_fspBA_reset
+		jsr	srch_cat_1000
+		bcc	checkexit
+;		tya
+;		tax 					; X=Y=offset
+
 SetParamBlockPointerB0					; Ptr to OSFILE param block
 		ldx	sws_param_ptr
 		stx	DP_B0_FILEV_PARAM_PTR
-		lda	MA+$10DB			
-		sta	$B0
-		lda	MA+$10DC
-		sta	$B1
 checkexit
 		rts
  **			
@@ -3407,7 +3423,7 @@ checkexit
  **			
  **			IF NOT(_SWRAM_)
 ClaimStaticWorkspace
-		DEBUG_PRINT_STR "->ClaimStaticWorkspace"
+		
 		ldx	#SERVICE_A_ABSWKSP_CLAIM
 		jsr	osbyte_143_svc_req			; Issue service request $A
 		jsr	SetPrivateWorkspacePointerB0
@@ -3415,7 +3431,7 @@ ClaimStaticWorkspace
 		lda	#$FF
 		sta	offs_ForceReset,X			; Data valid in SWS
 		sta	offs_PriWkspFull,X			; Set pws is "empty"
-		DEBUG_PRINT_STR "<-ClaimStaticWorkspace"
+		
 		rts
 	
 ***********************************************************************
@@ -3792,7 +3808,8 @@ errFILEOPEN
  **			
 
 
-
+ChannelBufferToDisk_Yhandle_A0_API
+		tfr	Y,D
 ChannelBufferToDisk_Bhandle_A0_API
 		jsr	ChannelBufferToDisk_Bhandle_API
 		clra
@@ -3829,43 +3846,41 @@ chbuf2		puls	A				; Restore open files flags
  **				TAX
  **				PLA
  **				RTS
-		TODOCMD "ARGSV_ENTRY"
- **			.ARGSV_ENTRY
- **			{
- **				JSR RememberAXY
- **				CMP #$FF
- **				BEQ ChannelBufferToDisk_Bhandle_API_A0	; If file(s) to media
- **				CPY #$00
- **				BEQ argsv_Y0
- **				CMP #$03
- **				BCS argsv_exit			; If A>=3
- **				JSR ReturnWithA0
- **				CMP #$01
- **				BNE argsv_rdseqptr_or_filelen
- **				JMP argsv_WriteSeqPointer
- **			
- **			.argsv_Y0
- **				CMP #$02			; If A>=2
- **				BCS argsv_exit
- **				JSR ReturnWithA0
- **				BEQ argsv_filesysnumber		; If A=0
- **				LDA #$FF
- **				STA $02,X			; 4 byte address of
- **				STA $03,X			; "rest of command line"
- **				LDA MA+$10D9			; (see *run code)
- **				STA $00,X
- **				LDA MA+$10DA
- **				STA $01,X
- **			.argsv_exit
- **				RTS
- **			
- **			.argsv_filesysnumber
- **				LDA #FILE_SYS_NO			; on exit: A = filing system
- **				TSX
- **				STA $0105,X
- **				RTS
- **			}
- **			
+ARGSV_ENTRY
+
+		pshs	D,X,Y
+		cmpa	#$FF
+		beq	ChannelBufferToDisk_Yhandle_A0_API	; If file(s) to media
+		cmpy	#$00
+		beq	argsv_Y0
+		cmpa	#$03
+		bhs	argsv_exit			; If A>=3
+		clr	,S				; return with A=0
+		cmpa	#$01
+		bne	argsv_rdseqptr_or_filelen
+		lbra	argsv_WriteSeqPointer
+	
+argsv_Y0
+		cmpa	#$02				; If A>=2
+		bhs	argsv_exit
+		clr	,S				; return A=0 (handled)
+		tsta
+		beq	argsv_filesysnumber		; If A=0
+		lda	#$FF
+		sta	$00,X				; 4 byte address of
+		sta	$01,X				; "rest of command line"	- big endian!
+		ldd	sws_RunCommandTail			; (see *run code)
+		std	$02,X
+argsv_exit
+		puls	D,X,Y,PC
+	
+argsv_filesysnumber
+		lda	#FILE_SYS_NO			; on exit: A = filing system
+		sta	,S				; return in A
+		puls	D,X,Y,PC
+
+	
+ 		TODOSTOP "argsv_rdseqptr_or_filelen"
  **			.argsv_rdseqptr_or_filelen
  **				JSR CheckChannel_Yhndl_exYintch	; A=0 OR A=2
  **				STY MA+$10C2
@@ -4251,7 +4266,8 @@ errCANTEXTEND
  **				RTS
  **			
  **			
- **			.argsv_WriteSeqPointer
+**argsv_WriteSeqPointer
+ 		TODOSTOP "argsv_WriteSeqPointer"
  **			{
  **				JSR RememberAXY			; Write Sequential Pointer
  **				JSR CheckChannel_Yhndl_exYintch	; (new ptr @ 00+X)
@@ -7279,6 +7295,8 @@ Sub_AAC2_PrintRomStr
 Sub_AACF_ReadRom
 		stb	,-S
 		ldb	DP_TR_ROMS_LPCTR
+		clra
+		tfr	D,Y
 		jsr	OSRDRM				; get ROM byte
 		leax	1,X
 		tsta
@@ -7529,16 +7547,28 @@ tblFILEVops
  **				EQUB HI(gbpb8_rdfilescurdir)
  **			
  **			.gbpbv_table3
- **				EQUB $04
- **				EQUB $02
- **				EQUB $03
- **				EQUB $06
- **				EQUB $07
- **				EQUB $04
- **				EQUB $04
- **				EQUB $04
- **				EQUB $04
  **			
+
+gbpbv_table1
+		fdb	gbpb_noop_returnA4
+		fcb	$04
+		fdb	gbpb_putbytes
+		fcb	$02
+		fdb	gbpb_putbytes
+		fcb	$03
+		fdb	gbpb_getbyteSAVEBYTE
+		fcb	$06
+		fdb	gbpb_getbyteSAVEBYTE
+		fcb	$07
+		fdb	gbpb5_getmediatitle
+		fcb	$04
+		fdb	gbpb6_rdcurdirdevice
+		fcb	$04
+		fdb	gbpb7_rdcurlibdevice
+		fcb	$04
+		fdb	gbpb8_rdfilescurdir
+		fcb	$04
+
 
 
  **			
@@ -7562,3 +7592,7 @@ diskoptions_table
 		fcb	"LOAD"
 		fcb	"RUN",0
 		fcb	"EXEC"
+
+
+END
+		FILL $FF, $C000-END

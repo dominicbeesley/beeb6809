@@ -38,4 +38,11 @@ Trig:
 	LOG - not implemented
 	DEG - not implemented
 
+FLEX
+====
+
+LOAD/SAVE/CHAIN
+SOUND
+
+ESCape doesn't work properly
 

@@ -1,4 +1,4 @@
-TARGETS=	ttx56.hex
+TARGETS_CHIPKIT=	ttx56.hex
 include		../../Makefile.defs
 
 

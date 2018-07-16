@@ -1,29 +1,33 @@
-AS=asm6809 -v -3 
-
-MOSDIR=../..
+ASFLAGS=-v -3 
+TARGETS=USBFS.bin \
+		loadUSBFSandsyms.noi \
+		loadUSBFS.noi
 
 DEPS=	$(MOSDIR)/includes/hardware.inc \
 	$(MOSDIR)/includes/common.inc \
 	$(MOSDIR)/includes/mosrom.inc \
 	$(MOSDIR)/includes/noice.inc \
 	$(MOSDIR)/includes/oslib.inc \
-	../../mos/beeb6809-mos/mosrom-noice.sym \
+	$(CHIPKITOUT)/../../mos/beeb6809-mos/mosrom-noice.sym \
 	./vinc.inc \
-	./vinc.asm
+	./vinc.asm \
+	Makefile
 
 
-all:		USBFS.bin 
+ROMNO=3
 
-USBFS.bin:	USBFS.asm $(DEPS)
-		$(AS) -o $@ -l $(basename $@).lst $<
-		perl $(MOSDIR)/scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
-		./makeloadnoi.sh
-		cat loadUSBFS.noi $(basename $@).sym ../../mos/beeb6809-mos/mosrom-noice.sym >loadUSBFSandsyms.noi
-		echo -e "WAITFORSTOP 1\nEDIT FE30 0A\nEDIT DF6 80\nR PC mos_handle_res\n" >>loadUSBFSandsyms.noi
+include		../../Makefile.defs
 
-clean:
-		-rm *.bin
-		-rm *.lst
-		-rm *.sym
-		-rm loadUSBFS.noi
-		-rm loadUSBFSandsyms.noi
+
+$(CHIPKITOUT)/loadUSBFSandsyms.noi $(CHIPKITOUT)/loadUSBFS.noi: $(CHIPKITOUT)/USBFS.sym
+		../../scripts/prefixromsadds.sh $(CHIPKITOUT)/USBFS.sym $(ROMNO)
+		./makeloadnoi.sh $(CHIPKITOUT)/USBFS.bin $(CHIPKITOUT)/loadUSBFS.noi $(ROMNO)
+		cat $(CHIPKITOUT)/loadUSBFS.noi $(CHIPKITOUT)/USBFS.sym $(CHIPKITOUT)/../../mos/beeb6809-mos/mosrom-noice.sym >$(CHIPKITOUT)/loadUSBFSandsyms.noi
+		echo -e "WAITFORSTOP 1\nR PC mos_handle_res\n" >>$(CHIPKITOUT)/loadUSBFSandsyms.noi
+
+$(BEEBOUT)/loadUSBFSandsyms.noi $(BEEBOUT)/loadUSBFS.noi: $(BEEBOUT)/USBFS.sym
+		../../scripts/prefixromsadds.sh $(BEEBOUT)/USBFS.sym $(ROMNO)
+		./makeloadnoi.sh $(BEEBOUT)/USBFS.bin $(BEEBOUT)/loadUSBFS.noi $(ROMNO)
+		cat $(BEEBOUT)/loadUSBFS.noi $(BEEBOUT)/USBFS.sym $(BEEBOUT)/../../mos/beeb6809-mos/mosrom-noice.sym >$(BEEBOUT)/loadUSBFSandsyms.noi
+		echo -e "WAITFORSTOP 1\nR PC mos_handle_res\n" >>$(BEEBOUT)/loadUSBFSandsyms.noi
+

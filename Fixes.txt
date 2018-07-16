@@ -1,3 +1,10 @@
+Outstanding fixes / improvements for the Chipkit and Chipkit mk2 boards
+=======================================================================
+
+
+MEMC
+====
+Add special read/write user mode that allows TFM to read from/write to user map until next LIC or implement with blitter?
 
 Interrupts
 ==========

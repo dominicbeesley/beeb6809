@@ -41,13 +41,22 @@
 ;		DECB
 ;		BNE	1B
 
+	IF MACH_BEEB
+		LDA	zp_mos_curROM
+		PSHS	A
+		LDA	#$9
+		STA	SHEILA_ROMCTL_SWR
+DESTBASE	EQU	$8000				; on beeb copy via SWROM #8
+	ELSE
 		LDA	#$8		
-		STA	SHEILA_ROMCTL_MOS	; put memory at C000
+		STA	SHEILA_ROMCTL_MOS		; put memory at C000
+DESTBASE	EQU	$C000				; on beeb copy via SWROM #8
+	ENDIF
 
 
 		; map RAM bank $8 in top ROM hole and copy $4000-$7FFF there, missing out $FC00-$FEFF
 		LDX	#$4000
-		LDU	#$C000
+		LDU	#DESTBASE
 		LDY	#$3C00
 1		LDD	,X++
 		STD	,U++
@@ -55,7 +64,7 @@
 		BNE	1B
 
 		LDX	#$7F00
-		LDU	#$FF00
+		LDU	#DESTBASE + $3F00
 		LDY	#$0100
 1		LDD	,X++
 		STD	,U++
@@ -70,6 +79,14 @@
 ;
 ;		LDD	ROM_VECTORS_SAV + OFF_RES_VEC
 ;		STD	REMAPPED_HW_VECTORS + OFF_RES_VEC
+
+	IF MACH_BEEB
+		PULS	A
+		STA	SHEILA_ROMCTL_SWR
+		LDA	#1
+		STA	SHEILA_ROMCTL_MOS		; page in new ROM		
+	ENDIF
+
 
 		SWI	; re-enter debugger
 

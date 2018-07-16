@@ -1,0 +1,38 @@
+DODEBUG = FALSE
+UPURS = FALSE
+SWEH_EXTENSION = FALSE
+SWEH_BREAK = FALSE
+DEFAULT_FS = TRUE
+
+BreakKey = &60  \ TAB
+
+MACRO	VERSION_BYTE
+	EQUB 0
+ENDMACRO
+MACRO	VERSION_STRING
+	EQUS "0.16"
+IF	SWEH_EXTENSION
+	EQUS "s"
+ENDIF
+ENDMACRO
+MACRO	VERSION_DATE
+	EQUS "09 Mar 2013"
+ENDMACRO
+MACRO	VERSION_NAME
+	EQUS "HostFS"
+ENDMACRO
+
+\ I/O values, these are suitable for a 6850
+\ =========================================
+TxStatus = &FE08
+TxRDY = &2
+TxData = &FE09
+TxInit = &13
+RxStop = &55 \  &13=Reset ACIA, &55=8N1, clock/16, RTS high
+RxStatus = &FE08
+RxRDY = &1
+RxData = &FE09
+RxInit = &55
+RxCont = &15 \  &55=RTS high, &15=RTS low
+
+include "6502src.txt"

@@ -10,6 +10,15 @@
                       FE00 Register Address
                       FE01 Register Data                      Register Data
                                      
+                      FE10-1F DMAC DMA control (reserved)
+                      ===================================
+                      sheila_DMAC_DMA_CTL   equ $FE10
+                      sheila_DMAC_DMA_SRC_ADDR  equ $FE11
+                      sheila_DMAC_DMA_DEST_ADDR equ $FE14
+                      sheila_DMAC_DMA_COUNT   equ $FE17
+                      sheila_DMAC_DMA_DATA    equ $FE19
+                      sheila_DMAC_DMA_SEL   equ $FE1F
+
                       
                       FE20-2F Video ULA
                       =================
@@ -140,8 +149,14 @@
             2     2   FEA2 Transmit data, continue frame      Receive data
             2     2   FEA3 Transmit data, terminate frame     Receive data
                       
-            4         FED0-DF MMU registers
+
+            4         FEB0-BF MMU registers
                       =====================
+
+                      FEC0-FEDF DMAC
+                      ==============
+
+
       
                       
                       

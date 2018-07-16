@@ -1,0 +1,77 @@
+#!/bin/perl
+
+$inf=@ARGV[0];
+$ouf=@ARGV[1];
+
+$minaddr=0xFFFFFF;
+
+print STDERR $inf;
+
+open(IN,"<",$inf) or die "cannot open input file $inf";
+
+while (<IN>) {
+	$l = $_;
+	$l =~ s/^\s+//;
+	$l =~ s/[\s\r]+$//;
+
+	if ($l =~ /^S1([0-9A-Z]{2})([0-9A-Z]{4})(([0-9A-Z]{2})+)([0-9A-Z]{2})$/)
+	{
+		my $len = hex($1);
+		my $addr = hex($2);
+		my $data = $3;
+
+		if ($addr < $minaddr)
+		{
+			$minaddr = $addr;
+		}		
+
+	} elsif ($l) {
+		die "Unrecognised SREC line $l";
+	}
+}
+
+seek IN, 0, 0;
+
+open(OUT,">:raw",$ouf) or die "cannot open output file $ouf";
+binmode(OUT);
+
+my $firstaddr=$minaddr;
+
+$lastaddr=$minaddr;
+
+while (<IN>) {
+	$l = $_;
+	$l =~ s/^\s+//;
+	$l =~ s/[\s\r]+$//;
+
+	if ($l =~ /^S1([0-9A-Z]{2})([0-9A-Z]{4})(([0-9A-Z]{2})+)([0-9A-Z]{2})$/)
+	{
+		my $len = hex($1);
+		my $addr = hex($2);
+		my $data = $3;
+
+		if ($firstaddr eq $minaddr)
+		{
+			$firstaddr = $addr;	
+		}
+
+		print OUT pack("C n C", 2, $addr, $len - 3);
+
+		while ($data =~ /^([0-9A-Z]{2})(.*)$/) {
+			my $t = hex($1);
+			$data = $2;
+			print OUT chr($t);
+			$lastaddr++;
+		}
+
+	} elsif ($l) {
+		die "Unrecognised SREC line $l";
+	}
+}
+
+print OUT pack("C n", 0x16, $minaddr);
+
+printf "%04X\n", "$minaddr";
+
+close IN;
+close OUT;

@@ -1,0 +1,70 @@
+<?xml version="1.0"?>
+<tile-cutter>
+	<palette file="..\tiles\main.pal">
+		<ent>#271f2a</ent>
+		<ent>#543940</ent>
+		<ent>#5e382f</ent>
+		<ent>#c43b39</ent>
+		<ent>#7e574b</ent>
+		<ent>#666471</ent>
+		<ent>#2b76b4</ent>
+		<ent>#3f7f45</ent>
+		<ent>#96785a</ent>
+		<ent>#b18253</ent>
+		<ent>#399edd</ent>
+		<ent>#36ba40</ent>
+		<ent>#9ea4aa</ent>
+		<ent>#a2ee63</ent>
+		<ent>#e8d5aa</ent>
+		<ent>#d8d9d6</ent>
+	</palette>
+	<dest file="..\tiles\charac.til" size-x="16" size-y="24" mask="y">
+		<source file="character.png" />
+		<move x="0" y="6"/>
+		<cut x="4" y="1" dir="rd"/>
+		<move x="0" y="38"/>
+		<cut x="4" y="1" dir="rd"/>
+		<move x="0" y="68"/>
+		<cut x="4" y="1" dir="rd"/>
+		<move x="0" y="100"/>
+		<cut x="4" y="1" dir="rd"/>
+	</dest>
+	<dest file="..\tiles\over-back.til" size-x="16" size-y="16" mask="n">
+		<source file="Overworld.png" />
+		<move x="0" y="0"/>
+		<cut x="1" y="1" dir="rd" />
+		<move x="0" y="48" />
+		<cut x="3" y="3" dir="rd" />
+		<move x="32" y="96" />
+		<cut x="3" y="3" dir="rd" />
+		<move x="0" y="96" />
+		<cut x="2" y="2" dir="rd" />
+		<move x="32" y="96" />
+		<cut x="3" y="3" dir="rd" />
+		<move x="0" y="368" />
+		<cut x="3" y="5" dir="rd" />		
+		<move x="48" y="368" />
+		<cut x="3" y="3" dir="rd" />		
+		<move x="352" y="0" />
+		<cut x="3" y="5" dir="rd" />	
+		<move x="0" y="144" />
+		<cut x="2" y="2" dir="rd" />
+		<move x="32" y="144" />
+		<cut x="2" y="2" dir="rd" />
+		<move x="128" y="352" />
+		<cut x="2" y="4" dir="rd" />
+	</dest>
+	<dest file="..\tiles\over-front.til" size-x="16" size-y="16" mask="y">
+		<source file="Overworld.png" />
+		<move x="0" y="336" />
+		<cut x="3" y="4" dir="rd" />
+		<move x="48" y="352" />
+		<cut x="3" y="4" dir="rd" />
+		<move x="0" y="432" />
+		<cut x="3" y="1" dir="rd" />
+		<move x="64" y="496" />
+		<cut x="4" y="4" dir="rd" />
+
+	</dest>
+</tile-cutter>
+		

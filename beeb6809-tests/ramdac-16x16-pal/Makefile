@@ -1,4 +1,4 @@
-TARGETS=	ramdac-16x16-pal.hex
+TARGETS_CHIPKIT=	ramdac-16x16-pal.hex
 include		../../Makefile.defs
 
 

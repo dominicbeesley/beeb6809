@@ -1,24 +1,38 @@
 		include	"vinc.inc"
 
-	IF DEBUG_VERBOSE
-
-	ENDIF
 
 
 vinc_cmd_echo
+	IF DEBUG_VERBOSE != 0
 		jsr	DEBUGPRINTX
+	ELSE
+1		lda	,X+
+		bne	1B
+	ENDIF
 		jsr	vinc_cmd_str
 		bne	2F
 		jsr	vinc_echo_cmd_response
 		bne	1F
+	IF DEBUG_VERBOSE != 0
 		ldx	#str_ok
 		jsr	DEBUGPRINTX
+	ENDIF
 		orcc	#CC_Z
 		rts
-1		ldx	#str_timeout_rd
+1
+	IF DEBUG_VERBOSE != 0
+
+		ldx	#str_timeout_rd
 		bra	3F
-2		ldx	#str_timeout_wr
-3		jsr	DEBUGPRINTX
+	ENDIF
+2
+	IF DEBUG_VERBOSE != 0
+		ldx	#str_timeout_wr
+	ENDIF
+3
+	IF DEBUG_VERBOSE != 0
+		jsr	DEBUGPRINTX
+	ENDIF
 		andcc	#~CC_Z
 		rts
 
@@ -32,22 +46,26 @@ vinc_cmd_str	ldb	,X+
 		jmp	vinc_write_A		; write and terminate
 3		rts
 
-
 vinc_echo_cmd_response
 1		jsr	vinc_read_A
 		bne	5F
-		jsr	vinc_echo
+	IF DEBUG_VERBOSE != 0
+		jsr	debug_vinc_echo
+	ENDIF
 		cmpa	#'>'
 		bne	1B
 4		jsr	vinc_read_A
 		bne	5F
-		jsr	vinc_echo
+	IF DEBUG_VERBOSE != 0
+		jsr	debug_vinc_echo
+	ENDIF
 		cmpa	#$0D
 		bne	1B
 5		rts
 
+	IF DEBUG_VERBOSE != 0
 
-vinc_echo	pshs	A
+debug_vinc_echo	pshs	A
 		cmpa	#$0D
 		beq	3F
 		cmpa	#' '
@@ -58,7 +76,8 @@ vinc_echo	pshs	A
 		bra	1F
 2		jsr	DEBUGPRINTA
 1		puls	A,PC
-
+	ENDIF
+	
 vinc_wait_TXE	pshs	D
 		ldd	#$8000
 2		tim	#VINC_status_TXE, sheila_VINC_status
@@ -110,7 +129,7 @@ vinc_clear_RXF
 		bne	2F
 		;do a dummy read
 		jsr	vinc_read2
-;;		jsr	vinc_echo
+;;		jsr	debug_vinc_echo
 		leax	-1,X
 		bne	1B
 		lda	#1				; indicate error
@@ -122,17 +141,19 @@ vinc_clear_RXF
 
 
 vinc_init
-
+	IF DEBUG_VERBOSE != 0
 		ldx	#str_init
 		jsr	DEBUGPRINTX
+	ENDIF
 		lda	#4
 		sta	,-S
 vinc_init_loop
 		dec	,S
 		bmi	vinc_init_err
-
+	IF DEBUG_VERBOSE != 0
 		ldx	#str_flush_init
 		jsr	DEBUGPRINTX
+	ENDIF
 		jsr	vinc_clear_RXF
 		bne	vinc_init_err
 		jsr	vinc_init_ok
@@ -174,8 +195,10 @@ vinc_init_err	puls	A,PC
 
 vinc_init_sync
 		sta	,-S				; store A
+	IF DEBUG_VERBOSE != 0
 		jsr	DEBUGPRINTX			; message
 		lda	,S				; get back A
+	ENDIF
 		jsr	vinc_write_A			; send A to vinc
 		bne	vinc_init_timeout_wr
 		lda	#$0D
@@ -191,19 +214,27 @@ vinc_init_sync
 		bne	vinc_init_nosync
 		leas	1,S
 vinc_init_ok
+	IF DEBUG_VERBOSE != 0
 		ldx	#str_ok
 		jsr	DEBUGPRINTX
+	ENDIF
 		orcc	#CC_Z
 		rts
 vinc_init_nosync
+	IF DEBUG_VERBOSE != 0
 		ldx	#str_no_sync
 		bra	1F
+	ENDIF
 vinc_init_timeout_wr
+	IF DEBUG_VERBOSE != 0
 		ldx	#str_timeout_wr
 		bra	1F
+	ENDIF
 vinc_init_timeout_rd
+	IF DEBUG_VERBOSE != 0
 		ldx	#str_timeout_rd
 1		jsr	DEBUGPRINTX
+	ENDIF
 		leas	1,S				; don't return!
 		andcc	#~CC_Z
 		rts
@@ -267,57 +298,67 @@ VINC_END
 
 	**** Read the Catalogue ****
 VINC_ReadCat
-	jsr	SetLEDS
-	ldy	#sws_CurDrvCat
-	clr	TubeNoTransferIf0
-	jsr	VINC_SetupRead
-	jsr	VINC_StartRead
-	ldx	#$200				; two sectors
-	jsr	VINC_ReadXtoY
-	jmp	ResetLEDS
+		jsr	SetLEDS
+		ldy	#sws_CurDrvCat
+		clr	TubeNoTransferIf0
+		jsr	VINC_SetupRead
+		jsr	VINC_StartRead
+		ldx	#$200				; two sectors
+		jsr	VINC_ReadXtoY
+		jmp	ResetLEDS
 
 VINC_SetupRead
-	pshs	D,X
-	ldx	#str_cmd_opr
-	jsr	vinc_cmd_echo
-	bne	vinc_err
+		pshs	D,X
+		ldx	#str_cmd_opr
+		jsr	vinc_cmd_echo
+		bne	vinc_err
 
-	ldx	#str_sek
-	jsr	DEBUGPRINTX
+	IF DEBUG_VERBOSE != 0
+		ldx	#str_sek
+		jsr	DEBUGPRINTX
+	ENDIF
 
-	lda	#VINC_CMD_SEK
-	jsr	vinc_write_A
-	bne	vinc_err
-	lda	#' '
-	jsr	vinc_write_A
-	bne	vinc_err
+		lda	#VINC_CMD_SEK
+		jsr	vinc_write_A
+		bne	vinc_err
+		lda	#' '
+		jsr	vinc_write_A
+		bne	vinc_err
 
-	lda	DP_VINC_SEK_ADDR
-	jsr	DEBUGPRINTHEX
-	jsr	vinc_write_A
-	bne	vinc_err
+		lda	DP_VINC_SEK_ADDR
+	IF DEBUG_VERBOSE != 0
+		jsr	DEBUGPRINTHEX
+	ENDIF
+		jsr	vinc_write_A
+		bne	vinc_err
 
-	lda	DP_VINC_SEK_ADDR + 1
-	jsr	DEBUGPRINTHEX
-	jsr	vinc_write_A
-	bne	vinc_err
+		lda	DP_VINC_SEK_ADDR + 1
+	IF DEBUG_VERBOSE != 0
+		jsr	DEBUGPRINTHEX
+	ENDIF
+		jsr	vinc_write_A
+		bne	vinc_err
 
-	lda	DP_VINC_SEK_ADDR + 2
-	jsr	DEBUGPRINTHEX
-	jsr	vinc_write_A
-	bne	vinc_err
+		lda	DP_VINC_SEK_ADDR + 2
+	IF DEBUG_VERBOSE != 0
+		jsr	DEBUGPRINTHEX
+	ENDIF
+		jsr	vinc_write_A
+		bne	vinc_err
 
-	clra
-	jsr	DEBUGPRINTHEX
-	jsr	vinc_write_A
-	bne	vinc_err
+		clra
+	IF DEBUG_VERBOSE != 0
+		jsr	DEBUGPRINTHEX
+	ENDIF
+		jsr	vinc_write_A
+		bne	vinc_err
 
-	lda	#$D
-	jsr	vinc_write_A
-	bne	vinc_err
-	jsr	vinc_echo_cmd_response
-	bne	vinc_err
-	puls	D,X,PC
+		lda	#$D
+		jsr	vinc_write_A
+		bne	vinc_err
+		jsr	vinc_echo_cmd_response
+		bne	vinc_err
+		puls	D,X,PC
 
 VINC_StartRead
 	rts
@@ -328,46 +369,48 @@ vinc_err
 
 
 VINC_ReadXtoY
-	pshsw
-	pshs	X
-	ldx	#str_rdf
-	jsr	DEBUGPRINTX
-	puls	X
+		pshsw
+	IF DEBUG_VERBOSE != 0
+		pshs	X
+		ldx	#str_rdf
+		jsr	DEBUGPRINTX
+		puls	X
+	ENDIF
 
-	lda	#VINC_CMD_RDF
-	jsr	vinc_write_A
-	bne	vinc_err
-	lda	#' '
-	jsr	vinc_write_A
-	bne	vinc_err
-	clra
-	jsr	vinc_write_A
-	bne	vinc_err
-	clra
-	jsr	vinc_write_A
-	bne	vinc_err
-	tfr	X,D
-	jsr	vinc_write_D				; two byte length
-	bne	vinc_err
-	lda	#$0D
-	jsr	vinc_write_A
-	bne	vinc_err
-	clre
-1	jsr	vinc_read_A
-	bne	2F
-	clre
-	sta	,Y+
-	leax	-1,X
-	bne	1B
+		lda	#VINC_CMD_RDF
+		jsr	vinc_write_A
+		bne	vinc_err
+		lda	#' '
+		jsr	vinc_write_A
+		bne	vinc_err
+		clra
+		jsr	vinc_write_A
+		bne	vinc_err
+		clra
+		jsr	vinc_write_A
+		bne	vinc_err
+		tfr	X,D
+		jsr	vinc_write_D				; two byte length
+		bne	vinc_err
+		lda	#$0D
+		jsr	vinc_write_A
+		bne	vinc_err
+		clre
+1		jsr	vinc_read_A
+		bne	2F
+		clre
+		sta	,Y+
+		leax	-1,X
+		bne	1B
 
-	pulsw
-	jsr	vinc_echo_cmd_response
-	bne	vinc_err
-	rts
-2	ince
-	cmpe	#5
-	beq	vinc_err
-	bra	1B
+		pulsw
+		jsr	vinc_echo_cmd_response
+		bne	vinc_err
+		rts
+2		ince
+		cmpe	#5
+		beq	vinc_err
+		bra	1B
 
 
 

@@ -1,0 +1,103 @@
+	    Acorn, Watford and Duggan DFS Filesystem Structure
+	    ==================================================
+		http://mdfs.net/Docs/Comp/Disk/Format/DFS
+
+Acorn DFS, Watford DFS and Angus Duggan's HDFS share the same basic file
+structure and each filing system understands a large subset of each
+filestructure.
+
+DFS uses 256-byte logical disk sectors. Logical sectors are counted
+with 10-bit or 11-bit numbers starting from &000 at the start of the
+filesystem.
+
+Acorn DFSs use 18-bit file lengths and 10-bit sector numbers, so the
+largest possible DFS disk system is 256K and the largest possible
+file is 256K-1.
+
+Watford DFS and Duggan HDFS use 19-bit file lengths and 11-bit sector
+numbers, so the largest possible WDFS and HDFS disk system is 512K and the
+largest possible file is 512K-1.
+
+Note that WDFS and HDFS extends the DFS catalogue structure, but puts its
+additional information in different locations. DFS, WDFS and HDFS
+directories can be distinguished by looking at byte &106 in the catalogue:
+
+106:  b3=0 b2=0 DFS or WDFS disk up to 256K
+106:  b3=0 b2=1 WDFS, disk larger than 256K
+106:  b3=1 b2=0 HDFS, single-sided disk
+106:  b3=1 b2=1 HDFS, double-sided disk
+
+Sector 0,1
+----------
+The first two sectors contain the 31-entry catalogue. The catalogue is
+always stored sorted by file sector start address, with highest sector
+address at the start and lowest address at the end.
+
+		DFS		   WDFS			HDFS
+000-007    First eight bytes of the disk title, padded with spaces
+           This is the directory name in HDFS
+  byte 0,b7:	zero		   zero			total sectors b10
+  byte 1-7,b7:	zero		   zero			zero
+008-00F    First file entry
+010-017    Second file entry
+018-01F    Third file entry
+...
+0F8-0FF 31st file entry
+
+A file entry is laid out as:
+		DFS		   WDFS			HDFS
+  byte 0-6 Filename, padded with spaces
+  byte 7   Directory prefix character
+  byte 0,b7:	zero		   zero			sector b10
+  byte 1,b7:	zero		   zero			length b18
+  byte 2,b7:	zero		   zero			unused
+  byte 3,b7:	zero		   zero			file/directory
+  byte 4,b7:	zero		   zero			not readable
+  byte 5,b7:	zero		   length b18		not writable
+  byte 6,b7:	zero		   sector b10		not executable
+  byte 7,b7:	locked		   locked		locked
+
+		DFS		   WDFS			HDFS
+100-103    Last four bytes of space-padded disk title/HDFS directory name
+104		Disk cycle	   Disk cycle		Key number
+105        (Number of catalogue entries)*8
+106 b0-b1: Total number of sectors b8-b9
+    b2:		zero		   total sectors b10	(number of sides)-1
+    b3:		zero		   zero			one
+    b4-b5 !Boot option (*OPT 4 value)
+    b6-b7:	zero		   zero			zero
+107        Total number of sectors b0-b7
+108-10F    First file's info
+110-117    Second file's info
+...
+1F8-1FF    31st file's info
+
+A file info entry is laid out as:
+  byte 0-1 file load address b0-b15
+  byte 2-3 file execution address b0-b15
+  byte 4-5 file length b0-b15
+  byte 6
+    b0-b1: file start sector b8-b9
+    b2-b3: file load address b16-b17
+    b4-b5: file length b16-b17
+    b6-b7: file execution address b16-b17
+  byte 7   file start sector b0-b7
+
+Sector 2,3
+----------
+Watford DFS allows a second 31-entry catalogue in sectors 2 and 3.
+It is identified by the first eight bytes of sector 2 containing &AA:
+
+000-007 Eight bytes of &AA
+008-0FF 31 file entries
+100-103 Four bytes of &00
+104     Copy of disk cycle number in sector 1
+105     (Number of catalogue entries)*8
+106-107 Copy of boot option and disk size in sector 1
+108-1FF 31 file info entries
+
+Notes
+-----
+Some early DFSs allow the user to write disk title or filenames with b7 set.
+This may cause these entries to appear to erroneously have HDFS or WDFS
+attributes. Most DFSs disallow top-bit set filenames and disk titles.

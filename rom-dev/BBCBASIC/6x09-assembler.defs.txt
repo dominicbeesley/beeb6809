@@ -1,0 +1,245 @@
+# This text file contains information used by the 6809-assem-gen.pl script
+# to make the assembler include files
+
+#opcodes prefixed * are 6309 only
+#opcodes prefixed !L have the EXTRA0 flag set, the interpretation is class dependent, for branches indicates LB form
+
+#OPCLASSES:
+#A=implied, no arguments i.e. ABX
+#B=AB(D) reg then im,dp,ix,ex i.e. ADC
+#C=ABD(EFW) reg then im,dp,ix,ex i.e. ADD
+#D=im followed by dp,ix,ex i.e. AIM (3)
+#E=im i.e. ANDCC#
+#F=reg A,B,D(3) or dp,ix,ex i.e. ASL
+#G=reg (A,B,D) then im,dp,ix,ex i.e. BIT
+#H=reg A,B,D(3),E(3),F(3),W(3) or dp,ix,ex i.e. CLR
+#I=reg A,B,D,E(3),F(3),S,U,W(3),X,Y then im,dp,ix,ex i.e. CMP
+#J=reg D,Q then mode im,dp,ix,ex i.e. DIVD,DIVQ
+#K=reg,reg i.e. TFR,EXG
+#L=dp,ix,ex i.e. JMP
+#M=dp,ix,ex i.e. JSR
+#N=reg A,B,D,E(3),F(3),Q(3),S,U,W(3),X,Y then im,dp,ix,ex i.e. LD
+#O=LDQ im,dp,ix,ex
+#P=LEA S,U,X,Y then ix
+#Q=reg A,B,D(3),W(3) or dp,ix,ex i.e. LSR
+#R=im,dp,ix,ex i.e. MUL
+#S=S=+00, U=+02 followed by reglist
+#T=reg A,B,D,E(3),F(3),Q(3),S,U,W(3),X,Y then dp,ix,ex i.e. ST
+#U=branches
+#V=long branches
+#W=bit transfers
+#X=TFM
+#Y=SWI
+#Z=SUB
+
+!!OPCLASS=A!!
+#implied instructions with no arguments, on opcode value
+ABX=3A
+DAA=19
+NOP=12
+RTI=3B
+RTS=39
+!!OPCLASS=A1!!
+#implied with required C
+SYN=13
+!!OPCLASS=A2!!
+#implied with optional W: add -9 (F7) *
+SEX=1D
+#*SEXW=14
+
+
+!!OPCLASS=B!!
+#followed by a reg letter A,B (or D for 6309)
+#reg: for A add $0, B add $40, for D prefix 10, R==interrreg
+#mode:for immed $0, direc $10, indexed $20, ext $30
+#modes immed, direct, indexed, extended
+ADC=89
+# *ADCR=10 31
+EOR=88
+# *EORR=10 36
+SBC=82
+# *SBCR=10 33
+
+!!OPCLASS=B2!!
+# as class B except that also covers ANDCC/ORCC
+AND=84
+# *ANDR=10 34
+# ANDCC=1C
+OR=8A
+# *ORR=10 35
+# ORCC=1A
+
+
+!!OPCLASS=C!!
+#followed by a reg letter A,B,D (or E,F,W for 6309)
+#reg: for A add $0, B add $40, D add $38, E pre 11, F pre 11+$40, W pre 10, R==interreg
+#mode:for immed $0, direc $10, indexed $20, ext $30
+#modes immed, direct, indexed, extended
+ADD=8B
+#*ADDR=10 30
+
+
+!!OPCLASS=D!!
+#6309 only
+#immed byte followed by one of dir,ix,ext
+#mode: 0 for dir, +$60 for ix, + $70 for ext
+AIM=02
+EIM=05
+OIM=01
+TIM=0B
+
+!!OPCLASS=E!!
+#immed argument, require trailing T
+CWA=3C
+
+!!OPCLASS=F!!
+#dir=+$00,ix=+$60,ext=+$70,A=+$40,B=+$50,D(3)=10 +$40
+NEG=00
+ASL=08
+ASR=07
+LSL=08
+
+!!OPCLASS=G!!
+#reg A=+$00, B=+40, D=10 +$00
+#mode imm=+$00, dir=+$10, ix=+$20, ext=+$30
+BIT=85
+#*BITMD=11 3C
+
+
+!!OPCLASS=H!!
+# reg A=+$40, reg B=+$50, reg D(3)=10 +$40, E(3)=11 +$40, F(3)=11 +$50, W(3)=10 + $50, dp=+$00, ix=+$60, ext=+$70
+CLR=0F
+COM=03
+DEC=0A
+INC=0C
+TST=0D
+
+!!OPCLASS=I!!
+# reg A=+$00, B=+$40, D=10 +$02, E(3)=11 +$00, F(3)=11 +$40, S=11 +$0B, U=11 +$02 W(3)=10 +$00, X=+$0B, Y=10 +$0B, R==interreg
+# mode imm=+$00, dir=+$10, ix=+$20, ext=+$30
+CMP=81
+#*CMPR=10 37
+
+
+!!OPCLASS=J!!
+#all prefixed 11
+#reg D=+$00, Q=+$01
+# mode imm=+$00, dir=+$10, ix=+$20, ext=+$30
+DIV=11 8D
+
+!!OPCLASS=K!!
+#reg,reg
+EXG=1E
+TFR=1F
+
+!!OPCLASS=L!!
+#mode dp=$+00, ix=+$60, ex=+$70
+JMP=0E
+
+!!OPCLASS=M!!
+#mode dp=$+00, ix=+$10, ex=+$20
+JSR=9D
+
+!!OPCLASS=N!!
+# reg A=+$00, B=+$40, D=+$48, E(3)=11 +$00, F(3)=11 +$40, S=10 +$48, U=+$48 W(3)=10 +$00, X=+$08, Y=10 +$08
+# mode imm=+$00, dp=+$10, ix=+$20, ext=+$30
+LD=86
+# *LDMD=11 3D 
+# *LDBT=11 36
+# *LDQ=CD
+
+!!OPCLASS=P!!
+# reg X=+$00, Y=+$01, S=+$02, U=+$03
+LEA=30
+
+!!OPCLASS=Q!!
+#dp=+$00,ix=+$60,ex=+$70,A=+$40,B=+$50,D(3)=10 +$40,W(3)=10 +$50
+LSR=04
+ROL=09
+ROR=06
+
+!!OPCLASS=R!!
+#mode MUL - no arguments or MULD D: im=+$00, dp=+$10, ix=+$20, ex=+$30
+MUL=3D
+# *MULD=11 8F
+
+!!OPCLASS=S!!
+#reg S=+00, U=+02, modes = "W!"
+PSH=34
+PUL=35
+
+
+!!OPCLASS=T!!
+# reg A=+$00, B=+$40, D=10 +$46, E(3)=11 +$00, F(3)=11 +$40, S=10 +$48, U=+$48 W(3)=10 +$00, X=+$08, Y=10 +$08
+# mode dp=+$00, ix=+$10, ex=+$20
+ST=97
+# *STBT=11 37
+# *STQ=10 DD
+
+
+
+!!OPCLASS=U!!
+# note a special case is needed for LBxx prefixes in code
+BCC=24
+BCS=25
+BEQ=27
+BGE=2C
+BGT=2E
+BHI=22
+BHS=24
+BLE=2F
+BLO=25
+BLS=23
+BLT=2D
+BMI=2B
+BNE=26
+BPL=2A
+BRA=20
+BRN=21
+BSR=8D
+BVC=28
+BVS=29
+
+
+
+
+!!OPCLASS=W!!
+# these need special case handling to get rid of/check for trailing chars
+BOR=11 32
+!!OPCLASS=W1!!
+BAN=11 30
+!!OPCLASS=W2!!
+BIA=11 31
+!!OPCLASS=W3!!
+BIO=11 33
+!!OPCLASS=W4!!
+BEO=11 34
+!!OPCLASS=W5!!
+BIE=11 35
+
+
+!!OPCLASS=X!!
+#block+=+$00, block-=+$01, send reg=+$02, recv reg=+$03
+TFM=11 38
+
+!!OPCLASS=Y!!
+#can be followed by 2 (pre 10) 3 (pre 11)
+SWI=3F
+
+!!OPCLASS=Z!!
+#followed by a reg letter A,B,D (or E,F,W for 6309)
+#reg: for A add $0, B add $40, D add $03, E pre 11, F pre 11+$40, W pre 10, R==interreg
+#mode:for immed $0, direc $10, indexed $20, ext $30
+#modes immed, direct, indexed, extended
+SUB=80
+#*SUBR=10 32
+
+
+#directives
+!!OPCLASS=DIR!!
+OPT=00
+EQU=01
+DCB=02
+DCW=03
+DCD=04
+SET=05

@@ -1,0 +1,18 @@
+SERIAL PORT
+===========
+BBC                     6809
+---                     ----
+    ___________             ___________         +-----+-----+--------------+
+   /     v     \           /     2     \        | 6809| BBC | Function     |
+  /   A     B   \         /   5     4   \       +-----+-----+--------------+
+  |             |         |             |       |  1  |  -  | DCD/RI jumper|
+  |      C      |         |  3   8   1  |       |  2  |  -  | DSR          |
+  |             |         |             |       |  3  |  -  | DTR          |
+  \   E     D   /         \   7     6   /       |  4  |  B  | Tx           |
+   \_____^_____/           \_____^_____/        |  5  |  A  | Rx           |
+                                                |  6  |  D  | CTS          |
+                                                |  7  |  E  | RTS          |
+                                                |  8  |  C  | Gnd          |
+                                                +-----+-----+--------------+
+Assuming most cables made as per Sprow : http://www.sprow.co.uk/bbc/extraserial.htm i.e. index between D/E
+

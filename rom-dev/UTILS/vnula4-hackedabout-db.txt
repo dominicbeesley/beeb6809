@@ -1,0 +1,1940 @@
+		; VideoNuLA rom
+		; Heavily based on code from Gordon Horsington's Mastering Sideways ROM course
+				
+		OSWRCH = $FFEE
+		OSNEWL = $FFE7
+		OSASCI = $FFE3
+		OSBYTE = $FFF4
+		OSRDCH = $FFE0
+		GSINIT = $FFC2
+		GSREAD = $FFC5
+		OSVDU = $FFBC
+		sheila_VIDULA_pal = $FE21
+		SHEILA_NULA_CTLAUX = $FE22
+		SHEILA_NULA_PALAUX = $FE23
+		ROMSEL = $FE30
+		wrchv = $20E
+		wrchoffset = $15
+		remv	= $22C
+		remvoffset = $42
+		bytev = $20A
+		bytevoffset = $0F
+		vnula_zp = $A8
+		comvec = $F2
+		stack = $105
+		zp_mos_curROM = $F4
+		phROM = $F5
+		ROMpoint = $F6
+		errstack = $100
+		vnula_flags = $39F
+		vnula_newmodeflag = $03  ; (bits 0 and 1)
+		newvduflag = $04   ; (bit 2)
+		thinfontflag = $08 ; (bit 3)
+		sysvar_OUTSTREAM_DEST = $27C
+		oldwrchv = $3A0 ; and $3A1
+		vnula_vdu_code_sav = $3A2
+		vnula_chosen_mode = $3A3
+		oldremv = $3A5 ; and $3A6
+		oldbytev = $234 ; and $235 (IND3V)
+		zp_vdu_status = $D0
+		sysvar_VDU_Q_LEN=$26A
+		vnula_MODE_base=96
+		vnula_MODES_count=9
+		vnula_MODES_top=vnula_MODE_base+vnula_MODES_count
+		vnula_key_COPY = $8B
+				
+		org	$8000
+				
+header
+				
+		equb	$00
+		equb	$00
+		equb	$00
+				
+		jmp	service
+				
+		equb	$82
+				
+		equb	copy MOD 256
+				
+		equb	$1
+				
+title
+		equs	"VideoNuLA", 0
+				
+version
+		equs	"1.02", 0
+				
+copy
+		equb	0
+		equs	"(C)2017 Rob Coleman", 0
+				
+service
+				
+		; handle all service calls that we need to
+		PHA:TXA:PHA:TYA:PHA
+		lda	vnula_zp:PHA
+		lda	vnula_zp+1:PHA
+		tsx
+		lda	stack,X
+				
+cmp1
+		cmp	#1
+		bne	cmp4
+		jmp	one
+				
+cmp4
+		cmp	#4
+		bne	cmp9
+		jmp	four
+				
+cmp9
+		cmp	#9
+		bne	cmp13
+		jmp	nine
+				
+cmp13
+		cmp	#13
+		bne	cmp14
+		jmp	thirteen
+				
+cmp14
+		cmp	#14
+		bne	cmp37
+		jmp	fourteen
+				
+cmp37
+		cmp	#37
+		beq	thirtyseven
+				
+srvret
+		jmp	quit 
+				
+one
+		; ignore on Master
+		jsr	whichOS:BCS srvret
+				
+		; on B or B+ fall through to thirtyseven
+				
+thirtyseven
+				
+		; turn off attributes
+		jsr	noattributes
+		; do OSBYTE call to establish type of reset
+		lda	#$FD:LDX #0:LDY #$FF:JSR OSBYTE
+		cpx	#0:BNE hardbreak
+		; restore original font as soft-break
+		jsr	restoreoriginalfont
+				
+hardbreak
+		jsr	breakreset
+		jmp	quit
+				
+breakreset
+		; clear thin font flag as fonts will have been reset
+		lda	#thinfontflag:EOR #$FF:AND vnula_flags:STA vnula_flags
+				
+		; if extended vdu drivers had been turned on, re-enable them
+		; check for sensible values (as have seen it set to $FF on power-up)
+		lda	vnula_flags
+		cmp	#$10
+		bcs	resetflags
+		and	#newvduflag
+		beq	leavebreakreset
+		jsr	enablexvdu
+leavebreakreset
+		rts
+				
+resetflags
+		lda	#0:STA vnula_flags:RTS
+				
+whichOS
+		lda	#0:LDX #1:JSR OSBYTE:CPX #3:RTS
+				
+four
+		; handle star cmds here
+		ldx	#$FE:TYA:PHA
+				
+getchar
+		INX:PLA:TAY:PHA
+		lda	(comvec),Y
+		and	#$DF
+				
+interpret
+		inx
+		lda	commtable,X
+		bmi	found
+		lda	(comvec),Y
+		iny
+		cmp	#'.'
+		beq	founddot
+		and	#$DF
+		cmp	commtable,X
+		beq	interpret
+				
+another
+		inx
+		lda	commtable,X
+		bpl	another
+		cmp	#$FF
+		bne	getchar
+				
+		; leave without finding command
+exit
+		pla
+quit
+		PLA:STA vnula_zp+1
+		PLA:STA vnula_zp
+		PLA:TAY
+		PLA:TAX
+		PLA:RTS
+				
+founddot
+		inx
+		lda	commtable,X
+		bpl	founddot
+				
+found
+		cmp	#$FF
+		beq	exit
+		sta	vnula_zp+1
+		inx
+		lda	commtable,X
+		sta	vnula_zp
+		pla
+		sec
+		jsr	GSINIT
+		jmp	(vnula_zp)
+				
+		; leave after finding command
+pullout
+		PLA:STA vnula_zp+1
+		PLA:STA vnula_zp
+		PLA:TAY:PLA:TAX:PLA
+		lda	#0
+		rts
+				
+nine
+		; handle help
+		sec
+		jsr	GSINIT
+		ldx	#0
+		jsr	GSREAD
+		bcc	tryextended
+		ldx	#helpmsg MOD 256
+		ldy	#helpmsg DIV 256
+		jsr	printer
+		beq	out
+				
+helploop
+		inx
+		jsr	GSREAD
+				
+tryextended
+		cmp	#'.'
+		beq	okextended
+		and	#$DF
+		cmp	helptitle,X
+		beq	helploop
+		lda	#$FF
+		cmp	helptitle,X
+		bne	out
+				
+okextended
+		ldx	#helpinfo MOD 256
+		ldy	#helpinfo DIV 256
+		jsr	printer
+		beq	out
+				
+thirteen
+		cpy	#16
+		bcs	out
+		tya
+		eor	#$F
+		cmp	zp_mos_curROM
+		bcc	out
+		lda	#end MOD 256
+		sta	ROMpoint
+		lda	#end DIV 256
+		sta	ROMpoint+1
+		lda	zp_mos_curROM
+		eor	#$F
+		sta	phROM
+		jmp	pullout
+				
+out
+		jmp	quit
+				
+fourteen
+		lda	phROM
+		eor	#$F
+		cmp	zp_mos_curROM
+		bne	out
+		ldy	#0
+		lda	(ROMpoint),Y
+		tay
+		inc	ROMpoint
+		bne	leave
+		inc	ROMpoint+1
+leave
+		PLA:STA vnula_zp+1
+		PLA:STA vnula_zp
+		PLA:PLA:TAX:PLA
+		lda	#0
+		rts
+				
+commtable
+		equs	"VNDISABLE"
+		equb	disable DIV 256
+		equb	disable MOD 256
+				
+		equs	"VNGREY"
+		equb	grey DIV 256
+		equb	grey MOD 256
+				
+		equs	"VNPALETTE"
+		equb	palette DIV 256
+		equb	palette MOD 256
+				
+		equs	"VNRESET"
+		equb	reset DIV 256
+		equb	reset MOD 256
+				
+		equs	"VNVDU"
+		equb	vdu DIV 256
+		equb	vdu MOD 256
+				
+		equb	$FF
+				
+helpmsg
+		equs	13, "VideoNuLA 1.02", 13, "  "
+				
+helptitle
+		equs	"VIDEONULA", $FF, 13, 0
+				
+helpinfo
+		equs	13,"VideoNuLA 1.02", 13
+		equs	"  VNDISABLE", 13
+		equs	"  VNGREY", 13
+		equs	"  VNPALETTE", 13
+		equs	"  VNRESET", 13
+		equs	"  VNVDU ON/OFF", 13
+		equb	$0
+				
+printer
+		stx	vnula_zp
+		sty	vnula_zp+1
+		ldy	#$FF
+				
+printloop
+		iny
+		lda	(vnula_zp),Y
+		beq	endprint
+		bmi	printloop
+		jsr	OSASCI
+		jmp	printloop
+				
+endprint
+		rts
+				
+grey
+		; reset extra features
+		jsr	resetsb
+		; setup palette
+		lda	#0
+		clc
+greypallp
+		sta	SHEILA_NULA_PALAUX
+		sta	SHEILA_NULA_PALAUX
+		adc	#17 ; '00010001'
+		bcc	greypallp
+				
+		; store current mode
+		lda	$355:PHA
+				
+		; Mode 2
+		lda	#22
+		jsr	OSWRCH
+		lda	#2
+		jsr	OSWRCH
+		; Set foreground colour
+		lda	#17
+		jsr	OSWRCH
+		lda	#15
+		jsr	OSWRCH
+		; Print 16 coloured bars
+		ldx	#128
+barlp
+		; Set background colour
+		lda	#17
+		jsr	OSWRCH
+		txa
+		pha	
+		jsr	OSWRCH
+		; Print "bar"
+		ldx	#barstr MOD 256
+		ldy	#barstr DIV 256
+		jsr	printer
+		PLA:TAX
+		inx
+		cpx	#144
+		bne	barlp
+		; wait for key press
+		jsr	OSRDCH
+		bcc	resetpal
+		; ack. escape
+		cmp	#27
+		bne	resetpal
+		lda	#$7E
+		jsr	OSBYTE
+		; reset palette and return to previous screen mode
+resetpal
+		jsr	resetsb
+		lda	#22
+		jsr	OSWRCH
+		pla
+		jsr	OSWRCH
+		jmp	pullout
+				
+barstr
+		equs	"--------", 13,0
+				
+palette
+		; *ROM
+		lda	#$8D:JSR OSBYTE
+		; *OPT 1,0
+		lda	#$8B:LDX #1:LDY #0:JSR OSBYTE
+		; Flush buffers
+		lda	#$0F:LDX #0:JSR OSBYTE
+		lda	#$FF
+		pha
+keyboard
+		PLA:TAX:INX:TXA:PHA
+		ldy	rfscomm,X
+		beq	endkey
+		lda	#$8A
+		ldx	#0
+		jsr	OSBYTE
+		jmp	keyboard
+endkey
+		pla
+		; Find BASIC
+		lda	#$BB:LDX #0:LDY #$FF:JSR OSBYTE
+		; Enter BASIC
+		lda	#$8E
+		jmp	OSBYTE
+rfscomm
+		equs	"PA.=$1900:CH.",34,"PALETTE",34, 13, 0
+				
+disable
+		; Disable VideoNuLA (force A1 address line low)
+		lda	#$50
+		sta	SHEILA_NULA_CTLAUX
+		jmp	pullout
+				
+reset
+		; Reset VideoNuLA extra features
+		jsr	resetsb
+		jmp	pullout
+				
+resetsb
+		lda	#$40
+		sta	SHEILA_NULA_CTLAUX
+		rts
+				
+invarg
+		brk
+		equb	$7F
+		equs	"Invalid argument"
+		brk
+		equb	$FF
+				
+vdu
+		; Enable\disable extended VDU drivers
+				
+		; read argument
+		jsr	GSREAD
+		bcs	vduexit
+		and	#$DF
+		cmp	#'O'
+		bne	vduexit
+		jsr	GSREAD
+		bcs	vduexit
+		and	#$DF
+		cmp	#'F'
+		beq	checkf
+		cmp	#'N'
+		bne	vduexit
+		jmp	vduon
+				
+vduexit
+		; invalid argument
+		ldx	#invarg MOD 256
+		ldy	#invarg DIV 256
+		jmp	error
+				
+error
+		stx	vnula_zp
+		sty	vnula_zp+1
+		ldy	#$FF
+errorlp
+		iny
+		lda	(vnula_zp),Y
+		sta	errstack,Y
+		bpl	errorlp
+		pla
+		sta	vnula_zp+1
+		pla
+		sta	vnula_zp
+		jmp	errstack
+				
+checkf
+		jsr	GSREAD
+		bcs	vduexit
+		and	#$DF
+		cmp	#'F'
+		bne	vduexit
+				
+vduoff
+		lda	vnula_flags
+		and	#newvduflag
+		bne	vduoff1
+		jmp	pullout
+vduoff1
+		; restore old VDU drivers
+		ldx	oldwrchv
+		ldy	oldwrchv+1
+		php
+		sei
+		stx	wrchv
+		sty	wrchv+1
+		cli
+		plp
+		; restore old REMV
+		ldx	oldremv
+		ldy	oldremv+1
+		php
+		sei
+		stx	remv
+		sty	remv+1
+		cli
+		plp
+		ldx	oldbytev
+		ldy	oldbytev+1
+		php
+		sei
+		stx	bytev
+		sty	bytev+1
+		cli
+		plp
+		lda	vnula_flags:AND #vnula_newmodeflag:BEQ vduoffclearflags
+		; not in new a new mode so switch off attribute modes
+		jsr	noattributes
+		; and restore original font
+		jsr	restoreoriginalfont
+		; and restore screen mode
+		lda	#22:JSR OSWRCH
+		lda	$355:JSR OSWRCH
+		; clear vnula_flags
+vduoffclearflags
+		lda	#0:STA vnula_flags
+vduout
+		jmp	pullout 
+				
+noattributes
+		lda	#$60:STA SHEILA_NULA_CTLAUX
+		lda	#$70:STA SHEILA_NULA_CTLAUX
+		rts
+				
+vduon
+		lda	vnula_flags:AND #newvduflag
+		bne	vduout
+		jsr	enablexvdu
+		jmp	pullout
+				
+enablexvdu
+		; enable extended VDU vectors
+		; get start of extended vector space
+		lda	#$A8
+		ldx	#0
+		ldy	#$FF
+		jsr	OSBYTE
+		stx	vnula_zp
+		sty	vnula_zp+1
+		ldy	#wrchoffset
+		lda	#vnula_newwrch MOD 256
+		sta	(vnula_zp),Y
+		iny
+		lda	#vnula_newwrch DIV 256
+		sta	(vnula_zp),Y
+		iny
+		lda	zp_mos_curROM
+		sta	(vnula_zp),Y
+				
+		; redirect REMV - used for cursor editing
+		ldy	#remvoffset
+		lda	#newrem MOD 256
+		sta	(vnula_zp),Y
+		iny
+		lda	#newrem DIV 256
+		sta	(vnula_zp),Y
+		iny
+		lda	zp_mos_curROM
+		sta	(vnula_zp),Y
+				
+		; redirect BYTEV - used for screen mode sizes and character identification
+		ldy	#bytevoffset
+		lda	#newbyte MOD 256
+		sta	(vnula_zp),Y
+		iny
+		lda	#newbyte DIV 256
+		sta	(vnula_zp),Y
+		iny
+		lda	zp_mos_curROM
+		sta	(vnula_zp),Y
+				
+		; preserve old WRCHV
+		lda	wrchv
+		sta	oldwrchv
+		lda	wrchv+1
+		sta	oldwrchv+1
+				
+		; preserve old REMV
+		lda	remv
+		sta	oldremv
+		lda	remv+1
+		sta	oldremv+1
+				
+		; preserve old BYTEV
+		lda	bytev
+		sta	oldbytev
+		lda	bytev+1
+		sta	oldbytev+1
+				
+		; point WRCHV to extended vector
+		ldx	#wrchoffset
+		ldy	#$FF
+		php
+		sei
+		stx	wrchv
+		sty	wrchv+1
+		cli
+		plp
+				
+		; point REMV to extended vector
+		ldx	#remvoffset
+		ldy	#$FF
+		php
+		sei
+		stx	remv
+		sty	remv+1
+		cli
+		plp
+				
+		; point BYTEV to extended vector
+		ldx	#bytevoffset
+		ldy	#$FF
+		php
+		sei
+		stx	bytev
+		sty	bytev+1
+		cli
+		plp
+				
+		; store flag to indicate vnula_newwrch in operation (but no new fonts or new modes yet!)
+		lda	#newvduflag:STA vnula_flags
+		rts
+				
+oldremall
+		pla
+		sta	vnula_zp+1
+		pla
+		sta	vnula_zp
+oldremxyf
+		plp
+		pla
+		tay
+		pla
+		tax
+oldrema
+		pla
+oldrem
+		jmp	(oldremv)
+				
+		; extended REMV routine for copy/editing
+newrem
+		; on entry, X = buffer
+		; if examine (not remove), overflow is set
+		bvs	oldrem
+		cpx	#0
+		bne	oldrem
+		; check cursor split status
+		php
+		bit	$D0
+		bvs	checkedit
+		plp
+		jmp	oldrem  
+		; check edit status
+checkedit
+		plp
+		pha
+		lda	$27D
+		bne	oldrema
+		; check screen disabled
+		lda	$27C
+		and	#2
+		bne	oldrema
+		lda	vnula_flags
+		and	#vnula_newmodeflag
+		beq	oldrema
+				
+		; set overflow flag so we only examine the buffer
+		bit	colplottable3+1 
+		jsr	oldrem
+		bcs	newremend2
+		cmp	#vnula_key_COPY
+		beq	copypressed
+		clv
+		jmp	oldrema
+				
+newremend2
+		pla
+		tya
+		rts
+				
+		; now we know we are in a new mode with editing on and copy pressed
+copypressed
+		txa
+		pha
+		lda	vnula_zp
+		pha
+		lda	vnula_zp+1
+		pha
+		lda	vnula_zp+2
+		pha
+		lda	vnula_zp+3
+		pha
+		; remove copy key from buffer as we'll replace it with the character at the cursor
+		clv
+		jsr	oldrem
+		jsr	osb87
+		cpx	#0
+		beq	exitnotfound
+				
+exitfound
+		txa
+		pha
+		lda	#0
+		ldx	#1
+		jsr	OSBYTE
+onep2
+		cpx	#1
+		bne	twop0
+		jsr	$C664
+		jmp	exitrestore
+twop0
+		cpx	#2
+		bne	threep2orhigher
+		jsr	$C652
+		jmp	exitrestore
+threep2orhigher
+		; need to ensure MOS VDU routines are paged in
+		lda	$FE34
+		sta	vnula_zp
+		and	#$F7
+		sta	$FE34
+		sei
+		lda	#9
+		jsr	$DFBC
+		cli
+		lda	vnula_zp
+		sta	$FE34
+exitrestore
+		pla
+		tay
+		ldx	#0
+		lda	#153
+		jsr	OSBYTE
+		jmp	exitnewremv
+				
+exitnotfound
+		; sound bell
+		lda	#7
+		jsr	OSVDU
+				
+exitnewremv
+		pla
+		sta	vnula_zp+3
+		pla
+		sta	vnula_zp+2
+		pla
+		sta	vnula_zp+1
+		pla
+		sta	vnula_zp
+		pla
+		tax
+		pla
+		tya
+		clv
+		ldx	#0
+		jmp	(oldremv)
+				
+				
+		; extended WRCH routine for VDU 17, 19, 20 and 22
+vnula_newwrch
+		bit	sysvar_VDU_Q_LEN
+		bmi	vnula_wrch_checkQ
+		sta	vnula_vdu_code_sav
+		cmp	#20
+		beq	dovdu20
+				
+oldwrch
+		jmp	(oldwrchv)
+				
+oldvdu
+		pla
+		jmp	(oldwrchv)
+				
+vnula_wrch_checkQ
+		pha
+		; check VDU settings before doing anything
+		lda	#2
+		bit	sysvar_OUTSTREAM_DEST
+		bne	oldvdu
+		lda	#$80
+		bit	zp_vdu_status
+		bne	oldvdu 
+		; check queue length and first code
+		lda	sysvar_VDU_Q_LEN
+		cmp	#255
+		bne	oldvdu
+		lda	vnula_vdu_code_sav
+		cmp	#19
+		beq	dovdu19
+		cmp	#22
+		beq	dovdu22
+		cmp	#17
+		beq	dovdu1718
+		cmp	#18
+		beq	dovdu1718
+		jmp	oldvdu
+				
+dovdu20
+		pha
+		jmp	vdu20
+				
+dovdu1718
+		pla
+		pha
+		sta	$323
+		; first check whether we are in a new mode
+		lda	vnula_flags
+		and	#vnula_newmodeflag
+		bne	newvdu1718
+		jmp	oldvdu
+newvdu1718
+		; store X, Y and vnula_zp vars on stack
+		txa
+		pha
+		tya
+		pha
+		lda	vnula_zp
+		pha
+		lda	vnula_zp+1
+		pha
+		; get Y=0 for VDU 17, Y=2 for VDU 18
+		lda	vnula_vdu_code_sav
+		and	#2
+		tay
+		jsr	vnula_docol_attr
+		jmp	newvdudone
+				
+dovdu22
+		jmp	vdu22
+				
+dovdu19
+vdu19
+		pla
+		pha
+		sta	$323
+		; VDU queue
+		; $31F logical colour, $320 vdu19_physical colour + extensions
+		; $321 red component, $322 green component, $323 blue component
+		lda	$320
+		cmp	#16
+		beq	vdu19_logical
+		bcc	vdu19_physical
+				
+		; nothing doing, call old WRCH
+		jmp	oldvdu
+				
+vdu19_logical
+		txa
+		pha
+		tya
+		pha
+		lda	vnula_zp
+		pha
+		lda	vnula_zp+1
+		pha
+		; set logical mapping
+		lda	#$11
+		sta	SHEILA_NULA_CTLAUX
+		lda	$31F
+vdu19_shiftcol
+		asl	A
+		asl	A
+		asl	A
+		asl	A
+		sta	vnula_zp
+		lda	$321
+		lsr	A
+		lsr	A
+		lsr	A
+		lsr	A
+		ora	vnula_zp
+		tax
+		lda	$322
+		and	#$F0
+		sta	vnula_zp
+		lda	$323
+		lsr	A
+		lsr	A
+		lsr	A
+		lsr	A
+		ora	vnula_zp
+		tay
+		sei
+		stx	SHEILA_NULA_PALAUX
+		sty	SHEILA_NULA_PALAUX
+		cli
+		jmp	newvdudone
+				
+vdu19_physical
+		; test vdu19_logical colour = 0
+		lda	$31F
+		bne	checknewmodevdu19
+		; test r,b or g non-zero
+		lda	$321
+		ora	$322
+		ora	$323
+		bne	dophysvdu
+checknewmodevdu19
+		lda	#vnula_newmodeflag
+		and	vnula_flags
+		bne	newmodevdu19
+		jmp	oldvdu
+				
+dophysvdu
+		txa
+		pha
+		tya
+		pha
+		lda	vnula_zp
+		pha
+		lda	vnula_zp+1
+		pha
+		; set vdu19_physical mapping
+		lda	#$10
+		sta	SHEILA_NULA_CTLAUX
+		lda	$320
+		jmp	vdu19_shiftcol
+				
+newvdudone
+		pla
+		sta	vnula_zp+1
+		pla
+		sta	vnula_zp
+		pla
+		tay
+		pla
+		tax
+newvdudoneA
+		inc	sysvar_VDU_Q_LEN
+		pla
+		rts	
+				
+newmodevdu19
+		; this is VDU 19,l,p,0,0,0 for new modes
+		; check vdu19_logical 0-15
+		; already know vdu19_physical is 0-15 and last three not all zero
+		lda	$31F
+		bmi	newvdudoneA
+		beq	vdu19_setzero
+		cmp	#16
+		bcs	newvdudoneA
+		txa
+		pha
+		tya
+		pha
+		lda	vnula_zp
+		pha
+		lda	vnula_zp+1
+		pha
+		; check vdu19_logical colour is in correct range
+		lda	vnula_chosen_mode
+		and	#$7F
+		sec
+		sbc	#vnula_MODE_base
+		tax
+		lda	vnulatbl_newmodemaxcol,X
+		cmp	$31F
+		bcs	vdu19_colgood
+		jmp	newvdudone
+vdu19_colgood
+		; map new mode colour number to actual vdu19_logical colour
+		lda	vnulatbl_paltableindex,X
+		clc
+		adc	$31F
+		tax
+		lda	colmapping,X
+		sta	vnula_zp 
+		lda	$320
+		eor	#7
+		ora	vnula_zp
+		sta	sheila_VIDULA_pal
+		jmp	newvdudone
+				
+vdu19_setzero
+		txa
+		pha
+		tya
+		pha
+		lda	vnula_zp
+		pha
+		lda	vnula_zp+1
+		pha
+		lda	vnula_chosen_mode
+		and	#$7F
+		sec
+		sbc	#vnula_MODE_base
+		tax
+		lda	vnulatbl_newmodemaxcol,X
+		tay
+		cmp	$31F
+		lda	$320
+		eor	#7
+		sta	vnula_zp
+		sta	sheila_VIDULA_pal ; col 0
+		clc
+		adc	#$40
+		sta	sheila_VIDULA_pal ; col 4
+		adc	#$40
+		sta	sheila_VIDULA_pal ; col 8
+		adc	#$40
+		sta	sheila_VIDULA_pal ; col 12
+		; check max colours
+		cpy	#15
+		beq	setzeroend
+		lda	vnula_zp
+		clc
+		adc	#$20
+		sta	sheila_VIDULA_pal ; col 2
+		adc	#$40
+		sta	sheila_VIDULA_pal ; col 6
+		adc	#$40 
+		sta	sheila_VIDULA_pal ; col 10
+		adc	#$40
+		sta	sheila_VIDULA_pal ; col 14
+		cpy	#8
+		beq	setzeroend
+		lda	vnula_zp
+		clc
+		adc	#$30
+		sta	sheila_VIDULA_pal ; col 3
+		adc	#$40
+		sta	sheila_VIDULA_pal ; col 7
+		adc	#$40 
+		sta	sheila_VIDULA_pal ; col 11
+		adc	#$40
+		sta	sheila_VIDULA_pal ; col 15
+				
+setzeroend
+		jmp	newvdudone
+				
+vdu22
+		pla
+		pha
+		sta	$323
+		sta	vnula_chosen_mode
+		and	#$7F
+		cmp	#vnula_MODE_base
+		bcs	vdu22_newmode
+vdu22_not_newmode
+		; original mode so switch off attribute modes
+		lda	#$60
+		sta	SHEILA_NULA_CTLAUX
+		lda	#$70
+		sta	SHEILA_NULA_CTLAUX
+		lda	#vnula_newmodeflag
+		eor	#$FF
+		and	vnula_flags
+		sta	vnula_flags
+		and	#thinfontflag
+		beq	notnewmoderet
+		; need to restore original font
+		jsr	restoreoriginalfont
+		; clear thin font flag
+		lda	#thinfontflag
+		eor	#$FF
+		and	vnula_flags
+		sta	vnula_flags
+		; reinsert vdu 22 on Master as we've used VDU23 to restore font
+		jsr	whichOS
+		bcc	noneedforvdu22
+		lda	#22
+		jsr	OSVDU
+noneedforvdu22
+		pla
+		pha
+		sta	$323
+notnewmoderet
+		jmp	oldvdu
+				
+vdu22_newmode
+		cmp	#vnula_MODES_top
+		bcs	vdu22_not_newmode
+		sta	vnula_zp
+		lda	#vnula_newmodeflag
+		ora	#thinfontflag
+		eor	#$FF
+		and	vnula_flags
+		ora	#1
+		sta	vnula_flags
+		; store X, Y and vnula_zp vars on stack
+		txa
+		pha
+		tya
+		pha
+		lda	vnula_zp
+		pha
+		lda	vnula_zp+1
+		pha
+		lda	vnula_zp
+		sec
+		sbc	#vnula_MODE_base
+		tax
+		sta	vnula_zp
+		; get equivalent original mode number (including shadow bit)
+		lda	vnulatbl_modenumtab,X
+		sta	vnula_zp+1
+		lda	vnula_chosen_mode
+		and	#$80
+		ora	vnula_zp+1
+		sta	vnula_zp+1
+		; change to equivalent original mode
+		lda	#0
+		sta	sysvar_VDU_Q_LEN
+		lda	#22
+		jsr	OSVDU
+		lda	vnula_zp+1
+		jsr	OSVDU
+				
+		; sort out VDU queue
+		lda	#255
+		sta	sysvar_VDU_Q_LEN
+				
+		; switch on 2-bit attribute mode only
+		lda	#$61
+		sta	SHEILA_NULA_CTLAUX
+		lda	#$70
+		sta	SHEILA_NULA_CTLAUX
+		; switch on 3-bit attribute mode if required
+		ldx	vnula_zp
+		lda	vnulatbl_threebittab,X
+		beq	vdu22_donewpalandfont
+		bpl	xtraattr
+				
+		; set new mode flag to 2 (10) for 2-bit per pixel/2-bit attribute 
+		lda	#vnula_newmodeflag
+		eor	vnula_flags
+		sta	vnula_flags
+		jmp	vdu22_donewpalandfont
+				
+xtraattr
+		lda	#$71
+		sta	SHEILA_NULA_CTLAUX
+		; mark as text-only mode (0 pixels per byte)
+		lda	#0
+		sta	$361
+		lda	vnula_flags
+		ora	#3
+		sta	vnula_flags
+				
+		; setup palette
+vdu22_donewpalandfont 
+		jsr	vnula_newmode_pal
+				
+		; setup font
+vdu22_donewfont
+		lda	vnula_flags
+		and	#thinfontflag
+		beq	loadthinfont
+		jmp	newvdudone
+				
+loadthinfont
+		; set thin font flag
+		lda	vnula_flags
+		ora	#thinfontflag
+		sta	vnula_flags
+		jsr	whichOS
+		bcc	beebthinfont
+		jmp	masterthinfont
+beebthinfont
+		; B/B+ - set font pointers
+		lda	vnula_flags
+		and	#vnula_newmodeflag
+		cmp	#2
+		bne	beebthin1
+beebthin2
+		lda	#tfont2_32 DIV 256
+		sta	$368
+		lda	#tfont2_64 DIV 256
+		sta	$369
+		lda	#tfont2_96 DIV 256
+		sta	$36A
+		jmp	beebthinend
+				
+beebthin1
+		; B/B+ - set font pointers
+		lda	#tfont_32 DIV 256
+		sta	$368
+		lda	#tfont_64 DIV 256
+		sta	$369
+		lda	#tfont_96 DIV 256
+		sta	$36A
+beebthinend
+		; flag chars 32-127 as in "RAM"
+		lda	$367
+		ora	#$70
+		sta	$367
+		jmp	newvdudone
+				
+restoreoriginalfont
+		jsr	whichOS
+		bcc	beeboriginalfont
+		jmp	masteroriginalfont
+beeboriginalfont
+		; B/B+ - set font pointers
+		lda	#$0C
+		sta	$368
+		lda	#$0C
+		sta	$369
+		lda	#$0C
+		sta	$36A
+		; flag chars 32-127 as in ROM
+		lda	$367
+		and	#$8F
+		sta	$367
+		rts
+				
+				
+vnulatbl_modenumtab
+		equb	0, 1, 3, 4, 6, 0, 3, 4, 6
+vnulatbl_threebittab
+		equb	0, -1, 0, 0, 0, 1, 1, 1, 1
+vnulatbl_paltableindex
+		equb	0, 16, 0, 0, 0, 32, 32, 32, 32
+defaultfcol
+		equb	4, 7, 4, 4, 4, 7, 7, 7, 7
+vnulatbl_newmodemaxcol
+		equb	4, 15, 4, 4, 4, 8, 8, 8, 8
+colmapping
+		equb	$00, $10, $50, $90, $D0, $00, $00, $00
+		equb	$00, $00, $00, $00, $00, $00, $00, $00
+		equb	$00, $10, $20, $30, $50, $60, $70, $90
+		equb	$A0, $B0, $D0, $E0, $F0, $00, $00, $00
+		equb	$00, $10, $30, $50, $70, $90, $B0, $D0, $F0 
+				
+paltb
+		; 2-bit attribute, 2 colour modes
+		equb	$07,$16,$27,$37,$47,$55,$67,$77,$87,$94,$A7,$B7,$C7,$D0,$E7,$F7
+		; 2-bit attribute, 4 colour mode
+		equb	$07,$16,$25,$34,$47,$53,$62,$71,$87,$90,$AF,$BE,$C7,$DA,$E9,$F8
+		; 3-bit attribute, 2 colour modes
+		equb	$07,$16,$27,$35,$47,$54,$67,$73,$87,$92,$A7,$B1,$C7,$D0,$E7,$FF
+				
+vdu20
+		; ; first check whether we are in a new mode
+		lda	vnula_flags
+		and	#vnula_newmodeflag
+		bne	newvdu20
+		jmp	oldvdu
+newvdu20
+		; store X, Y and vnula_zp vars on stack
+		txa
+		pha
+		tya
+		pha
+		lda	vnula_zp
+		pha
+		lda	vnula_zp+1
+		pha
+		lda	vnula_chosen_mode
+		and	#$7F
+		sec
+		sbc	#vnula_MODE_base
+		tax
+		jsr	vnula_newmode_pal
+		lda	#255
+		sta	sysvar_VDU_Q_LEN
+		jmp	newvdudone
+				
+		; Set up default palette (X is new mode - basemode)
+vnula_newmode_pal
+		lda	vnulatbl_paltableindex,X
+		tay
+		stx	vnula_zp
+		ldx	#0
+vnula_newmode_pallp
+		lda	paltb,Y
+		sta	sheila_VIDULA_pal
+		iny
+		inx
+		cpx	#16
+		bne	vnula_newmode_pallp
+				
+		; set default foreground colour
+		ldx	vnula_zp
+		lda	defaultfcol,X
+		sta	$323
+		ldy	#0
+				
+vnula_docol_attr
+		lda	vnula_flags
+		and	#vnula_newmodeflag
+		tax
+		lda	$323
+		bpl	fgcol
+		iny
+fgcol
+		and	#$7F  ; remove top bit
+		cpx	#1
+		beq	coltab1
+		cpx	#2
+		beq	coltab2
+		jmp	coltab3
+coltab1
+		tax
+		beq	coltab1b
+		dex
+		txa
+		and	#3
+		tax
+		inx
+coltab1b
+		lda	#$FC
+		sta	zp_vdu_wksp
+		lda	colplottable1,X
+		sta	vnula_zp
+		jmp	storecol
+coltab2
+		and	#$0F
+		tax
+		lda	#$EE
+		sta	zp_vdu_wksp
+		lda	colplottable2,X
+		sta	vnula_zp
+		jmp	storecol
+coltab3
+		tax
+		beq	coltab3b
+		dex
+		txa
+		and	#7
+		tax
+		inx
+coltab3b
+		lda	#$F8
+		sta	zp_vdu_wksp
+		lda	colplottable3,X
+		sta	vnula_zp
+storecol
+		sta	vduvar_TXT_FORE,Y
+		cpy	#2
+		bcs	dographcol
+		lda	vduvar_TXT_FORE
+		eor	#$FF
+		and	zp_vdu_wksp
+		sta	zp_vdu_txtcolourEOR ; foreground text colour masked
+		eor	vduvar_TXT_BACK ; background text colour
+		and	zp_vdu_wksp
+		sta	zp_vdu_txtcolourOR
+		lda	zp_vdu_wksp
+		eor	#$FF
+		and	vnula_zp
+		ora	zp_vdu_txtcolourOR
+		sta	zp_vdu_txtcolourOR
+		rts
+				
+dographcol
+		lda	$322
+		sta	$359,Y
+		rts
+				
+		; colour table for 2-bit, 2 colour attribute modes
+colplottable1
+		equb	$00, $FC, $FD, $FE, $FF
+				
+		; colour table for 2-bit, 4 colour attribute modes
+colplottable2
+		equb	$00
+		equb	$0E, $E0, $EE
+		equb	$0F, $E1, $EF 
+		equb	$1E, $F0, $FE
+		equb	$1F, $F1, $FF
+		equb	$00, $00, $00
+				
+		; colour table for 3-bit 2 colour attribute modes
+colplottable3
+		equb	$00, $F8, $F9, $FA, $FB, $FC, $FD, $FE, $FF
+				
+masterthinfont
+		; Use VDU 23 to define thin font
+		ldx	#32
+		lda	vnula_flags
+		and	#vnula_newmodeflag
+		cmp	#2
+		bne	masterthin1
+		lda	#tfont2_32 MOD 256
+		sta	vnula_zp
+		lda	#tfont2_32 DIV 256
+		sta	vnula_zp+1
+		jmp	domthinfontcopy
+				
+masterthin1
+		lda	#tfont_32 MOD 256
+		sta	vnula_zp
+		lda	#tfont_32 DIV 256
+		sta	vnula_zp+1
+				
+domthinfontcopy
+		jsr	fontcopy
+				
+		; sort out VDU queue
+		lda	#255
+		sta	sysvar_VDU_Q_LEN
+		jmp	newvdudone
+				
+masteroriginalfont
+		; Use VDU 23 to restore original font
+		; store X and Y on stack
+		txa
+		pha
+		tya
+		pha
+		ldx	#32
+		lda	#ofont_32 MOD 256
+		sta	vnula_zp
+		lda	#ofont_32 DIV 256
+		sta	vnula_zp+1
+		jsr	fontcopy
+		; restore X and Y
+		pla
+		tay
+		pla
+		tax
+		rts
+				
+fontcopy
+		lda	#0
+		sta	sysvar_VDU_Q_LEN
+cplp
+		txa
+		pha
+		lda	#23
+		jsr	OSVDU
+		pla
+		pha
+		jsr	OSVDU
+		ldy	#0
+		lda	(vnula_zp),Y
+		jsr	OSVDU
+		ldy	#1
+		lda	(vnula_zp),Y
+		jsr	OSVDU
+		ldy	#2
+		lda	(vnula_zp),Y
+		jsr	OSVDU
+		ldy	#3
+		lda	(vnula_zp),Y
+		jsr	OSVDU
+		ldy	#4
+		lda	(vnula_zp),Y
+		jsr	OSVDU
+		ldy	#5
+		lda	(vnula_zp),Y
+		jsr	OSVDU
+		ldy	#6
+		lda	(vnula_zp),Y
+		jsr	OSVDU
+		ldy	#7
+		lda	(vnula_zp),Y
+		jsr	OSVDU
+		lda	vnula_zp
+		clc
+		adc	#8
+		sta	vnula_zp
+		bne	nextchar
+		inc	vnula_zp+1
+nextchar
+		pla
+		tax
+		inx
+		cpx	#128
+		bne	cplp
+		rts
+				
+		; extended OSBYTE $85 and $87
+newbyte
+		php
+		cmp	#$85
+		beq	vnula_new_osbyte_133
+		cmp	#$87
+		beq	vnula_new_osbyte_135
+oldbyte
+		plp
+oldbytejmp
+		jmp	(oldbytev)
+				
+vnula_new_osbyte_133
+		pha
+		txa
+		and	#$7F
+		cmp	#vnula_MODE_base
+		bcc	oldosb85mode
+		cmp	#vnula_MODES_top
+		bcs	oldosb85mode
+		; now know this is a new mode - replace X with standard mode equivalent
+		sec
+		sbc	#vnula_MODE_base
+		tax
+		lda	vnulatbl_modenumtab,X
+		tax
+		; restore A and call old OSBYTE
+oldosb85mode
+		pla
+		jmp	oldbyte
+				
+vnula_new_osbyte_135
+		pha
+		lda	vnula_flags
+		and	#vnula_newmodeflag
+		beq	oldosb85mode
+		; in new mode so need to use our own character identification routine
+		lda	vnula_zp
+		pha
+		lda	vnula_zp+1
+		pha
+		lda	vnula_zp+2
+		pha
+		lda	vnula_zp+3
+		pha
+		jsr	osb87
+		pla
+		sta	vnula_zp+3
+		pla
+		sta	vnula_zp+2
+		pla
+		sta	vnula_zp+1
+		pla
+		sta	vnula_zp
+		pla
+		plp
+		rts
+				
+osb87
+		; now do OSBYTE 135 to get attribute at text cursor (if we happen to find
+		; the right character, so much the better)
+				
+		; first set background colour to 0 so that it doesn't get confused
+		; over background or attribute setting
+		lda	vduvar_TXT_BACK
+		sta	vnula_zp
+		lda	#0
+		sta	vduvar_TXT_BACK
+		lda	#135
+		jsr	oldbytejmp
+				
+		; restore background colour attribute bits
+		lda	vnula_zp
+		sta	vduvar_TXT_BACK
+		; if X<>0 we've found our char. already
+		cpx	#0
+		bne	osb87found
+				
+		; get correct masks for mode
+		lda	vnula_flags
+		and	#vnula_newmodeflag
+		cmp	#1
+		beq	twobitattr1bpp
+		cmp	#2
+		beq	twobitattr2bpp
+threebitattr1bpp
+		lda	#7
+		sta	vnula_zp+2
+		lda	#$F8
+		sta	vnula_zp+3
+		jmp	findchar
+twobitattr1bpp
+		lda	#3
+		sta	vnula_zp+2
+		lda	#$FC
+		sta	vnula_zp+3
+		jmp	findchar
+twobitattr2bpp
+		lda	#$11
+		sta	vnula_zp+2
+		lda	#$EE
+		sta	vnula_zp+3
+				
+findchar
+		lda	#0
+		sta	vnula_zp
+		lda	#tfont_32 DIV 256
+		sta	vnula_zp+1
+		; if in 2bpp/2attr mode, check against second font...
+		lda	#$11
+		cmp	vnula_zp+2
+		bne	findchar2
+		lda	#$03
+		clc
+		adc	vnula_zp+1
+		sta	vnula_zp+1
+				
+findchar2
+		ldx	#32
+docomp
+		ldy	#7
+comploop
+		lda	$328,Y
+		and	vnula_zp+3
+		cmp	(vnula_zp),Y
+		bne	incchar
+		dey
+		bpl	comploop
+		jmp	osb87found
+incchar
+		inx
+		bmi	osb87notfound
+		lda	vnula_zp
+		clc
+		adc	#8
+		sta	vnula_zp
+		bne	docomp
+		inc	vnula_zp+1
+		jmp	docomp
+				
+osb87notfound
+		ldx	#0
+osb87found
+		ldy	vnula_chosen_mode
+		rts
+				
+		ALIGN $100
+tfont_32
+		equb	$00,$00,$00,$00,$00,$00,$00,$00
+		equb	$20,$20,$20,$20,$00,$00,$20,$00
+		equb	$50,$50,$50,$00,$00,$00,$00,$00
+		equb	$50,$50,$F8,$50,$F8,$50,$50,$00
+		equb	$20,$78,$A0,$70,$28,$F0,$20,$00
+		equb	$C0,$C8,$10,$20,$40,$98,$18,$00
+		equb	$20,$50,$50,$60,$A8,$90,$68,$00
+		equb	$10,$20,$40,$00,$00,$00,$00,$00
+		equb	$10,$20,$40,$40,$40,$20,$10,$00
+		equb	$40,$20,$10,$10,$10,$20,$40,$00
+		equb	$00,$20,$A8,$70,$A8,$20,$00,$00
+		equb	$00,$20,$20,$F8,$20,$20,$00,$00
+		equb	$00,$00,$00,$00,$00,$20,$20,$40
+		equb	$00,$00,$00,$F8,$00,$00,$00,$00
+		equb	$00,$00,$00,$00,$00,$20,$20,$00
+		equb	$00,$08,$10,$20,$40,$80,$00,$00
+		equb	$70,$88,$98,$A8,$C8,$88,$70,$00
+		equb	$20,$60,$20,$20,$20,$20,$70,$00
+		equb	$70,$88,$08,$10,$20,$40,$F8,$00
+		equb	$F8,$10,$20,$10,$08,$88,$70,$00
+		equb	$10,$30,$50,$90,$F8,$10,$10,$00
+		equb	$F8,$80,$F0,$08,$08,$88,$70,$00
+		equb	$30,$40,$80,$F0,$88,$88,$70,$00
+		equb	$F8,$08,$10,$20,$40,$40,$40,$00
+		equb	$70,$88,$88,$70,$88,$88,$70,$00
+		equb	$70,$88,$88,$78,$08,$10,$60,$00
+		equb	$00,$00,$20,$20,$00,$20,$20,$00
+		equb	$00,$00,$20,$20,$00,$20,$20,$40
+		equb	$10,$20,$40,$80,$40,$20,$10,$00
+		equb	$00,$00,$F8,$00,$F8,$00,$00,$00
+		equb	$40,$20,$10,$08,$10,$20,$40,$00
+		equb	$70,$88,$10,$20,$20,$00,$20,$00
+				
+tfont_64
+		equb	$70,$88,$B8,$A8,$B8,$80,$70,$00
+		equb	$70,$88,$88,$F8,$88,$88,$88,$00
+		equb	$F0,$88,$88,$F0,$88,$88,$F0,$00
+		equb	$70,$88,$80,$80,$80,$88,$70,$00
+		equb	$E0,$90,$88,$88,$88,$90,$E0,$00
+		equb	$F8,$80,$80,$F0,$80,$80,$F8,$00
+		equb	$F8,$80,$80,$F0,$80,$80,$80,$00
+		equb	$78,$80,$80,$98,$88,$88,$78,$00
+		equb	$88,$88,$88,$F8,$88,$88,$88,$00
+		equb	$70,$20,$20,$20,$20,$20,$70,$00
+		equb	$78,$10,$10,$10,$10,$90,$60,$00
+		equb	$88,$90,$A0,$C0,$A0,$90,$88,$00
+		equb	$80,$80,$80,$80,$80,$80,$F8,$00
+		equb	$88,$D8,$A8,$A8,$88,$88,$88,$00
+		equb	$88,$88,$C8,$A8,$98,$88,$88,$00
+		equb	$70,$88,$88,$88,$88,$88,$70,$00
+		equb	$F0,$88,$88,$F0,$80,$80,$80,$00
+		equb	$70,$88,$88,$88,$A8,$90,$68,$00
+		equb	$F0,$88,$88,$F0,$A0,$90,$88,$00
+		equb	$78,$80,$80,$70,$08,$08,$F0,$00
+		equb	$F8,$20,$20,$20,$20,$20,$20,$00
+		equb	$88,$88,$88,$88,$88,$88,$70,$00
+		equb	$88,$88,$88,$88,$88,$50,$20,$00
+		equb	$88,$88,$88,$A8,$A8,$A8,$50,$00
+		equb	$88,$88,$50,$20,$50,$88,$88,$00
+		equb	$88,$88,$88,$50,$20,$20,$20,$00
+		equb	$F8,$08,$10,$20,$40,$80,$F8,$00
+		equb	$70,$40,$40,$40,$40,$40,$70,$00
+		equb	$00,$80,$40,$20,$10,$08,$00,$00
+		equb	$70,$10,$10,$10,$10,$10,$70,$00
+		equb	$20,$50,$88,$00,$00,$00,$00,$00
+		equb	$00,$00,$00,$00,$00,$00,$00,$F8
+tfont_96
+		equb	$30,$48,$40,$E0,$40,$40,$F8,$00
+		equb	$00,$00,$70,$08,$78,$88,$78,$00
+		equb	$80,$80,$F0,$88,$88,$88,$F0,$00
+		equb	$00,$00,$38,$40,$40,$40,$38,$00
+		equb	$08,$08,$78,$88,$88,$88,$78,$00
+		equb	$00,$00,$30,$48,$78,$40,$30,$00
+		equb	$10,$28,$20,$70,$20,$20,$20,$00
+		equb	$00,$00,$30,$48,$48,$38,$08,$30
+		equb	$40,$40,$70,$48,$48,$48,$48,$00
+		equb	$20,$00,$60,$20,$20,$20,$70,$00
+		equb	$10,$00,$10,$10,$10,$10,$50,$20
+		equb	$40,$40,$50,$60,$60,$50,$48,$00
+		equb	$60,$20,$20,$20,$20,$20,$70,$00
+		equb	$00,$00,$50,$A8,$A8,$88,$88,$00
+		equb	$00,$00,$30,$48,$48,$48,$48,$00
+		equb	$00,$00,$30,$48,$48,$48,$30,$00
+		equb	$00,$00,$70,$48,$48,$70,$40,$40
+		equb	$00,$00,$70,$90,$90,$70,$10,$18
+		equb	$00,$00,$58,$60,$40,$40,$40,$00
+		equb	$00,$00,$70,$80,$70,$08,$70,$00
+		equb	$00,$20,$70,$20,$20,$20,$10,$00
+		equb	$00,$00,$90,$90,$90,$90,$78,$00
+		equb	$00,$00,$88,$88,$88,$50,$20,$00
+		equb	$00,$00,$88,$88,$A8,$A8,$50,$00
+		equb	$00,$00,$88,$50,$20,$50,$88,$00
+		equb	$00,$00,$48,$48,$48,$38,$08,$30
+		equb	$00,$00,$F8,$10,$20,$40,$F8,$00
+		equb	$18,$20,$20,$C0,$20,$20,$18,$00
+		equb	$20,$20,$20,$00,$20,$20,$20,$00
+		equb	$C0,$20,$20,$18,$20,$20,$C0,$00
+		equb	$00,$00,$40,$A8,$10,$00,$00,$00
+		equb	$F8,$F8,$F8,$F8,$F8,$F8,$F8,$F8
+				
+tfont2_32
+		equb	$00,$00,$00,$00,$00,$00,$00,$00
+		equb	$20,$20,$20,$20,$00,$00,$20,$00
+		equb	$48,$48,$48,$00,$00,$00,$00,$00
+		equb	$48,$48,$EC,$48,$EC,$48,$48,$00
+		equb	$20,$6C,$A0,$68,$24,$E8,$20,$00
+		equb	$C0,$C4,$08,$20,$40,$8C,$0C,$00
+		equb	$20,$48,$48,$60,$A4,$88,$64,$00
+		equb	$08,$20,$40,$00,$00,$00,$00,$00
+		equb	$08,$20,$40,$40,$40,$20,$08,$00
+		equb	$40,$20,$08,$08,$08,$20,$40,$00
+		equb	$00,$20,$A4,$68,$A4,$20,$00,$00
+		equb	$00,$20,$20,$EC,$20,$20,$00,$00
+		equb	$00,$00,$00,$00,$00,$20,$20,$40
+		equb	$00,$00,$00,$EC,$00,$00,$00,$00
+		equb	$00,$00,$00,$00,$00,$20,$20,$00
+		equb	$00,$04,$08,$20,$40,$80,$00,$00
+		equb	$68,$84,$8C,$A4,$C4,$84,$68,$00
+		equb	$20,$60,$20,$20,$20,$20,$68,$00
+		equb	$68,$84,$04,$08,$20,$40,$EC,$00
+		equb	$EC,$08,$20,$08,$04,$84,$68,$00
+		equb	$08,$28,$48,$88,$EC,$08,$08,$00
+		equb	$EC,$80,$E8,$04,$04,$84,$68,$00
+		equb	$28,$40,$80,$E8,$84,$84,$68,$00
+		equb	$EC,$04,$08,$20,$40,$40,$40,$00
+		equb	$68,$84,$84,$68,$84,$84,$68,$00
+		equb	$68,$84,$84,$6C,$04,$08,$60,$00
+		equb	$00,$00,$20,$20,$00,$20,$20,$00
+		equb	$00,$00,$20,$20,$00,$20,$20,$40
+		equb	$08,$20,$40,$80,$40,$20,$08,$00
+		equb	$00,$00,$EC,$00,$EC,$00,$00,$00
+		equb	$40,$20,$08,$04,$08,$20,$40,$00
+		equb	$68,$84,$08,$20,$20,$00,$20,$00
+				
+tfont2_64
+		equb	$68,$84,$AC,$A4,$AC,$80,$68,$00
+		equb	$68,$84,$84,$EC,$84,$84,$84,$00
+		equb	$E8,$84,$84,$E8,$84,$84,$E8,$00
+		equb	$68,$84,$80,$80,$80,$84,$68,$00
+		equb	$E0,$88,$84,$84,$84,$88,$E0,$00
+		equb	$EC,$80,$80,$E8,$80,$80,$EC,$00
+		equb	$EC,$80,$80,$E8,$80,$80,$80,$00
+		equb	$6C,$80,$80,$8C,$84,$84,$6C,$00
+		equb	$84,$84,$84,$EC,$84,$84,$84,$00
+		equb	$68,$20,$20,$20,$20,$20,$68,$00
+		equb	$6C,$08,$08,$08,$08,$88,$60,$00
+		equb	$84,$88,$A0,$C0,$A0,$88,$84,$00
+		equb	$80,$80,$80,$80,$80,$80,$EC,$00
+		equb	$84,$CC,$A4,$A4,$84,$84,$84,$00
+		equb	$84,$84,$C4,$A4,$8C,$84,$84,$00
+		equb	$68,$84,$84,$84,$84,$84,$68,$00
+		equb	$E8,$84,$84,$E8,$80,$80,$80,$00
+		equb	$68,$84,$84,$84,$A4,$88,$64,$00
+		equb	$E8,$84,$84,$E8,$A0,$88,$84,$00
+		equb	$6C,$80,$80,$68,$04,$04,$E8,$00
+		equb	$EC,$20,$20,$20,$20,$20,$20,$00
+		equb	$84,$84,$84,$84,$84,$84,$68,$00
+		equb	$84,$84,$84,$84,$84,$48,$20,$00
+		equb	$84,$84,$84,$A4,$A4,$A4,$48,$00
+		equb	$84,$84,$48,$20,$48,$84,$84,$00
+		equb	$84,$84,$84,$48,$20,$20,$20,$00
+		equb	$EC,$04,$08,$20,$40,$80,$EC,$00
+		equb	$68,$40,$40,$40,$40,$40,$68,$00
+		equb	$00,$80,$40,$20,$08,$04,$00,$00
+		equb	$68,$08,$08,$08,$08,$08,$68,$00
+		equb	$20,$48,$84,$00,$00,$00,$00,$00
+		equb	$00,$00,$00,$00,$00,$00,$00,$EC
+				
+tfont2_96
+		equb	$28,$44,$40,$E0,$40,$40,$EC,$00
+		equb	$00,$00,$68,$04,$6C,$84,$6C,$00
+		equb	$80,$80,$E8,$84,$84,$84,$E8,$00
+		equb	$00,$00,$2C,$40,$40,$40,$2C,$00
+		equb	$04,$04,$6C,$84,$84,$84,$6C,$00
+		equb	$00,$00,$28,$44,$6C,$40,$28,$00
+		equb	$08,$24,$20,$68,$20,$20,$20,$00
+		equb	$00,$00,$28,$44,$44,$2C,$04,$28
+		equb	$40,$40,$68,$44,$44,$44,$44,$00
+		equb	$20,$00,$60,$20,$20,$20,$68,$00
+		equb	$08,$00,$08,$08,$08,$08,$48,$20
+		equb	$40,$40,$48,$60,$60,$48,$44,$00
+		equb	$60,$20,$20,$20,$20,$20,$68,$00
+		equb	$00,$00,$48,$A4,$A4,$84,$84,$00
+		equb	$00,$00,$28,$44,$44,$44,$44,$00
+		equb	$00,$00,$28,$44,$44,$44,$28,$00
+		equb	$00,$00,$68,$44,$44,$68,$40,$40
+		equb	$00,$00,$68,$88,$88,$68,$08,$0C
+		equb	$00,$00,$4C,$60,$40,$40,$40,$00
+		equb	$00,$00,$68,$80,$68,$04,$68,$00
+		equb	$00,$20,$68,$20,$20,$20,$08,$00
+		equb	$00,$00,$88,$88,$88,$88,$6C,$00
+		equb	$00,$00,$84,$84,$84,$48,$20,$00
+		equb	$00,$00,$84,$84,$A4,$A4,$48,$00
+		equb	$00,$00,$84,$48,$20,$48,$84,$00
+		equb	$00,$00,$44,$44,$44,$2C,$04,$28
+		equb	$00,$00,$EC,$08,$20,$40,$EC,$00
+		equb	$0C,$20,$20,$C0,$20,$20,$0C,$00
+		equb	$20,$20,$20,$00,$20,$20,$20,$00
+		equb	$C0,$20,$20,$0C,$20,$20,$C0,$00
+		equb	$00,$00,$40,$A4,$08,$00,$00,$00
+		equb	$EC,$EC,$EC,$EC,$EC,$EC,$EC,$EC
+				
+ofont_32
+		equb	$00, $00, $00, $00, $00, $00, $00, $00
+		equb	$18, $18, $18, $18, $18, $00, $18, $00
+		equb	$6C, $6C, $6C, $00, $00, $00, $00, $00
+		equb	$36, $36, $7F, $36, $7F, $36, $36, $00
+		equb	$0C, $3F, $68, $3E, $0B, $7E, $18, $00
+		equb	$60, $66, $0C, $18, $30, $66, $06, $00
+		equb	$38, $6C, $6C, $38, $6D, $66, $3B, $00
+		equb	$0C, $18, $30, $00, $00, $00, $00, $00
+		equb	$0C, $18, $30, $30, $30, $18, $0C, $00
+		equb	$30, $18, $0C, $0C, $0C, $18, $30, $00
+		equb	$00, $18, $7E, $3C, $7E, $18, $00, $00
+		equb	$00, $18, $18, $7E, $18, $18, $00, $00
+		equb	$00, $00, $00, $00, $00, $18, $18, $30
+		equb	$00, $00, $00, $7E, $00, $00, $00, $00
+		equb	$00, $00, $00, $00, $00, $18, $18, $00
+		equb	$00, $06, $0C, $18, $30, $60, $00, $00
+		equb	$3C, $66, $6E, $7E, $76, $66, $3C, $00
+		equb	$18, $38, $18, $18, $18, $18, $7E, $00
+		equb	$3C, $66, $06, $0C, $18, $30, $7E, $00
+		equb	$3C, $66, $06, $1C, $06, $66, $3C, $00
+		equb	$0C, $1C, $3C, $6C, $7E, $0C, $0C, $00
+		equb	$7E, $60, $7C, $06, $06, $66, $3C, $00
+		equb	$1C, $30, $60, $7C, $66, $66, $3C, $00
+		equb	$7E, $06, $0C, $18, $30, $30, $30, $00
+		equb	$3C, $66, $66, $3C, $66, $66, $3C, $00
+		equb	$3C, $66, $66, $3E, $06, $0C, $38, $00
+		equb	$00, $00, $18, $18, $00, $18, $18, $00
+		equb	$00, $00, $18, $18, $00, $18, $18, $30
+		equb	$0C, $18, $30, $60, $30, $18, $0C, $00
+		equb	$00, $00, $7E, $00, $7E, $00, $00, $00
+		equb	$30, $18, $0C, $06, $0C, $18, $30, $00
+		equb	$3C, $66, $0C, $18, $18, $00, $18, $00
+ofont_64
+		equb	$3C, $66, $6E, $6A, $6E, $60, $3C, $00
+		equb	$3C, $66, $66, $7E, $66, $66, $66, $00
+		equb	$7C, $66, $66, $7C, $66, $66, $7C, $00
+		equb	$3C, $66, $60, $60, $60, $66, $3C, $00
+		equb	$78, $6C, $66, $66, $66, $6C, $78, $00
+		equb	$7E, $60, $60, $7C, $60, $60, $7E, $00
+		equb	$7E, $60, $60, $7C, $60, $60, $60, $00
+		equb	$3C, $66, $60, $6E, $66, $66, $3C, $00
+		equb	$66, $66, $66, $7E, $66, $66, $66, $00
+		equb	$7E, $18, $18, $18, $18, $18, $7E, $00
+		equb	$3E, $0C, $0C, $0C, $0C, $6C, $38, $00
+		equb	$66, $6C, $78, $70, $78, $6C, $66, $00
+		equb	$60, $60, $60, $60, $60, $60, $7E, $00
+		equb	$63, $77, $7F, $6B, $6B, $63, $63, $00
+		equb	$66, $66, $76, $7E, $6E, $66, $66, $00
+		equb	$3C, $66, $66, $66, $66, $66, $3C, $00
+		equb	$7C, $66, $66, $7C, $60, $60, $60, $00
+		equb	$3C, $66, $66, $66, $6A, $6C, $36, $00
+		equb	$7C, $66, $66, $7C, $6C, $66, $66, $00
+		equb	$3C, $66, $60, $3C, $06, $66, $3C, $00
+		equb	$7E, $18, $18, $18, $18, $18, $18, $00
+		equb	$66, $66, $66, $66, $66, $66, $3C, $00
+		equb	$66, $66, $66, $66, $66, $3C, $18, $00
+		equb	$63, $63, $6B, $6B, $7F, $77, $63, $00
+		equb	$66, $66, $3C, $18, $3C, $66, $66, $00
+		equb	$66, $66, $66, $3C, $18, $18, $18, $00
+		equb	$7E, $06, $0C, $18, $30, $60, $7E, $00
+		equb	$7C, $60, $60, $60, $60, $60, $7C, $00
+		equb	$00, $60, $30, $18, $0C, $06, $00, $00
+		equb	$3E, $06, $06, $06, $06, $06, $3E, $00
+		equb	$18, $3C, $66, $42, $00, $00, $00, $00
+		equb	$00, $00, $00, $00, $00, $00, $00, $FF
+ofont_96
+		equb	$1C, $36, $30, $7C, $30, $30, $7E, $00
+		equb	$00, $00, $3C, $06, $3E, $66, $3E, $00
+		equb	$60, $60, $7C, $66, $66, $66, $7C, $00
+		equb	$00, $00, $3C, $66, $60, $66, $3C, $00
+		equb	$06, $06, $3E, $66, $66, $66, $3E, $00
+		equb	$00, $00, $3C, $66, $7E, $60, $3C, $00
+		equb	$1C, $30, $30, $7C, $30, $30, $30, $00
+		equb	$00, $00, $3E, $66, $66, $3E, $06, $3C
+		equb	$60, $60, $7C, $66, $66, $66, $66, $00
+		equb	$18, $00, $38, $18, $18, $18, $3C, $00
+		equb	$18, $00, $38, $18, $18, $18, $18, $70
+		equb	$60, $60, $66, $6C, $78, $6C, $66, $00
+		equb	$38, $18, $18, $18, $18, $18, $3C, $00
+		equb	$00, $00, $36, $7F, $6B, $6B, $63, $00
+		equb	$00, $00, $7C, $66, $66, $66, $66, $00
+		equb	$00, $00, $3C, $66, $66, $66, $3C, $00
+		equb	$00, $00, $7C, $66, $66, $7C, $60, $60
+		equb	$00, $00, $3E, $66, $66, $3E, $06, $07
+		equb	$00, $00, $6C, $76, $60, $60, $60, $00
+		equb	$00, $00, $3E, $60, $3C, $06, $7C, $00
+		equb	$30, $30, $7C, $30, $30, $30, $1C, $00
+		equb	$00, $00, $66, $66, $66, $66, $3E, $00
+		equb	$00, $00, $66, $66, $66, $3C, $18, $00
+		equb	$00, $00, $63, $6B, $6B, $7F, $36, $00
+		equb	$00, $00, $66, $3C, $18, $3C, $66, $00
+		equb	$00, $00, $66, $66, $66, $3E, $06, $3C
+		equb	$00, $00, $7E, $0C, $18, $30, $7E, $00
+		equb	$0C, $18, $18, $70, $18, $18, $0C, $00
+		equb	$18, $18, $18, $00, $18, $18, $18, $00
+		equb	$30, $18, $18, $0E, $18, $18, $30, $00
+		equb	$31, $6B, $46, $00, $00, $00, $00, $00
+		equb	$FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF
+end
+				
+		save	"VNULA", header, end
+		 
