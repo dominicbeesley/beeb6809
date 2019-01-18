@@ -5,14 +5,20 @@ rti_opcode		EQU	$3B
 JIM			EQU	$FD00
 
 * mos ROM memory map location
-SHEILA_ROMCTL_SWR	EQU	$FE30
-SHEILA_ROMCTL_MOS	EQU	$FE31
+sheila_ROMCTL_SWR	EQU	$FE30
+sheila_ROMCTL_MOS	EQU	$FE31
+sheila_MEM_DEBUG_SAVE	EQU	$FE32
 
 ROMCTL_BITS_FLEX	EQU	$10
 
 	IF MACH_BEEB
-ROMCTL_MOS_JIMEN	EQU	$02
-ROMCTL_MOS_SWMOS	EQU	$01
+BITS_MEM_CTL_SWMOS		EQU $01
+BITS_MEM_CTL_JIMEN		EQU $02
+BITS_MEM_CTL_SWMOS_DEBUG	EQU $04
+BITS_MEM_CTL_SWMOS_DEBUG_EN	EQU $08
+BITS_MEM_CTL_FLEX		EQU $10
+BITS_MEM_CTL_SWMOS_DEBUG_5C	EQU $40
+BITS_MEM_CTL_SWMOS_DEBUG_ACT	EQU $80
 
 FRED_JIM_PAGE_HI	EQU	$FCFE
 FRED_JIM_PAGE_LO	EQU	$FCFF
@@ -25,8 +31,8 @@ SHEILA_DEBUG		EQU	$FEFF
 	ENDIF
 
 	IF MACH_CHIPKIT
-SHEILA_ROMCTL_RAM	EQU	$FE32
-SHEILA_MEMC_SCROFF	EQU	$FE33
+sheila_ROMCTL_RAM	EQU	$FE32
+sheila_MEMC_SCROFF	EQU	$FE33
 	ENDIF
 
 
@@ -159,6 +165,21 @@ sheila_USRVIA_ifr			EQU $FE6D
 sheila_USRVIA_ier			EQU $FE6E
 sheila_USRVIA_ora_nh			EQU $FE6F
 
+
+***********************************************************************
+*  VIA constants                                                      *
+***********************************************************************
+
+VIA_IFR_BIT_ANY				EQU $80
+VIA_IFR_BIT_T1				EQU $40
+VIA_IFR_BIT_T2				EQU $20
+VIA_IFR_BIT_CB1				EQU $10
+VIA_IFR_BIT_CB2				EQU $08
+VIA_IFR_BIT_SR				EQU $04
+VIA_IFR_BIT_CA1				EQU $02
+VIA_IFR_BIT_CA2				EQU $01
+
+
 	IF MACH_BEEB
 ***********************************************************************
 * BBC B/B+ WD177x                                                     *
@@ -219,11 +240,56 @@ sheila_VINC_status	EQU	$FCF9
 VINC_status_TXE		EQU	$40
 VINC_status_RXF		EQU	$80
 
-
 sheila_ACIA_CTL		EQU	$FE08
 sheila_ACIA_DATA	EQU	$FE09
 sheila_SERIAL_ULA	EQU	$FE10
+ACIA_RDRF		EQU	$01
+ACIA_TDRE		EQU	$02
 
+
+; BLTCON is written in two passes with top bit clear i.e. not BLTCON_ACT_ACT
+; the exec flags are first set
+; then with top bit set the active flag, bit mode and cell flags are set
+; BLTCON/ACT byte flags
+
+BLITCON_ACT_ACT			EQU	$80		; always set when setting 
+BLITCON_ACT_CELL		EQU	$40		; cell addressing used i.e. move one byte left adds 8 to address
+							; moving one line down either adds 1 byte or STRIDE depending on whether 
+							; line crosses an 8 line boundary
+BLITCON_ACT_MODE_1BBP		EQU	$00		; 1 bit per pixel mapping 2 colours
+BLITCON_ACT_MODE_2BBP		EQU	$10		; 2 bit per pixel mapping 4 colours
+BLITCON_ACT_MODE_4BBP		EQU	$20		; 4 bit per pixel mapping 16 colours
+BLITCON_ACT_MODE_8BBP		EQU	$30		; 8 bit per pixel mapping 256 colours
+
+
+BLITCON_LINE_MAJOR_UPnRIGHT	EQU	$10		; line draw major axis is up
+BLITCON_LINE_MINOR_CCW		EQU	$20		; minor axis is CCW to MAJOR i.e. left when maj up, up when maj right
+							; otherwise 			  right when maj up, down when maj right
+
+BLITCON_ACT_LINE		EQU	$08		; draw a line
+
+BLITCON_EXEC_A			EQU	$01
+BLITCON_EXEC_B			EQU	$02
+BLITCON_EXEC_C			EQU	$04
+BLITCON_EXEC_D			EQU	$08
+BLITCON_EXEC_E			EQU	$10
+
+; DMA controller control flags
+DMACTL_ACT			EQU	$80		; always set to initiate a transfer
+DMACTL_EXTEND			EQU	$20		; use extended functions from control2
+DMACTL_HALT			EQU	$10		; halt cpu during transfer
+DMACTL_STEP_DEST_NONE		EQU	$00		; do not step destination address
+DMACTL_STEP_DEST_UP		EQU	$04		; step destination up after transfer
+DMACTL_STEP_DEST_DOWN		EQU	$08		; step destination down after transfer
+DMACTL_STEP_DEST_RESV		EQU	$0C		; reserved do not use
+DMACTL_STEP_SRC_NONE		EQU	$00		; do not step destination address
+DMACTL_STEP_SRC_UP		EQU	$01		; step destination up after transfer
+DMACTL_STEP_SRC_DOWN		EQU	$02		; step destination down after transfer
+DMACTL_STEP_SRC_RESV		EQU	$03		; reserved do not use
+
+DMACTL2_IF			EQU	$80		; interrupt occurred
+DMACTL2_IE			EQU	$02		; interrupt enable, interrupt after transfer
+DMACTL2_PAUSE			EQU	$01
 
 sheila_DMAC_BLITCON_offs	EQU	0
 sheila_DMAC_FUNCGEN_offs	EQU	$1
@@ -251,6 +317,8 @@ sheila_DMAC_SND_LEN_offs	EQU	$26
 sheila_DMAC_SND_STATUS_offs	EQU	$28
 sheila_DMAC_SND_VOL_offs	EQU	$29
 sheila_DMAC_SND_REPOFF_offs	EQU	$2A
+sheila_DMAC_SND_PEAK_offs	EQU	$2C
+
 
 sheila_DMAC_SND_MA_VOL_offs	EQU	$2E
 sheila_DMAC_SND_SEL_offs	EQU	$2F
@@ -261,7 +329,6 @@ sheila_DMAC_DMA_DEST_ADDR_offs	EQU	$34
 sheila_DMAC_DMA_COUNT_offs	EQU	$37
 sheila_DMAC_DMA_DATA_offs	EQU	$39
 sheila_DMAC_DMA_SEL_offs	EQU	$3F
-
 
 sheila_DMAC			EQU	$FC60
 sheila_DMAC_BLITCON		EQU	sheila_DMAC + sheila_DMAC_BLITCON_offs
@@ -290,6 +357,8 @@ sheila_DMAC_SND_LEN		EQU	sheila_DMAC + sheila_DMAC_SND_LEN_offs
 sheila_DMAC_SND_STATUS		EQU	sheila_DMAC + sheila_DMAC_SND_STATUS_offs
 sheila_DMAC_SND_VOL		EQU	sheila_DMAC + sheila_DMAC_SND_VOL_offs
 sheila_DMAC_SND_REPOFF		EQU	sheila_DMAC + sheila_DMAC_SND_REPOFF_offs
+sheila_DMAC_SND_PEAK		EQU 	sheila_DMAC + sheila_DMAC_SND_PEAK_offs
+
 
 sheila_DMAC_SND_SEL		EQU	sheila_DMAC + sheila_DMAC_SND_SEL_offs
 sheila_DMAC_SND_MA_VOL		EQU	sheila_DMAC + sheila_DMAC_SND_MA_VOL_offs
@@ -300,6 +369,5 @@ sheila_DMAC_DMA_DEST_ADDR	EQU	sheila_DMAC + sheila_DMAC_DMA_DEST_ADDR_offs
 sheila_DMAC_DMA_COUNT		EQU	sheila_DMAC + sheila_DMAC_DMA_COUNT_offs
 sheila_DMAC_DMA_DATA		EQU	sheila_DMAC + sheila_DMAC_DMA_DATA_offs
 sheila_DMAC_DMA_SEL		EQU	sheila_DMAC + sheila_DMAC_DMA_SEL_offs
-
 
 	ENDIF

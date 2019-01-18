@@ -2,6 +2,7 @@
 ;	V option on ROMS
 ;	make relocatable
 ;	make commands that can destroy this rom run from a copy in main RAM then reboot i.e. NUKE,ERASE,COPY,LOAD etc
+;	MDUMP - make more robust access to chip RAM? sort out addressing?
 
 ; Notes for RobC to possibly include in VideoNULA rom
 ; - osbyte 135 - 
@@ -17,6 +18,9 @@
 ; JGH
 ; - mdump, doesn't handle ACCON yet
 ; - mdump, doesn't get bytes past length (useful where dumping hardware regs, reads past len cause problems)
+
+FLASH_UTILS_RUN		EQU $A00
+FLASH_UTILS_MAX_LEN	EQU $100
 
 
 		include "../../includes/oslib.inc"
@@ -40,8 +44,9 @@ zp_SRCOPY_flags	EQU	zp_trans_tmp + 2		; when negative dest if a flash
 
 zp_ROMS_ctr	EQU	zp_trans_tmp + 0
 zp_ROMS_copyptr	EQU	zp_trans_tmp + 1
+
 zp_ROMS_flags	EQU	zp_trans_tmp + 3
-zp_ROMS_ostbl	EQU	zp_trans_acc + 2
+;;zp_ROMS_ostbl	EQU	zp_trans_acc + 2 		;; don't bother we know where they are
 
 zp_ERASE_dest	EQU	zp_trans_tmp + 0
 zp_ERASE_flags	EQU	zp_trans_tmp + 1
@@ -133,11 +138,21 @@ ServiceOut	rts
 * -------------------------------
 * SERVICE 1 - Claim Abs Workspace
 * -------------------------------
+* - We don't need abs workspace but we do want to check for £ key to enter
+*   SRNUKE
 
 svc1_ClaimAbs
 		pshs	D,X,Y,U
 
-		lda	#$79
+		; enable NoIce if SWMOS/BITS_MEM_CTL_SWMOS_DEBUG_EN is set
+		lda	#BITS_MEM_CTL_SWMOS_DEBUG_EN
+		bita	sheila_ROMCTL_MOS
+		beq	1F
+
+		jsr	NoIceUtils_Init
+
+
+1		lda	#$79
 		ldy	#0
 		ldx	#$A8
 		jsr	OSBYTE				; check if _/£ key down
@@ -173,6 +188,7 @@ svc9_keyloop
 		cmpa	,Y+
 		beq	1B				
 2		cmpa	#' '
+		; TODO: Check - this doesn't look right it thinks a space is end? should be blo?
 		bls	1F				; at end of keywords (on command line)
 3		lda	,X+				; not at end skip forwards
 		cmpa	#' '
@@ -209,8 +225,7 @@ svc9_HELP_nokey
 		ldx	#utils_name
 		ldb	#3
 1		jsr	PrintX
-		lda	#' '
-		jsr	PrintA
+		jsr	PrintSpc
 		decb
 		bne	1B
 		jsr	PrintNL
@@ -284,7 +299,7 @@ cmdSRLOAD	jsr	SkipSpacesX
 		jsr	OSFILE				; load file
 
 		; now copy to flash/sram
-		jsr	romWriteInit			; initialise the ROM writer - any error will trash this!
+		jsr	FlashUtilsInit			
 
 		clra
 		ldb	zp_SRLOAD_dest
@@ -299,10 +314,8 @@ cmdSRLOAD	jsr	SkipSpacesX
 
 		jsr	FlashReset			; in case we're in software ID mode
 		jsr	FlashEraseROM
-		bra	cmdSRLOAD_go
 
 cmdSRLOAD_init_RAM
-
 cmdSRLOAD_go
 		ldx	#$8000
 		ldu	#$4000
@@ -311,24 +324,17 @@ cmdSRLOAD_go_lp
 		pshs	A				; save A for later
 		tst	zp_SRLOAD_flags
 		bpl	1F				; not EEPROM, just write to ROM
-		; flash write byte command
-		lda	#$A0
-		jsr	FlashCmdA			; Flash write byte command
-		lda	,S
-1		jsr	romWrite
-		tst	zp_SRLOAD_flags
-		bpl	1F
-		jsr	FlashWaitToggle
-1		jsr	OSRDRM
-		cmpa	,S+
+		jsr	FlashWriteByte
+		bra	2F
+1		sta	,X
+		lda	,X
+2		cmpa	,S+
 		lbne	cmdSRCOPY_verfail
-
 		leax	1,X
 		cmpx	#$C000
 		bne	cmdSRLOAD_go_lp
 		ldx	#str_OK
 		jmp	PrintX
-		lbra	cmdSRCOPY_verfail
 
 
 CMDROMS_FLAGS_CRC	EQU	$20
@@ -361,11 +367,12 @@ cmdRomsNextArg
 cmdRoms_Go
 		stb	zp_ROMS_flags
 
-		lda	#OSBYTE_171_ROMTAB
-		ldx	#0
-		ldy	#$FF
-		jsr	OSBYTE
-		stx	zp_ROMS_ostbl
+		;; don't bother we know where they are
+		;;lda	#OSBYTE_171_ROMTAB
+		;;ldx	#0
+		;;ldy	#$FF
+		;;jsr	OSBYTE
+		;;stx	zp_ROMS_ostbl
 
 		
 		ldx	#strRomsHeadVer			; vecbose headings		
@@ -383,7 +390,8 @@ cmdRoms_lp	jsr	Print2Spc
 
 
 		ldb	zp_ROMS_ctr
-		ldu	zp_ROMS_ostbl
+;		ldu	zp_ROMS_ostbl
+		ldu	#oswksp_ROMTYPE_TAB		;; TODO: use osbyte or admit that this is an OS rom?
 		lda	B,U
 
 
@@ -450,7 +458,7 @@ cmdRoms_fullcheck
 		ldx	#$8000
 		abx					; X now points at (C) of copyright
 		ldb	#4
-		ldu	#str_C
+		ldu	#Copyright
 
 1		jsr	OSRDRM
 		cmpa	,U+
@@ -532,7 +540,7 @@ brkBadCommand	M_ERROR
 
 
 cmdSRERASE
-		jsr	romWriteInit			; initialise the ROM writer - any error will trash this!
+		jsr	FlashUtilsInit			; initialise the ROM writer - any error will trash this!
 
 		jsr	ParseHex
 		lbcs	brkBadId
@@ -566,8 +574,7 @@ cmdSRERASE_RAM
 		ldx	#$8000
 		ldu	#0				; fail counter
 1		lda	#$FF
-		jsr	romWrite
-		jsr	OSRDRM
+		jsr	FlashRomWrite
 		cmpa	#$FF
 		bne	2F
 3		leax	1,X
@@ -595,7 +602,7 @@ cmdSRERASE_RAM
 		lbra	brkEraseFailed
 
 cmdSRCOPY	
-		jsr	romWriteInit			; initialise the ROM writer - any error will trash this!
+		jsr	FlashUtilsInit			; initialise the ROM writer - any error will trash this!
 
 		jsr	ParseHex
 		lbcs	brkBadId
@@ -655,15 +662,11 @@ cmdSRCOPY_go_lp
 		tst	zp_SRCOPY_flags
 		bpl	1F				; not EEPROM, just write to ROM
 		; flash write byte command
-		lda	#$A0
-		jsr	FlashCmdA			; Flash write byte command
-		lda	,S
-1		jsr	romWrite
-		tst	zp_SRCOPY_flags
-		bpl	1F
-		jsr	FlashWaitToggle
-1		jsr	OSRDRM
-		cmpa	,S+
+		jsr	FlashWriteByte
+		bra	2F
+1		sta	,X
+		lda	,X
+2		cmpa	,S+
 		bne	cmdSRCOPY_verfail
 
 		leax	1,X
@@ -712,10 +715,10 @@ cmdSRNUKE_lang_brk
 		jsr	OSNEWL
 		jsr	OSNEWL
 
-		bra	cmdSRNUKE
+		jmp	cmdSRNUKE
 
 cmdSRNUKE_menu
-		fcb	13, "0) Exit	1) Erase Flash	2) Erase RAM	3) Show CRC	4) Erase #", 13, 0
+		fcb	13, "0) Exit 1) Erase Flash 2) Erase RAM 3) CRC 4) Erase # 5) NoIce on 6) NoIce BRK", 13, 0
 
 inkey_clear
 		ldx	#0
@@ -748,6 +751,8 @@ cmdSRNUKE_lang	;Set ourselves up as a language and take over the machine
 		STU	,X					; Claim BRKV
 		STS	ZP_NUKE_S_TOP				; where to reset stack to on error
 
+		jsr	cmdSRNUKE
+		lbra	cmdSRNUKE_reboot
 
 
 cmdSRNUKE	; cmdRoms no VA
@@ -774,11 +779,27 @@ cmdSRNUKE_mainloop
 		beq	cmdSRNUKE_crctoggle
 		cmpb	#'4'
 		beq	cmdSRNUKE_erase_rom
+		cmpb	#'5'
+		beq	cmdSRNUKE_NOICE_on
+		cmpb	#'6'
+		beq	cmdSRNUKE_NOICE_brk
+		bra	1B
+
+
+cmdSRNUKE_NOICE_on
+		jsr	cmdNOICE_on
+		bra	cmdSRNUKE_mainloop
+
+cmdSRNUKE_NOICE_brk
+		ldx	#str_NoiceEnter
+		jsr	PrintX
+		jsr	cmdNOICE_brk
 		bra	cmdSRNUKE_mainloop
 
 cmdSRNUKE_crctoggle
 		ldb	ZP_NUKE_ROMSF
 		eorb	#CMDROMS_FLAGS_CRC
+		stb	ZP_NUKE_ROMSF
 		bra	cmdSRNUKE_mainloop
 
 cmdSRNUKE_erase_rom
@@ -789,7 +810,7 @@ cmdSRNUKE_erase_rom
 		jsr	OSASCI
 		jsr	OSNEWL
 		bcs	cmdSRNUKE_mainloop
-		ldx	#STR_NUKE_CMD
+		ldx	#STR_NUKE_CMD			; enter the keyed number as a phoney param to cmdSRERASE
 		stb	0,X
 		ldb	#13
 		stb	1,X
@@ -807,13 +828,7 @@ cmdSRNUKE_flash
 
 		; erase entire flash chip
 		jsr	FlashReset
-		lda	#$80
-		jsr	FlashCmdA
-		lda	#$10
-		jsr	FlashCmdA
-		jsr	FlashWaitToggle
-		bra	cmdSRNUKE_mainloop
-
+		jsr	FlashEraseComplete
 cmdSRNUKE_reboot
 		ORCC	#CC_I+CC_F
 		jmp	[$F7FE]				; reboot - if we're running from flash we'll crash anyway!
@@ -821,16 +836,16 @@ cmdSRNUKE_reboot
 
 cmdSRNUKE_ram	ldx	#str_NukePrAllRa
 		jsr	PromptYN
-		bne	cmdSRNUKE_mainloop
+		lbne	cmdSRNUKE_mainloop
 
 		ldx	#str_NukeRa
 		jsr	PrintX
 
 		; enable JIM, setup paging regs
-		lda	SHEILA_ROMCTL_MOS
+		lda	sheila_ROMCTL_MOS
 		pshs	A
-		ora	#ROMCTL_MOS_JIMEN
-		sta	SHEILA_ROMCTL_MOS
+		ora	#BITS_MEM_CTL_JIMEN
+		sta	sheila_ROMCTL_MOS
 
 		lda	#$0E
 		sta	FRED_JIM_PAGE_HI
@@ -859,36 +874,120 @@ cmdSRNuke_RAM
 		ldb	FRED_JIM_PAGE_HI
 		cmpb	#$10
 		bne	2B
-		lbra	cmdSRNUKE_mainloop
+		ORCC	#CC_I+CC_F
+		jmp	[$F7FE]				; reboot - if we're running from flash we'll crash anyway!
 cmdSRNuke_RAM_end
 
 cmdSRNUKE_exit	rts
 
+
+
 IsFlashBank
 		; rom id in A, returns EQ if this is a Flash Bank, do NOT rely 
 		; on value returned in A!
+		; if this is an IC slot returs MI
 		cmpa	#$3
 		bls	1F
 		cmpa	#$9
 		blo	2F				; treat SYStem sockets (4..7) as RAM (they might be?!)
-1		anda	#1
-2		rts
+1		coma
+		anda	#1
+		rts		
+2		lda	#$FF
+		rts
 
 ;------------------------------------------------------------------------------
 ; Flash utils
 ;------------------------------------------------------------------------------
 
-FlashReset	pshs	A
-		lda	#$F0
-		jsr	FlashCmdA
-		puls	A,PC
 
-FlashCmdA	pshs	D,X
-		; enable JIM
-		lda	SHEILA_ROMCTL_MOS
+	IF FLASH_UTILS_LEN > FLASH_UTILS_MAX_LEN
+;		ERROR "Flash utils too big!"
+	ENDIF
+		
+
+FlashUtilsInit	pshs	D,X,U
+		ldx	#FLASH_UTILS_RUN
+		ldu	#FLASH_UTILS_LOAD
+		ldb	#FLASH_UTILS_LEN
+1		lda	,U+
+		sta	,X+
+		decb
+		bne	1B
+		puls	D,X,U,PC
+
+;---------------------- LOAD THIS TO LOW WORKSPACE ----------------------------
+
+FLASH_UTILS_LOAD
+		ORG	FLASH_UTILS_RUN
+		PUT	FLASH_UTILS_LOAD
+
+	; FlashRomWrite
+	; On entry 	A = byte to write
+	;		X = address
+	;		Y = rom #
+	; On exit	A = byte actually in ROM/RAM/Flash
+
+FlashRomWrite
+		pshs	B,Y
+		ldb	zp_mos_curROM
+		pshs	B
+		ldb	3,S				; low byte of Y
+		stb	zp_mos_curROM
+		stb	sheila_ROMCTL_SWR
+		sta	,X
+		; read back and wait for it to stop toggling...
+1		lda	,X
+		cmpa	,X
+		bne	1B
+		puls	B
+		stb	zp_mos_curROM
+		stb	sheila_ROMCTL_SWR
+		puls	B,Y,PC
+
+	; FlashWaitToggle	
+	; Wait for a byte to stop toggling
+	; On Entry	X = address
+	;		Y = rom #
+	; On Exit	byte read
+
+_FlashWaitToggle	
+		pshs	D
+		clrb
+_FlashWaitToggle_lp		
+		jsr	OSRDRM
 		pshs	A
-		ora	#ROMCTL_MOS_JIMEN
-		sta	SHEILA_ROMCTL_MOS
+		jsr	OSRDRM
+		cmpa	,S+
+		beq	1F
+		decb
+		bne	_FlashWaitToggle_lp
+		lda	#'.'
+		jsr	OSWRCH
+		bra	_FlashWaitToggle_lp
+1		puls	D,PC
+
+
+
+
+
+FlashReset	lda	#$F0
+		jsr	_FlashCmdA
+		jmp	_FlashWaitToggle
+		
+
+_FlashCmdD
+		jsr	_FlashCmdA
+		tfr	B,A
+
+_FlashCmdA	SEC
+_FlashCmd_S1
+		pshs	D,X
+		; enable JIM
+		lda	sheila_ROMCTL_MOS
+		pshs	A
+		ora	#BITS_MEM_CTL_JIMEN
+		sta	sheila_ROMCTL_MOS
 
 		ldx	#PG_EEPROM_BASE+$0055
 		stx	FRED_JIM_PAGE_HI
@@ -900,49 +999,28 @@ FlashCmdA	pshs	D,X
 		lda	#$55
 		sta	JIM + $AA
 
+		bcc	1F
 		ldx	#PG_EEPROM_BASE+$0055
 		stx	FRED_JIM_PAGE_HI
 		lda	1,S
 		sta	JIM + $55
 
-		puls	A
-		sta	SHEILA_ROMCTL_MOS
+1		puls	A
+		sta	sheila_ROMCTL_MOS
 
 		puls	D,X,PC		
 
-FlashCmdShort	pshs	D,X
-		; enable JIM
-		lda	SHEILA_ROMCTL_MOS
-		pshs	A
-		ora	#ROMCTL_MOS_JIMEN
-		sta	SHEILA_ROMCTL_MOS
-
-		ldx	#PG_EEPROM_BASE+$0055
-		stx	FRED_JIM_PAGE_HI
-		lda	#$AA
-		sta	JIM + $55
-
-		ldx	#PG_EEPROM_BASE+$002A
-		stx	FRED_JIM_PAGE_HI
-		lda	#$55
-		sta	JIM + $AA
-
-		puls	A
-		sta	SHEILA_ROMCTL_MOS
-
-		puls	D,X,PC		
-
+_FlashCmdShort	CLC
+		bra	_FlashCmd_S1
 
 FlashSectorErase
 		pshs	D,U,X,Y
 
 		lda	#$80
-		jsr	FlashCmdA
-		jsr	FlashCmdShort
+		jsr	_FlashCmdA
+		jsr	_FlashCmdShort
 		lda	#$30
-		jsr	romWrite
-
-		jsr	FlashWaitToggle
+		jsr	FlashRomWrite
 
 		leau	$1000,X
 		stu	zp_trans_acc
@@ -950,15 +1028,15 @@ FlashSectorErase
 		; check that sector has been erased
 1		jsr	OSRDRM
 		cmpa	#$FF
-		bne	FlashSectorEraseErr
+		bne	_FlashSectorEraseErr
 		leax	1,X
 		cmpx	zp_trans_acc
 		bne	1B
 
-FlashSectorEraseOK
+_FlashSectorEraseOK
 		CLC
 		puls	D,U,X,Y,PC
-FlashSectorEraseErr
+_FlashSectorEraseErr
 		pshs	X
 		ldx	#str_FailedAt
 		jsr	PrintX
@@ -967,21 +1045,6 @@ FlashSectorEraseErr
 		SEC
 		puls	D,U,X,Y,PC
 
-FlashWaitToggle	
-		pshs	D
-		clrb
-FlashWaitToggle_lp		
-		jsr	OSRDRM
-		pshs	A
-		jsr	OSRDRM
-		cmpa	,S+
-		beq	1F
-		decb
-		bne	FlashWaitToggle_lp
-		lda	#'.'
-		jsr	OSWRCH
-		bra	FlashWaitToggle_lp
-1		puls	D,PC
 
 		; erase ROM slot Y (4 banks)
 FlashEraseROM
@@ -991,11 +1054,38 @@ FlashEraseROM
 1							; erase the 4 sectors		
 		leax	,U
 		jsr	FlashSectorErase
-		bcs	brkEraseFailed
+		lbcs	brkEraseFailed
 		leau	$1000,U
 		decb	
 		bne	1B
 		puls	D,X,Y,U,PC
+
+FlashEraseComplete
+		ldd	#$8010
+		jsr	_FlashCmdD
+		jmp	_FlashWaitToggle
+
+
+	; On entry 	A = byte to write
+	;		X = address
+	;		Y = rom #
+	; On exit	A = byte actually in ROM/RAM/Flash
+FlashWriteByte
+		pshs	A
+		; flash write byte command
+		lda	#$A0
+		jsr	_FlashCmdA			; Flash write byte command
+		puls	A
+1		jmp	FlashRomWrite
+
+
+;---------------------- LOAD THIS TO LOW WORKSPACE ----------------------------
+
+FLASH_UTILS_RUN_END
+FLASH_UTILS_LEN 	EQU	FLASH_UTILS_RUN_END - FLASH_UTILS_RUN
+
+		ORG	FLASH_UTILS_LOAD + FLASH_UTILS_LEN
+
 
 brkEraseFailed  M_ERROR
 		FCB	$80, "Erase fail", 0
@@ -1105,66 +1195,33 @@ subAtXAcc	pshs	D
 
 POLYH    	EQU $10
 POLYL   	EQU $21
+POLY16		EQU $1021
 
+
+;;!!!TODO: check this - I am suspicious
 		; update CRC at zp_trans_acc with byte in A
-crc16		pshs	D	
-		eora	zp_trans_acc        
-		sta	zp_trans_acc
-		ldb	#8          
+crc16		pshs	D,X
+		eora	zp_trans_acc
+		ldb	zp_trans_acc+1        
+		ldx	#8          		
 crc16_lp
-		asl	zp_trans_acc+1
-		rol	zp_trans_acc
+	IF CPU_6309
+		asld
+	ELSE
+		aslb
+		rola
+	ENDIF
 		bcc	crc16_cl
-		lda	zp_trans_acc
+	IF CPU_6309
+		eord	#POLY16
+	ELSE
 		eora	#POLYH
-		sta	zp_trans_acc
-		lda	zp_trans_acc + 1
-		eora	#POLYL
-		sta	zp_trans_acc + 1
-crc16_cl	decb
+		eorb	#POLYL
+	ENDIF
+crc16_cl	leax	-1,X
 		bne 	crc16_lp
-		puls	D,PC
-
-
-;------------------------------------------------------------------------------
-; Write to ROM # in Y, addr in X, data in A
-;------------------------------------------------------------------------------
-;
-; have to bounce off the bottom of the stack while we page in the other ROM
-;
-
-romWriteInit	pshs	D,X,U
-		ldx	#ADDR_ERRBUF
-		ldu	#_romWriteBA
-		ldb	#_romWriteBA_end - _romWriteBA
-1		lda	,U+
-		sta	,X+
-		decb
-		bne	1B
-		puls	D,X,U,PC
-
-
-
-romWrite	pshs	D,Y
-		
-		tfr	Y,D
-		lda	,S
-		jsr	ADDR_ERRBUF
-
-		puls	D,Y,PC
-
-_romWriteBA	pshs	B
-		ldb	zp_mos_curROM
-		pshs	B
-		ldb	1,S
-		stb	zp_mos_curROM
-		stb	SHEILA_ROMCTL_SWR
-		sta	,X
-		puls	B
-		stb	zp_mos_curROM
-		stb	SHEILA_ROMCTL_SWR
-		puls	B,PC
-_romWriteBA_end
+		std	zp_trans_acc
+		puls	D,X,PC
 
 
 ;
@@ -1201,11 +1258,12 @@ PrintSpc	lda	#' '
 PrintNL		lda	#$D
 PrintA		jmp	OSASCI
 
-PrintX		lda	,X+
+PrintX		pshs	X
+2		lda	,X+
 		beq	1F
 		jsr	OSASCI
-		bra	PrintX
-1		rts
+		bra	2B
+1		puls	X,PC
 
 PrintHexNybA	anda	#$0F
 		cmpa	#9
@@ -1532,6 +1590,38 @@ mdump_getio	ldy	zp_mdump_addr + 2
 		bne	1B
 		puls	B,X,Y,U,PC
 
+mdump_getchip	pshs	CC
+		SEI
+		lda	sheila_ROMCTL_MOS
+		pshs	A
+		ora	#BITS_MEM_CTL_JIMEN
+		sta	sheila_ROMCTL_MOS
+
+		pshs	B				; save count
+
+		ldy	zp_mdump_addr + 1
+		sty	FRED_JIM_PAGE_HI
+		ldb	zp_mdump_addr + 3
+
+1		pshs	Y
+		lda	#JIM/256			; jim page
+		tfr	D,Y
+		lda	,Y
+		sta	,X+
+		puls	Y
+
+		incb
+		bne	2F
+		leay	1,Y				; B rolled over...next page
+		sty	FRED_JIM_PAGE_HI
+2		dec	,S				; decrement counter on stack
+		bne	1B
+		leas	1,S				; discard counter
+
+		puls	A
+		sta	sheila_ROMCTL_MOS
+;;		puls	CC				; restore interrupts
+		puls	CC,B,X,Y,U,PC
 
  ;;   800   .GetBytes
  ;;   810   PHP:SEI:LDA &F4:PHA          :\ Disable IRQs, save ROM
@@ -1584,6 +1674,8 @@ mdump_getio	ldy	zp_mdump_addr + 2
 
 
 mdump_gettube
+		inca	
+		beq	mdump_getchip
 		lda	#OSBYTE_234_VAR_TUBE
 		jsr	osbyte_read_var_intoA
 		bpl	mdump_getio
@@ -1671,6 +1763,7 @@ tbl_commands	FDB	strCmdRoms, cmdRoms, helpRoms
 		FDB	strCmdVNRESET, cmdVNRESET, 0
 	ENDIF
 		FDB	strCmdMDUMP, cmdMdump, strHelpMdump
+		FDB	strCmdNOICE, cmdNOICE, strHelpNOICE
 		FDB	0
 
 str_WhichRom	FCB	"Erase Which Rom", 0
@@ -1690,6 +1783,8 @@ strCmdVNRESET	FCB	"VNRESET",0
 	ENDIF
 strCmdMDUMP	FCB	"MDUMP",0
 strHelpMdump	FCB	"[-8|-16] <start> [<end>|+<length>]",0
+strCmdNOICE	FCB	"NOICE",0
+strHelpNOICE	FCB	"[ON|OFF|BRK]",0
 
 strRomsHeadVer	FCB	"  # act  crc typ ver Title", 13
 		FCB	" == === ==== === === =====", 13, 0 
@@ -1697,7 +1792,6 @@ strRomsHeadVer	FCB	"  # act  crc typ ver Title", 13
 strRomsHead	FCB	"  # typ ver Title", 13
 		FCB	" == === === =====", 13, 0 
 
-str_C		FCB	0,"(C)"
 strNoRom	FCB	"--",0
 
 strSRCOPY2RAM	FCB	"Copying to SROM/SRAM at ",0
@@ -1718,6 +1812,11 @@ strNo		FCB	"No", $D, 0
 strYes		FCB	"Yes", $D, 0
 str_NukeFl	FCB	"Erasing flash...", $D, 0
 str_NukeRa	FCB	"Erasing SRAM $E00000 to $0FFFFF, please wait...", $D, 0
+
+str_NoiceDeb	FCB	"NoIce debugging ",0
+str_on		FCB	"on",0
+str_off		FCB	"off",0
+str_NoiceEnter	FCB	"NoIce enter...",13,0
 
 	IF MACH_BEEB
 
@@ -2532,5 +2631,271 @@ t_font2
 		include	"vnula_font_thin_mo1.asm"
 ofont
 		include "vnula_font_original.asm"
+
+
+;==============================================================================
+; NoIce utilities called via ROM
+;==============================================================================
+
+cmdNOICE
+		jsr	SkipSpacesX
+		leax	1,X
+		jsr	ToUpper		
+		cmpa	#13
+		beq	cmdNoiceBadCmd
+		cmpa	#'O'
+		beq	cmdNOICE_onoff
+		cmpa	#'B'
+		bne	cmdNoiceBadCmd
+		lda	,X+
+		jsr	ToUpper
+		cmpa	#'R'
+		bne	cmdNoiceBadCmd
+		lda	,X+
+		jsr	ToUpper
+		cmpa	#'K'
+		bne	cmdNoiceBadCmd
+
+cmdNOICE_brk
+		stx	zp_mos_txtptr			; picked up by some programs as command line pointer
+		lda	#BITS_MEM_CTL_SWMOS_DEBUG_EN
+		bita	sheila_ROMCTL_MOS
+		bne	1F
+		jsr	cmdNOICE_on
+1		DEBUG_INST				; issue special BRK illegal op
+		rts
+
+cmdNOICE_onoff	lda	,X+
+		jsr	ToUpper
+		cmpa	#'N'
+		beq	cmdNOICE_on
+		cmpa	#'F'
+		beq	cmdNOICE_off
+cmdNoiceBadCmd	lbra	brkBadCommand
+
+
+
+cmdNOICE_off	lda	sheila_ROMCTL_MOS
+		anda	#~BITS_MEM_CTL_SWMOS_DEBUG_EN
+		sta	sheila_ROMCTL_MOS
+
+		jsr	cmdNoicePrNoiceDeb
+		ldx	#str_off
+		jsr	PrintX
+		jmp	PrintNL
+
+
+cmdNoicePrNoiceDeb
+		ldx	#str_NoiceDeb
+		jmp	PrintX
+
+
+;--------------------------------------------------------
+NoIceUtils_Init			
+cmdNOICE_on	
+;--------------------------------------------------------
+; called during boot / Service Call 1 to initialise
+; or when started bye *NOICE ON or *NOICE BRK
+		lda	sheila_ROMCTL_MOS
+		ora	#BITS_MEM_CTL_SWMOS_DEBUG_EN
+		sta	sheila_ROMCTL_MOS
+
+		; setup serial for 19200
+		ldx	#8
+		lda	#7
+		jsr	OSBYTE
+		ldx	#8
+		lda	#8
+		jsr	OSBYTE
+
+		; TODO: Maybe make this nicer, at the moment it just nabs the
+		; vectors
+		ldx	#NoIceSys_Handle_NMI9V
+		stx	EXT_NMI9V
+		lda	zp_mos_curROM
+		sta	EXT_NMI9V+2
+		ldx	#EXTVEC_ENTER_NMI9V
+		stx	NMI9V
+		ldx	#NoIceSys_Handle_SWI9V
+		stx	EXT_SWI9V
+		lda	zp_mos_curROM
+		sta	EXT_SWI9V+2
+		ldx	#EXTVEC_ENTER_SWI9V
+		stx	SWI9V
+
+		jsr	NoIceSys_Handle_RESET		; call NoIce reset routine
+
+printNoiceOn
+		; printed to serial port too...
+		jsr	cmdNoicePrNoiceDeb	
+		jsr	NoIcePrintX
+		ldx	#str_on
+		jsr	PrintX
+		jsr	NoIcePrintX
+		jsr	PrintNL
+		jmp	NoIcePrintNL
+
+
+NoIcePrintNL	lda	#13
+		jsr	NoIcePrintCh
+		lda	#10
+NoIcePrintCh
+		pshs	D
+		lda	#ACIA_TDRE
+		ldb	#0
+1		bita	sheila_ACIA_CTL
+		bne	2F
+		decb
+		bne	1B
+		puls	D,PC
+2		lda	0,S
+		sta	sheila_ACIA_DATA
+		puls	D,PC
+
+NoIcePrintX	lda	,X+
+		beq	1F
+		jsr	NoIcePrintCh
+		bra	NoIcePrintX
+1		rts
+
+
+		; the following routines are entered with:
+		;	5+	Caller RTI signature
+		;	4	Extended vector addr (lo)
+		;	3	Extended vector addr (hi)
+		;	2	cur SWR#
+		;	1	x_return_addess_from_ROM_indirection (lo)
+		;	0	x_return_addess_from_ROM_indirection (hi)
+		; this is set up by the MOS during an extended vector redirect
+		; this needs to be unstacked and stack reset to point
+		; this has to be done in the 
+
+
+NoIceSys_Handle_NMI9V
+		ldx	#NOICE_NMI_ENTER_EXT		; put address of NoIce entry point on stack
+		pshs	X
+		lda	sheila_ROMCTL_MOS
+		ora	#BITS_MEM_CTL_SWMOS_DEBUG
+		sta	sheila_ROMCTL_MOS		; this will enable DEBUG map _after_ the next rts
+							; by which time we'll be in NoIce...
+		rts					; NOT a real rts but a jump to the address we pushed
+
+NoIceSys_Handle_SWI9V
+		ldx	#NOICE_SWI_ENTER_EXT		; put address of NoIce entry point on stack
+		pshs	X
+		lda	sheila_ROMCTL_MOS
+		ora	#BITS_MEM_CTL_SWMOS_DEBUG
+		sta	sheila_ROMCTL_MOS		; this will enable DEBUG map _after_ the next rts
+							; by which time we'll be in NoIce...
+		rts					; NOT a real rts but a jump to the address we pushed
+
+		; at reset / turn on of NoIce we must
+		; call NoIce's reset:
+		; - here we page in the debug MOS
+		; then jump to the entry function there
+		; not strictly necessary (as above cases) as we don't need to page
+		; this ROM out.
+
+NoIceSys_Handle_RESET
+		ldx	#NoIceSys_Handle_RESET_Done	; return address
+		pshs	X
+		ldx	#NOICE_RESET_ENTER_EXT		; put address of NoIce entry point on stack
+		pshs	X
+		lda	sheila_ROMCTL_MOS
+		ora	#BITS_MEM_CTL_SWMOS_DEBUG
+		sta	sheila_ROMCTL_MOS		; this will enable DEBUG map _after_ the next rts
+							; by which time we'll be in NoIce...
+		rts					; NOT a real rts but a jump to the address we pushed
+NoIceSys_Handle_RESET_Done
+		sta	sheila_MEM_DEBUG_SAVE		; reset DEBUG map
+		rts
+
+
+
+NOICE_DIV0_ENT
+NOICE_SWI3_ENT
+NOICE_SWI2_ENT
+NOICE_FIRQ_ENT
+NOICE_IRQ_ENT
+NOICE_SWI_ENT
+NOICE_NMI_ENT
+NOICE_RESET_ENT
+
+		rti					; none of these should happen!
+
+NOICE_CODE_BASE 	EQU $F100
+NOICE_ENTER_NMI_ENT 	EQU NOICE_CODE_BASE
+NOICE_ENTER_SWI_ENT 	EQU NOICE_CODE_BASE+2
+NOICE_ENTER_PUTCHAR_ENT	EQU NOICE_CODE_BASE+4
+NOICE_ENTER_RESET_ENT 	EQU NOICE_CODE_BASE+6
+
+		ORG NOICE_CODE_BASE - $4000
+
+		includebin "../../mos/noice/noice/mon-noice-6309-beeb-debug.ovr"
+
+;===============================================================================
+; DEBUG VECTORS
+;===============================================================================
+; These vetors are mapped in (with noice) in the top part of the MOS area when
+; debugging is active
+;
+		ORG	$F7F0
+		PUT	$B7F0
+
+		FDB	NOICE_DIV0_ENT		       	; f7f0 (reserved)
+		FDB	NOICE_SWI3_ENT			; f7f2 (SWI3)
+		FDB	NOICE_SWI2_ENT	       		; f7f4 (SWI2)
+		FDB	NOICE_FIRQ_ENT	       		; f7f6 (FIRQ)
+		FDB	NOICE_IRQ_ENT		       	; f7f8 (IRQ)
+		FDB	NOICE_SWI_ENT	       		; f7fa (SWI/breakpoint)
+		FDB	NOICE_NMI_ENT	       		; f7fc (NMI)
+		FDB	NOICE_RESET_ENT	       		; f7fe reset
+
+;===============================================================================
+; Entry from extended vectors
+;===============================================================================
+; Here the stack is set up as:
+;
+; the following routines are entered with:
+;	5+	Caller RTI signature
+;	4	Extended vector addr (lo)
+;	3	Extended vector addr (hi)
+;	2	cur SWR#
+;	1	x_return_addess_from_ROM_indirection (lo)
+;	0	x_return_addess_from_ROM_indirection (hi)
+; this is set up by the MOS during an extended vector redirect
+; this needs to be unstacked and stack reset to point
+; this has to be done in the 
+; it needs to be undone to point +5 (for RTI) and the original
+; ROM paged back in
+; we don't need to worry about trashing registers here as the debugger
+; will pick them all up from the stack at 5+
+
+NOICE_NMI_ENTER_EXT
+		lda	2,s				; original SWR
+		sta	zp_mos_curROM
+		sta	sheila_ROMCTL_SWR		; page back in ROM, we're now 
+							; running from DEBUG MOS 
+		leas	5,S				; reset stack
+		jmp	[NOICE_ENTER_NMI_ENT]
+
+NOICE_SWI_ENTER_EXT
+		lda	2,s				; original SWR
+		sta	zp_mos_curROM
+		sta	sheila_ROMCTL_SWR		; page back in ROM, we're now 
+							; running from DEBUG MOS 
+		leas	5,S				; reset stack
+		jmp	[NOICE_ENTER_SWI_ENT]
+
+NOICE_RESET_ENTER_EXT
+		lda	zp_mos_curROM
+		pshs	A
+		jsr	[NOICE_ENTER_RESET_ENT]
+		puls	A
+		sta	zp_mos_curROM
+		sta	sheila_ROMCTL_SWR		; NoIce monitor screws with our rom #
+		rts
+
+
 
 	ENDIF

@@ -60,6 +60,8 @@ OSWORD_SOUND				EQU $07
 OSWORD_ENVELOPE				EQU $08
 
 OSARGS_cmdtail				EQU $01
+OSARGS_EXT				EQU $02
+
 
 OSGBPB_WRITE_PTR			EQU	$00
 OSGBPB_WRITE_NOPTR			EQU	$02
@@ -125,9 +127,7 @@ REMV					EQU	$022C	; Remove characters from a buffer
 CNPV					EQU	$022E	; Count or Purge a buffer
 ;;IND1V					EQU	$0230	; Spare 
 SWI9V					EQU	$0230	; SWI instruction vector - do not use except for debugging
-;;IND2V					EQU	$0232	; Spare
-SW29V					EQU	$0232	; SWI2 vector, may be used by applications, though not recommnded
-;;IND3V					EQU	$0234	; Spare
+ILOPV					EQU	$0232	; Illegal operation vector
 NMI9V					EQU	$0234	; NMI vector - do not use except for debugging
 
 ; OS Extended Vectors Marker addresses
@@ -156,9 +156,9 @@ EXTVEC_ENTER_KEYV			EQU	$FF3C	; Read the keyboard
 EXTVEC_ENTER_INSV			EQU	$FF3F	; Insert characters into a buffer
 EXTVEC_ENTER_REMV			EQU	$FF42	; Remove characters from a buffer
 EXTVEC_ENTER_CNPV			EQU	$FF45	; Count or Purge a buffer
-EXTVEC_ENTER_IND1V			EQU	$FF48	; Spare
-EXTVEC_ENTER_IND2V			EQU	$FF4B	; Spare
-EXTVEC_ENTER_IND3V			EQU	$FF4E	; Spare
+EXTVEC_ENTER_SWI9V			EQU	$FF48	; Spare
+EXTVEC_ENTER_ILOPV			EQU	$FF4B	; Spare
+EXTVEC_ENTER_NMI9V			EQU	$FF4E	; Spare
 
 EXT_USERV				EQU	$0D9F	; User vector, called by *LINE, *CODE, OSWORD >=&E0
 EXT_BRKV				EQU	$0DA2	; The BRK vector
@@ -184,10 +184,12 @@ EXT_KEYV				EQU	$0DDB	; Read the keyboard
 EXT_INSV				EQU	$0DDE	; Insert characters into a buffer
 EXT_REMV				EQU	$0DE1	; Remove characters from a buffer
 EXT_CNPV				EQU	$0DE4	; Count or Purge a buffer
-EXT_IND1V				EQU	$0DE7	; Spare
-EXT_IND2V				EQU	$0DEA	; Spare
-EXT_IND3V				EQU	$0DED	; Spare
+EXT_SWI9V				EQU	$0DE7	; SWI instruction vector - do not use except for debugging
+EXT_ILOPV				EQU	$0DEA	; Illegal operation vector
+EXT_NMI9V				EQU	$0DED	; NMI vector - do not use except for debugging
 
+OSBYTE_13_ENABLE_EVENT			EQU	13
+OSBYTE_14_ENABLE_EVENT			EQU	14
 OSBYTE_108_WRITE_SHADOW_STATE		EQU	108
 OSBYTE_119_CLOSE_SPOOL_AND_EXEC		EQU	119
 OSBYTE_126_ESCAPE_ACK			EQU	126
@@ -216,7 +218,7 @@ vduvar_ix_GRA_CUR_INT_OLD		EQU $14	; Old graphics cursor in external coordinates
 vduvar_ix_TXT_CUR_X			EQU $18	; Current text cursor X
 vduvar_ix_TXT_CUR_Y			EQU $19	; Current text cursor Y
 vduvar_ix_GRA_CUR_CELL_LINE		EQU $1A	; Line within current graphics cell of graphics cursor
-vdvvar_ix_VDU_Q_START			EQU $1B
+vduvar_ix_VDU_Q_START			EQU $1B
 vduvar_ix_VDU_Q_END			EQU $24	; end of VDU Q (well 1 after!)
 vduvar_ix_GRA_CUR_INT			EQU $24	; Current graphics cursor in internal coordinates
 vduvar_ix_TEMP_8			EQU $28	; Bitmap read from screen by OSBYTE 135, various coordinate routines

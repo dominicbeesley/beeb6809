@@ -76,6 +76,10 @@ m_tyb		MACRO
 BRKSIZE		EQU	2
 
 
+DEBUG_INST	MACRO
+		SWI
+		ENDM
+
 BRK	MACRO
 	swi3
 	ENDM
@@ -149,4 +153,12 @@ LDY_B	MACRO
 	LDA	#0	;DB: changed as CLRA resets carry!
 	TFR	D,Y
 	PULS	D
+	ENDM
+
+OSCALL	MACRO
+	JSR	\1
+	ENDM
+
+OSJMP	MACRO
+	JMP	\1
 	ENDM

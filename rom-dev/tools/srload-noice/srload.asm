@@ -14,11 +14,11 @@
 		PSHS	CC
 		ORCC	#CC_I+CC_F		; disable interrupts
 
-		LDA	SHEILA_ROMCTL_SWR
+		LDA	sheila_ROMCTL_SWR
 		PSHS	A			; save rom bank
 
 ;;		LDA	#$80		
-		STB	SHEILA_ROMCTL_SWR	; put memory at 8000
+		STB	sheila_ROMCTL_SWR	; put memory at 8000
 
 
 		; map RAM bank $8 in top ROM hole and copy $4000-$7FFF there, missing out $FC00-$FEFF
@@ -39,9 +39,9 @@
 ** 		BNE	1B
 
 		PULS	A			; put back rom bank
-		STA	SHEILA_ROMCTL_SWR
+		STA	sheila_ROMCTL_SWR
 		PULS	CC			; renable interrupts?
 
-		SWI	; re-enter debugger
+		DEBUG_INST			; re-enter debugger
 
 		END

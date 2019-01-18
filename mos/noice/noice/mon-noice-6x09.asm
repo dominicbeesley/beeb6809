@@ -1,7 +1,11 @@
-	include "../../../includes/hardware.inc"
-	include "../../../includes/common.inc"
-	include "../../../includes/mosrom.inc"
-	include "../../../includes/noice.inc"
+	IF NOICE_NO_INCS
+
+	ELSE
+		include "../../../includes/hardware.inc"
+		include "../../../includes/common.inc"
+		include "../../../includes/mosrom.inc"
+		include "../../../includes/noice.inc"
+	ENDIF
 
 	IF NOICE_MY
 fred_MYELIN_SERIAL_STATUS	EQU	$FCA1
@@ -12,7 +16,7 @@ MYELIN_SERIAL_RXRDY		EQU	1
 
 
 	IF DO_ROMLATCH
-MAPREG		EQU	SHEILA_ROMCTL_SWR
+MAPREG		EQU	sheila_ROMCTL_SWR
 MAPIMG		EQU	zp_mos_curROM
 	ENDIF
 
@@ -66,8 +70,8 @@ INITSTACK		EQU	$200
 
 
 
-		ORG	NOICE_RAM_START			 ; use cassette / serial input buffer 
-MONSTACK		EQU	NOICE_RAM_START + $100	  ; top of!
+		ORG	NOICE_RAM_START			; use cassette / serial input buffer 
+MONSTACK	EQU	NOICE_RAM_START + $100	  	; top of!
 
 	IF CPU_6309
 TEST_STACK	RMB	14
@@ -102,7 +106,10 @@ TASK_REG_SZ	EQU	*-TASK_REGS
 			IF STANDALONE
 RAMVEC		RMB	2*NVEC
 			ENDIF
+	IF NOICE_DEBUG_MEMMAP
+	ELSE
 RUNNING_FLAG	RMB	1
+	ENDIF
 
 *
 *  Communications buffer
@@ -110,6 +117,12 @@ RUNNING_FLAG	RMB	1
 *  Larger values may improve speed of NoICE memory move commands.)
 COMBUF_SIZE	EQU	128		DATA SIZE FOR COMM BUFFER
 COMBUF		RMB	2+COMBUF_SIZE+1 BUFFER ALSO HAS FN, LEN, AND CHECK
+
+	IF NOICE_DEBUG_MEMMAP
+RW_MEM_CODE_SAVE
+		RMB	$100
+	ENDIF
+
 *
 RAM_END		EQU    *	       ADDRESS OF TOP+1 OF RAM
 
@@ -125,12 +138,13 @@ RAM_END		EQU    *	       ADDRESS OF TOP+1 OF RAM
 		ENDIF
 
 
-	ORG	NOICE_CODE_BASE
+		ORG	NOICE_CODE_BASE
 
 		IF STANDALONE==0
-			FDB	NMI_ENT
-			FDB	SWI_ENT
-			FDB	PUTCHAR
+ENTER_NMI_ENT		FDB	NMI_ENT
+ENTER_SWI_ENT		FDB	SWI_ENT
+ENTER_PUTCHAR		FDB	PUTCHAR
+ENTER_RESET		FDB	RESET
 		ENDIF
 *
 *  Power on reset
@@ -230,19 +244,6 @@ BAUD_WORD	EQU SER_BAUD_CLOCK_IN/(NOICE_BAUD_RATE*16)
 		STA	S16550_IER
 	ENDIF
 
-	IF MACH_BEEB
-		IF NOICE_MY
-							; no init needed
-		ELSE
-			LDA	#3
-			STA	sheila_ACIA_CTL		; perform ACIA master reset
-			lda	#$40			; 19,200/19,200/serial
-			sta	sheila_SERIAL_ULA
-			lda	#$56			; div 64, 8N1, RTS, TX irq disable
-			sta	sheila_ACIA_CTL
-		ENDIF
-	ENDIF
-
 	IF STANDALONE
 *
 *----------------------------------------------------------------------------
@@ -319,9 +320,12 @@ BEEP_76489CLK	EQU	4000000
 		JMP	RETURN_REGS		; DUMP REGS, ENTER MONITOR
 
 	ELSE
-		LDA	#$FF
-		STA	RUNNING_FLAG		; mark as running and drop back to MOS ROM init code
-		RTS				; return to MOS
+		IF NOICE_DEBUG_MEMMAP
+		ELSE
+			LDA	#$FF
+			STA	RUNNING_FLAG		; mark as running and drop back to MOS ROM init code
+		ENDIF
+			RTS				; return to MOS
 	ENDIF
 
 *
@@ -468,12 +472,15 @@ FN_ERROR	EQU	$F0    ; error reply to unknown op-code
 *
 INT_ENTRY
 		STA	REG_STATE	; SAVE STATE
+	IF NOICE_DEBUG_MEMMAP
+	ELSE
 		CMPA	#2		; DB: check for NMI
-		BNE	1F
+		BNE	INT_ENTRY_GO
 		TST	RUNNING_FLAG	; not running just RTI
-		BNE	1F
+		BNE	INT_ENTRY_GO
 		RTI
-1
+INT_ENTRY_GO
+	ENDIF
 
 *
 *  Save registers from stack to reg block for return to master
@@ -546,7 +553,11 @@ NOTBP		TFR	X,D		; TRANSFER PC TO D
 *
 *  Uses 6 bytes of stack including return address
 *
-MAIN		CLR	RUNNING_FLAG		; DB: reset running flag to 0 block further NMIs
+MAIN		
+	IF NOICE_DEBUG_MEMMAP
+	ELSE
+		CLR	RUNNING_FLAG		; DB: reset running flag to 0 block further NMIs
+	ENDIF
 		LDS	#MONSTACK		; CLEAN STACK IS HAPPY STACK
 		LDX	#COMBUF			; BUILD MESSAGE HERE
 *
@@ -643,6 +654,25 @@ TS10		LDA	,X+			; MOVE REPLY DATA TO BUFFER
 *  Compute checksum on buffer, and send to master, then return
 		JMP	SEND
 
+	IF NOICE_DEBUG_MEMMAP
+MEM_DEBUG_INIT
+1		LDA	,Y
+		STA	,U+
+		LDA	,X+
+		STA	,Y+
+		DECB
+		BNE	1B
+		RTS
+
+MEM_DEBUG_RESTORE
+1		LDA	,U+
+		STA	,Y+
+		DECB
+		BNE	1B
+		RTS
+	ENDIF
+
+
 *===========================================================================
 *
 *  Read Memory:	 FN, len, page, Alo, Ahi, Nbytes
@@ -667,6 +697,63 @@ READ_MEM
 		LDB	3,X			; NUMBER OF BYTES TO RETURN
 		STB	COMBUF+1		; RETURN LENGTH = REQUESTED DATA	
 		BEQ	GLP90			; JIF NO BYTES TO GET
+
+
+	IF NOICE_DEBUG_MEMMAP
+		; if running from debug mem need to look to see
+		; if this is an access to C000 onwards 
+		; and page back in original MOS if it is
+
+		CMPY	#$C000
+		BLO	READ_MEM_NOT_MOS
+		; TODO this should maybe also check for FC00-FEFF?
+
+		PSHS	X,Y,U
+		LDB	#READ_MEM_DEBUG_LEN
+		LDX	#READ_MEM_DEBUG_LOAD
+		LDY	#NOICE_DEBUG_CODE_BOUNCE
+		LDU	#RW_MEM_CODE_SAVE
+		JSR	MEM_DEBUG_INIT
+		PULS	X,Y,U
+*
+*  Read the requested bytes from local memory
+1		JSR	READ_MEM_DEBUG			; GET BYTE
+		STA	,X+				; STORE TO RETURN BUFFER
+		DECB
+		BNE	1B
+
+		PSHS	Y,U
+		LDB	#READ_MEM_DEBUG_LEN
+		LDY	#NOICE_DEBUG_CODE_BOUNCE
+		LDU	#RW_MEM_CODE_SAVE
+		JSR	MEM_DEBUG_RESTORE
+		PULS	Y,U
+
+		JMP	SEND
+
+		; ORG this at bottom of stack NOICE_DEBUG_CODE_BOUNCE and copy from PUT area
+READ_MEM_DEBUG_LOAD
+		ORG	NOICE_DEBUG_CODE_BOUNCE
+                PUT     READ_MEM_DEBUG_LOAD
+READ_MEM_DEBUG
+		PSHS	B				; preserve B
+		LDB	$FE31				; save current MOS state
+		STA	$FE32				; restore mos state prior to debug entry
+							; NOTE: stack is from DEBUG memory so
+							; we can't use the stack until we've
+							; restored DEBUG state
+		NOP
+		LDA	,Y+			; GET BYTE
+		STB	$FE31
+		NOP					; stores to FE31 bit 2 are delayed by 1 instruction!
+		PULS	B,PC
+READ_MEM_DEBUG_END
+READ_MEM_DEBUG_LEN EQU READ_MEM_DEBUG_END-NOICE_DEBUG_CODE_BOUNCE
+
+		ORG	READ_MEM_DEBUG_LOAD + READ_MEM_DEBUG_LEN
+               	PUT     READ_MEM_DEBUG_LOAD + READ_MEM_DEBUG_LEN
+READ_MEM_NOT_MOS
+	ENDIF
 *
 *  Read the requested bytes from local memory
 GLP		LDA	,Y+			; GET BYTE
@@ -676,6 +763,29 @@ GLP		LDA	,Y+			; GET BYTE
 *
 *  Compute checksum on buffer, and send to master, then return
 GLP90		JMP	SEND
+
+	IF NOICE_DEBUG_MEMMAP
+		; ORG this at bottom of stack NOICE_DEBUG_CODE_BOUNCE and copy from PUT area
+WRITE_MEM_DEBUG_LOAD
+		ORG	NOICE_DEBUG_CODE_BOUNCE
+                PUT     WRITE_MEM_DEBUG_LOAD
+WRITE_MEM_DEBUG
+		PSHS	B				; preserve B
+		LDB	$FE31				; save current MOS state
+		STA	$FE32				; restore mos state prior to debug entry
+							; NOTE: stack is from DEBUG memory so
+							; we can't use the stack until we've
+							; restored DEBUG state
+		NOP
+		STA	,Y+			; GET BYTE
+		STB	$FE31
+		NOP					; stores to FE31 bit 2 are delayed by 1 instruction!
+		PULS	B,PC
+WRITE_MEM_DEBUG_END
+WRITE_MEM_DEBUG_LEN EQU WRITE_MEM_DEBUG_END-NOICE_DEBUG_CODE_BOUNCE
+
+		ORG	WRITE_MEM_DEBUG_LOAD + WRITE_MEM_DEBUG_LEN
+        ENDIF
 
 *===========================================================================
 *
@@ -705,19 +815,80 @@ WRITE_MEM
 		LDB	COMBUF+1		; NUMBER OF BYTES TO RETURN
 		SUBB	#3			; MINUS PAGE AND ADDRESS
 		BEQ	WLP50			; JIF NO BYTES TO PUT
+
+	IF NOICE_DEBUG_MEMMAP
+		; if running from debug mem need to look to see
+		; if this is an access to C000 onwards 
+		; and page back in original MOS if it is
+
+		CMPY	#$C000
+		BLO	WRITE_MEM_NOT_MOS
+		; TODO this should maybe also check for FC00-FEFF?
+
+		PSHS	B,X,Y,U
+		LDB	#WRITE_MEM_DEBUG_LEN
+		LDX	#WRITE_MEM_DEBUG_LOAD
+		LDY	#NOICE_DEBUG_CODE_BOUNCE
+		LDU	#RW_MEM_CODE_SAVE
+		JSR	MEM_DEBUG_INIT
+		PULS	B,X,Y,U
+
+*
+*  Write the specified bytes to local memory
+		PSHS	B,X,Y
+1		LDA	,X+				; GET BYTE TO WRITE
+		JSR	WRITE_MEM_DEBUG			; STORE THE BYTE AT ,Y
+		DECB
+		BNE	1B
+
+		PSHS	Y,U
+		LDB	#WRITE_MEM_DEBUG_LEN
+		LDY	#NOICE_DEBUG_CODE_BOUNCE
+		LDU	#RW_MEM_CODE_SAVE
+		JSR	MEM_DEBUG_RESTORE
+		PULS	Y,U
+
+		PSHS	X,Y,U
+		LDB	#READ_MEM_DEBUG_LEN
+		LDX	#READ_MEM_DEBUG_LOAD
+		LDY	#NOICE_DEBUG_CODE_BOUNCE
+		LDU	#RW_MEM_CODE_SAVE
+		JSR	MEM_DEBUG_INIT
+		PULS	X,Y,U
+
+		PULS	B,X,Y
+1		JSR	READ_MEM_DEBUG			; DB: Swapped LDA/CMPA to make DEBUG case easier
+		CMPA	,X+				; GET BYTE JUST WRITTEN
+		BNE	2F				; BR IF WRITE FAILED
+		DECB
+		BNE	1B
+2
+
+		PSHS	CC,Y,U
+		LDB	#READ_MEM_DEBUG_LEN
+		LDY	#NOICE_DEBUG_CODE_BOUNCE
+		LDU	#RW_MEM_CODE_SAVE
+		JSR	MEM_DEBUG_RESTORE
+		PULS	CC,Y,U
+
+		BNE	WLP80				; signal fail
+		BEQ	WLP50				; signal pass
+
+WRITE_MEM_NOT_MOS
+	ENDIF
+
 *
 *  Write the specified bytes to local memory
 		PSHS	B,X,Y
 WLP		LDA	,X+			; GET BYTE TO WRITE
 		STA	,Y+			; STORE THE BYTE AT ,Y
-
 		DECB
 		BNE	WLP
 *
 *  Compare to see if the write worked
 		PULS	B,X,Y
-WLP20		LDA	,X+			; GET BYTE JUST WRITTEN
-		CMPA	,Y+
+WLP20		LDA	,Y+			; DB: Swapped LDA/CMPA to make DEBUG case easier
+		CMPA	,X+			; GET BYTE JUST WRITTEN
 		BNE	WLP80			; BR IF WRITE FAILED
 		DECB
 		BNE	WLP20
@@ -860,12 +1031,18 @@ RT_10
 		ORA	#CC_E			   ; _MUST_ BE "ALL REGS PUSHED"
 		PSHS	A
 
+	IF NOICE_DEBUG_MEMMAP
+	ELSE
 		LDA	#255
 		STA	RUNNING_FLAG
+	ENDIF
 
 *
 *  Return to user (conditioned by MD.0)
-	RTI
+	IF NOICE_DEBUG_MEMMAP
+		STA	$FE32				; reset DEBUG map by writing restore reg
+	ENDIF
+		RTI
 *
 *===========================================================================
 *
@@ -890,6 +1067,52 @@ ENTER_MON
 *  Return registers to master
 		JMP	RETURN_REGS
 
+
+	IF NOICE_DEBUG_MEMMAP
+		; ORG this at bottom of stack NOICE_DEBUG_CODE_BOUNCE and copy from PUT area
+SET_BYTE_DEBUG_LOAD
+		ORG	NOICE_DEBUG_CODE_BOUNCE
+                PUT     SET_BYTE_DEBUG_LOAD
+SET_BYTE_DEBUG
+		LDB	3,X				; GET BYTE TO STORE	
+		LDA	$FE31				; save current MOS state
+		STA	SET_BYTE_TMP			; preserve B - note we can't use the stack here!
+		STA	$FE32				; restore mos state prior to debug entry
+							; NOTE: stack is from DEBUG memory so
+							; we can't use the stack until we've
+							; restored DEBUG state
+		NOP
+
+*
+*  Read current data at byte location
+		LDA	0,Y
+*
+*  Insert new data at byte location
+		STB	0,Y			; WRITE TARGET MEMORY
+*
+*  Verify write
+		CMPB	0,Y			; READ TARGET MEMORY
+		BNE	SET_BYTE_EXNE
+		LDB	SET_BYTE_TMP
+		STB	$FE31
+		NOP					; stores to FE31 bit 2 are delayed by 1 instruction!
+		CLRB
+		RTS
+SET_BYTE_EXNE
+		LDB	SET_BYTE_TMP
+		STB	$FE31
+		NOP					; stores to FE31 bit 2 are delayed by 1 instruction!
+		RTS
+
+SET_BYTE_TMP	RMB	1
+SET_BYTE_DEBUG_END
+SET_BYTE_DEBUG_LEN EQU SET_BYTE_DEBUG_END-NOICE_DEBUG_CODE_BOUNCE
+
+		ORG	SET_BYTE_DEBUG_LOAD + SET_BYTE_DEBUG_LEN
+        ENDIF
+
+
+
 *===========================================================================
 *
 *  Set target byte(s):	FN, len { (page, alow, ahigh, data), (...)... }
@@ -905,12 +1128,24 @@ ENTER_MON
 *  Uses 1 byte of stack
 *
 SET_BYTES
+
+	IF NOICE_DEBUG_MEMMAP
 		LDU	#COMBUF+1		; POINTER TO RETURN BUFFER
 		LDA	#0
 		STA	,U+			; SET RETURN COUNT AS ZERO
 		LSRB
 		LSRB				; LEN/4 = NUMBER OF BYTES TO SET
 		BEQ	SB99			; JIF NO BYTES (COMBUF+1 = 0)
+
+		PSHS	B,X,Y,U
+		LDB	#SET_BYTE_DEBUG_LEN
+		LDX	#SET_BYTE_DEBUG_LOAD
+		LDY	#NOICE_DEBUG_CODE_BOUNCE
+		LDU	#RW_MEM_CODE_SAVE
+		JSR	MEM_DEBUG_INIT
+		PULS	B,X,Y,U
+	ENDIF
+
 *
 *  Loop on inserting bytes
 SB10		PSHS	B			; SAVE LOOP COUNTER
@@ -926,6 +1161,10 @@ SB10		PSHS	B			; SAVE LOOP COUNTER
 		LDA	2,X			; MSB OF ADDRESS IN A
 		LDB	1,X			; LSB OF ADDRESS IN B
 		TFR	D,Y			; MEMORY ADDRESS IN Y
+
+	IF NOICE_DEBUG_MEMMAP
+		JSR	SET_BYTE_DEBUG
+	ELSE
 *
 *  Read current data at byte location
 		LDA	0,Y
@@ -936,6 +1175,9 @@ SB10		PSHS	B			; SAVE LOOP COUNTER
 *
 *  Verify write
 		CMPB	0,Y			; READ TARGET MEMORY
+
+	ENDIF
+
 		PULS	B			; RESTORE LOOP COUNT, CC'S INTACT
 		BNE	SB90			; BR IF INSERT FAILED: ABORT
 *
@@ -950,6 +1192,15 @@ SB10		PSHS	B			; SAVE LOOP COUNTER
 *
 *  Return buffer with data from byte locations
 SB90
+	IF NOICE_DEBUG_MEMMAP
+		PSHS	CC,Y,U
+		LDB	#SET_BYTE_DEBUG_LEN
+		LDY	#NOICE_DEBUG_CODE_BOUNCE
+		LDU	#RW_MEM_CODE_SAVE
+		JSR	MEM_DEBUG_RESTORE
+		PULS	CC,Y,U
+	ENDIF
+
 *
 *  Compute checksum on buffer, and send to master, then return
 SB99		JMP	SEND

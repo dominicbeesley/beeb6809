@@ -50,6 +50,12 @@ assScanContinue
 
 		; special check for op code starting "LB"
 		LDD	,Y
+	IF CPU_6309
+		ANDD	#$DFDF				; to uppercase
+	ELSE
+		ANDA	#$DF
+		ANDB	#$DF
+	ENDIF
 		CMPD	#('L'<<8) + 'B'
 		BNE	assScanOpLoop
 		LDA	#ASS_BITS_EXTRA0
@@ -456,7 +462,7 @@ assModesParseMem_NotImmed
 		BPL	1F
 		LDA	#$10
 		BITA	ZP_OPT
-		BEQ	assModexParseNotRegIX		; skip it, we're not in 6309 mode!
+		LBEQ	assModexParseNotRegIX		; skip it, we're not in 6309 mode!
 1		
 	ENDIF
 		CALL	skipSpacesCheckCommaAtY
@@ -775,7 +781,7 @@ assBitLp	DECB
 		CALL	skipSpacesCheckCommaAtYStepBack
 		BEQ	assPushPullRegsLoop
 		LDA	,S+				; get postbyte
-		BEQ	assJmpBrkSyntax3
+		LBEQ	assJmpBrkSyntax3
 		JUMP	assPostByteThenScanEndOfStmt
 
 

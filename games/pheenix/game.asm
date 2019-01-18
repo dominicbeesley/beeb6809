@@ -107,7 +107,7 @@ MAIN
 
 		; set scroll base register
 		lda	#2*(rupt_addr / 256 / 16)
-		sta	SHEILA_MEMC_SCROFF
+		sta	sheila_MEMC_SCROFF
 
 		; initialise palette entries
 

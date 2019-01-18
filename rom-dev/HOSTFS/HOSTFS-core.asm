@@ -840,7 +840,7 @@ MyosRDCH_IO
 		lbsr	SendCommand			; Send command $00 - ummOSRDCH
 WaitCarryChar						; Wait for Carry and A
 		lbsr	WaitByte			; Wait for carry
-		asl	A
+		asla
 		lbra	WaitByte
 
 
@@ -1369,7 +1369,7 @@ MyosARGS
 		puls	A
 		lbsr	SendByte			; Send function
 		lbsr	WaitByte
-		puls	A				; Get and save result
+		pshs	A				; Get and save result
 		lbsr	WaitByte
 		sta	$03,X				; Receive data word
 		lbsr	WaitByte

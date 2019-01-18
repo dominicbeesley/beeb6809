@@ -15,9 +15,11 @@ DEPS=	../../includes/hardware.inc \
 		VERSION-date.gen.asm \
 		Makefile
 
-ROMNO=B
+ROMNO=C
 
 include		../../Makefile.defs 
+
+.PHONY:		VERSION-date.gen.asm
 
 
 VERSION-date.gen.asm: HOSTFS-core.asm HOSTFS.asm
@@ -26,13 +28,13 @@ VERSION-date.gen.asm: HOSTFS-core.asm HOSTFS.asm
 $(BEEBOUT)/loadHOSTFSandsyms.noi $(BEEBOUT)/loadHOSTFS.noi: $(BEEBOUT)/HOSTFS.sym
 		../../scripts/prefixromsadds.sh $(BEEBOUT)/HOSTFS.sym $(ROMNO)
 		./makeloadnoi.sh $(BEEBOUT)/HOSTFS.bin $(BEEBOUT)/loadHOSTFS.noi $(ROMNO)
-		cat $(BEEBOUT)/loadHOSTFS.noi $(BEEBOUT)/HOSTFS.sym $(BEEBOUT)/../../mos/beeb6809-mos/mosrom-noice.sym >$(BEEBOUT)/loadHOSTFSandsyms.noi
+		cat $(BEEBOUT)/loadHOSTFS.noi $(BEEBOUT)/HOSTFS.sym $(BEEBOUT)/../../mos/beeb6809-mos/mosrom.sym >$(BEEBOUT)/loadHOSTFSandsyms.noi
 		echo -e "WAITFORSTOP 1\nR PC mos_handle_res\n" >>$(BEEBOUT)/loadHOSTFSandsyms.noi
 
 $(BEEBOUT)/loadHOSTFS-myelin-andsyms.noi $(BEEBOUT)/loadHOSTFS-myelin.noi: $(BEEBOUT)/HOSTFS-myelin.sym
 		../../scripts/prefixromsadds.sh $(BEEBOUT)/HOSTFS-myelin.sym $(ROMNO)
 		./makeloadnoi.sh $(BEEBOUT)/HOSTFS-myelin.bin $(BEEBOUT)/loadHOSTFS-myelin.noi $(ROMNO)
-		cat $(BEEBOUT)/loadHOSTFS-myelin.noi $(BEEBOUT)/HOSTFS-myelin.sym $(BEEBOUT)/../../mos/beeb6809-mos/mosrom-noice.sym >$(BEEBOUT)/loadHOSTFS-myelin-andsyms.noi
+		cat $(BEEBOUT)/loadHOSTFS-myelin.noi $(BEEBOUT)/HOSTFS-myelin.sym $(BEEBOUT)/../../mos/beeb6809-mos/mosrom.sym >$(BEEBOUT)/loadHOSTFS-myelin-andsyms.noi
 		echo -e "WAITFORSTOP 1\nR PC mos_handle_res\n" >>$(BEEBOUT)/loadHOSTFS-myelin-andsyms.noi
 
 

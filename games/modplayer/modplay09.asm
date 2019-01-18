@@ -1,20 +1,23 @@
-; (c) Modplay09.asm - a tracker module player for the 6x09 processor and the
-; Dossytronics blitter board
+; (c) 2018 Modplay09.asm - a tracker module player for the 6x09 processor and 
+; the Dossytronics blitter board 
 ;
-; Loads a module split into M.XXX and 0.XXX, 1.XXX etc
-; as created by the rip2blit.sh script
-;
-;
+; Plays full protrackers so long as the samples are <65536 bytes and the 
+; whole mod is <512K
+
+;===============================================================================
+; Build parameters
+;===============================================================================
+BUILD_TIMER_VSYNC	EQU	0			; when 1 uses EVENT 4 vsync, else uses user 
+							; via timer1 which allowes tempo adjustment
+
+
 
 		include "../../includes/hardware.inc"
 		include "../../includes/oslib.inc"
 		include "../../includes/common.inc"
 		include "../../includes/mosrom.inc"
 
-MODULE_BASE	equ	$3C00
-MODULE_SONG	equ	MODULE_BASE + $80
-MODULE_PATTERNS	equ	MODULE_BASE + $100
-
+		include "modplay.inc"
 
 		setdp 0
 
@@ -23,158 +26,72 @@ MODULE_PATTERNS	equ	MODULE_BASE + $100
 zp_note_ptr	rmb	2
 zp_si_ptr	rmb	2				; sample info ptr	(used as text pointer when reading cmd line)
 zp_cha_var_ptr	rmb	2
-zp_tmp		rmb	4
 zp_cha_ctr	rmb	1
-zp_num1
-;;zp_scr_ptr	rmb	2
+zp_tmp		rmb	4
+zp_num1		rmb	2
 zp_num2		rmb	2
 
-zp_trk_tmp	rmb	5
+zp_d24_remain		EQU zp_tmp				; remainder of 24x8 divide
+zp_d24_dividend		EQU zp_tmp+2				; result of 24x8 divide
+zp_d24_divisor16	EQU zp_tmp+5				; the 8 bit divisor
 
 
 
-; offsets into per - channel variables structure
-cha_var_sn		equ 0; .byte		; 1	current sample #*8 (can be used as offs into sample info table)
-cha_var_per		equ 1; .word		; 2
-cha_var_porta_per	equ 3; .word		; 2
-cha_var_porta_speed	equ 5; .byte		; 1
-cha_var_vol		equ 6; .byte		; 1	current volume
-cha_var_cmd		equ 7; .byte		; 1
-cha_var_parm		equ 8; .byte		; 1
-cha_var_s_len		equ 9; .word		; 2	; not order important as copied from sample info table
-cha_var_s_roff		equ 11; .word		; 2
-cha_var_s_addr_b	equ 13; .byte		; 3
-cha_var_s_addr		equ 14; .word		; 3
-cha_var_s_repfl		equ 16; .byte		; 1	>$80 for repeat (low 6 bits are sample vol)
-cha_var_s_flags		equ 17; .byte		; 1	$80 = mute
-cha_var_s_restart	equ 18;
-cha_var_vib_pos		equ 19
-cha_var_vib_cmd		equ 20
-cha_vars_size		equ 21
-
-
+; tracker display
+zp_disp_lin_ctr	rmb	1
+zp_disp_row_num	rmb	1
+zp_disp_tmp	rmb	1
+zp_disp_per	rmb	2
+zp_disp_oct	rmb	1
+zp_disp_cha_ctr rmb	1
 
 		org $2000
-
-		; change to mode 7
-		lda	#22
-		jsr	OSWRCH
-		lda	#7
-		jsr	OSWRCH
-
+modplay_start
 		; scan command line for module name
 		lda	#OSARGS_cmdtail
 		ldy	#0
 		ldx	#zp_si_ptr - 2
-		jsr	OSARGS
+		OSCALL	OSARGS
+		bra	1F
+modplay_debug
+		ldx	zp_mos_txtptr
+		stx	zp_si_ptr
 
-		; find last "." in filename (to replace with M,0,1,2,3,etc)
-		ldy	zp_si_ptr
-		ldu	#MODNAME
-		ldx	#0
-lp_sp		lda	,Y+
-		cmpa	#' '
-		beq	lp_sp
-lp_fn		cmpa	#$D
-		beq	sk_end
-		cmpa	#' '
-		beq	sk_end
-		sta	,U+
-		cmpa	#'.'
-		bne	sk_d
-		leax	-2,U
-sk_d		lda	,Y+
-		cmpy	#MODNAME_DIR
-		blo	lp_fn
-brk_bad
-		DO_BRK	1, "Bad name [:X].M.NNNNNNN"
-sk_end		lda	#$D
-		sta	,U+
-		stx	MODNAME_DIR
-		beq	brk_bad
-		cmpx	#MODNAME
-		blo	brk_bad
+1		; change to mode 7
+		lda	#22
+		OSCALL	OSWRCH
+		lda	#7
+		OSCALL	OSWRCH
 
-		lda	,X
-		anda	#$DF
-		cmpa	#'M'
-		bne	brk_bad
-
-		ldx	#str_module
-		jsr	printX
-
-		ldx	#MODNAME
-		jsr	printX
-
-		clr	zp_note_ptr			; pointer to next area of blit memory (start at 0) (page hi)
-		clr	zp_note_ptr+1			; (page lo)
-		ldb	#'0'
-		stb	zp_tmp
-sample_load_loop
-		stb	[MODNAME_DIR]
-
-		jsr	load_mod_chunk
-		bne	1F
-		bra	samples_loaded
-1		ldd	zp_note_ptr
-		std	BLITSAMLOAD + 3
-		leax	BLITSAMLOAD, PCR
-		jsr	blit_copy
-
-		ldd	zp_note_ptr
-		addd	#$0040
-		std	zp_note_ptr
-
-		ldb	zp_tmp
-		incb
-		stb	zp_tmp
-		cmpb	#'9'+1
-		bne	sample_load_loop
-		ldb	#'A'
-		bra	sample_load_loop
-
-load_mod_chunk
-		; check file exists, if not return 
-		ldx	#MODNAME
-		stx	OSFILEBLK
-		ldx	#OSFILEBLK
-		lda	#OSFILE_CAT
-		jsr	OSFILE
-		tsta	
-		beq	1F
-		ldx	#str_col_modname
-		jsr	printX
-		; restore filename
-		ldx	#MODNAME
-		stx	OSFILEBLK
-		jsr	printX
-		jsr	OSNEWL
-		lda	#$FF				; setup load addr
-		sta	OSFILEBLK + 2
-		sta	OSFILEBLK + 3
-		ldx	#MODULE_BASE
-		stx	OSFILEBLK + 4
-		ldx	#OSFILEBLK
-		lda	#OSFILE_LOAD
-		jsr	OSFILE
-1		rts
-
-samples_loaded
-		ldb	#'M'
-		stb	[MODNAME_DIR]
-		jsr	load_mod_chunk
-		lbeq	brk_bad
+		ldx	zp_si_ptr			; command line address
+		lda	#MODULE_BASE/256		; base of module load area
+		ldb	#LOAD_BLOCK_SIZE		; # of pages to laod at once
+		lbsr	mod_load
 
 		jsr	play_init
-		bra	play_loop
+		jsr	play_loop
+		DO_BRK	5, "How did this happen!"
 
-handle_eventv	pshs	D,X,Y,U
+	IF BUILD_TIMER_VSYNC
+handle_EVENTV	pshs	D,X,Y,U
 		cmpa	#4
 		bne	1F
 		jsr	play_event
 1		puls	D,X,Y,U
 		jmp	[old_EVNTV]
+	ELSE
+handle_IRQ2V
+		; do check first
+		lda	#VIA_IFR_BIT_T1
+		bita	sheila_USRVIA_ifr
+		beq	irq2v_sk_no_t1
 
+		; clear interrupt
+		lda	sheila_USRVIA_t1cl
+		jsr	play_event
+
+irq2v_sk_no_t1	jmp	[old_IRQ2V]		
+	ENDIF
 
 ;-------------------------------------------------------------
 ; tracker loop
@@ -183,11 +100,11 @@ play_loop
 		; wait for the player to execute
 		SEI
 		lda	g_flags
-		anda	#$DF
+		anda	#FLAGS_EXEC^$FF
 		sta	g_flags
 		CLI
 
-		lda	#$20
+		lda	#FLAGS_EXEC
 1		bita	g_flags
 		beq	1B
 
@@ -214,14 +131,11 @@ nokeys
 		cmpy	#27
 		bne	donekey
 
-		SEI
-		ldx	old_EVNTV
-		stx	EVNTV
-		CLI
+		jsr	play_exit
 
-		jsr	silence
+		lda	#OSBYTE_126_ESCAPE_ACK		; ack escape
+		jsr	OSBYTE
 
-		lda	#$7E		; ack escape
 		DO_BRK	27, "ESCAPE", 0
 donekey
 
@@ -234,6 +148,34 @@ silence		ldb	#3
 		bpl	1B
 		rts
 
+play_exit
+	IF BUILD_TIMER_VSYNC
+
+		lda	#OSBYTE_13_DISABLE_EVENT
+		ldx	#EVENT_NUM_4_VSYNC
+		jsr	OSBYTE
+
+		pshs	CC
+		SEI
+		ldx	old_EVNTV
+		stx	EVNTV
+		puls	CC
+
+	ELSE
+		pshs	CC
+		SEI
+
+		lda	#VIA_IFR_BIT_T1
+		sta	sheila_USRVIA_ier		; turn off T1 interrupts
+
+		ldx	old_IRQ2V
+		stx	IRQ2V
+
+		puls	CC
+
+	ENDIF
+		jsr	silence
+		rts
 ;-------------------------------------------------------------
 ; Init tracker variables
 ;-------------------------------------------------------------
@@ -245,10 +187,9 @@ play_init
 		stb	g_pat_brk
 		incb
 		stb	g_pat_rep
-		stb	g_tick_ctr
 		stb	g_arp_tick
 		stb	g_flags
-		ldb	#7
+		ldb	#6
 		stb	g_speed
 		decb	
 		stb	g_tick_ctr
@@ -263,16 +204,40 @@ play_init
 		decb
 		bpl	1B
 
+		pshs	CC
+		SEI
+	IF BUILD_TIMER_VSYNC
 		ldx	EVNTV
 		stx	old_EVNTV
 
-		leax	handle_eventv,PCR
-		stx	EVNTV				; naughty, should really preserve any previous here
+		leax	handle_EVENTV,PCR
+		stx	EVNTV				
 
-		lda	#14
-		ldx	#4
+		lda	#OSBYTE_14_ENABLE_EVENT
+		ldx	#EVENT_NUM_4_VSYNC
 		jsr	OSBYTE				; enable events
-		rts
+	ELSE
+		ldx	IRQ2V
+		stx	old_IRQ2V
+
+		ldx	#handle_IRQ2V
+		stx	IRQ2V
+
+		; setup User VIA T1 to generate interrupts
+
+		ldb	#125
+		jsr	more_effects_set_tempo		; set default temp to 125
+
+		lda	sheila_USRVIA_acr
+		anda	#$3F
+		ora	#$40
+		sta	sheila_USRVIA_acr		; T1 free run mode
+
+		lda	#VIA_IFR_BIT_T1 + VIA_IFR_BIT_ANY
+		sta	sheila_USRVIA_ier		 ;enable T1 interrupt
+
+	ENDIF
+		puls	CC,PC
 
 
 play_key_song_prev
@@ -289,7 +254,7 @@ play_key_song_next
 ;-------------------------------------------------------------
 play_event
 
-		lda	#$40
+		lda	#FLAGS_key_pause
 		bita	g_flags
 		beq	1F
 		lbra	debug_display			; key_pause (don't play)
@@ -342,16 +307,32 @@ sk_no_next_patt
 		clr	zp_cha_ctr
 channel_loop	ldb	zp_cha_ctr
 		stb	sheila_DMAC_SND_SEL
+
+		; save peak and reset
+		lda	sheila_DMAC_SND_PEAK
+		sta	cha_var_peak,X
+		clr	sheila_DMAC_SND_PEAK		; reset
+
+
 		ldy	zp_note_ptr
 		clr	cha_var_s_restart,X		; this gets set if theres a period or sample
 		; get sample #
-		lda	2,Y
-		anda	#$F0
+
+		lda	0,Y
+		rola					; get top bit of sample # in Cy
+		rola
+		rola
+		rola
+
+		ldb	2,Y				
+		andb	#$F0				; sample no 
+		rorb					; A = samno * 8
 		beq	sk_samno
-		lsra
-		sta	cha_var_sn,X
-		ldu	#MODULE_BASE
-		leau	A,U
+
+		stb	cha_var_sn,X
+		clra
+		ldu	#sam_data
+		leau	D,U				; U is address of sample info
 		; copy sample data to vars
 		ldb	#cha_var_s_len
 cplp		lda	,U+				; sample info table
@@ -381,13 +362,37 @@ sk_samno	; save command and params in channel vars
 
 		beq	sk_period
 
-		;;;TODO: check fine tune effect and modify perdiod
+		; check for finetune
+		lda	cha_var_s_addr_b,X
+		anda	#$F0				; get sample fintune
+		beq	nofinetune
+
+		lsra
+		lsra
+		lsra					; finetune * 2 (ptr into table)
+		leau	finetunetab,PCR
+		ldd	A,U				; A won't overflow -ve get finetune
+		std	zp_num1
+
+		ldd	tmp_note_per			; big endian!
+		std	zp_num2
+
+		jsr	mul16
+
+		rol	zp_tmp+2
+		ldd	zp_tmp+0
+		rold
+		std	tmp_note_per			; big endian
+
+nofinetune
+		oim	#$FF, cha_var_s_restart, X	; restart sample
+
 		lda	cha_var_cmd,X
 
 		cmpa	#3
-		beq	setporta
+		lbeq	setporta
 		cmpa	#5
-		beq	setporta
+		lbeq	setporta
 
 		ldd	tmp_note_per
 		std	cha_var_per,X
@@ -395,7 +400,6 @@ sk_samno	; save command and params in channel vars
 
 sk_period	tst	cha_var_s_restart,X
 		beq	sk_nosample
-		;;;TODO: check cmd 9 - sample offset - not supported by easy hardware?
 
 		lda	cha_var_sn,X
 		beq	sk_nosample			; no sample info set
@@ -422,6 +426,45 @@ sk_period	tst	cha_var_s_restart,X
 		rola					; get repeat flag into bit 0
 		rola
 		anda	#1
+		sta	zp_tmp				; save repeat flag
+
+;----------------------------------------------
+; effect 9
+;----------------------------------------------
+
+		; check for effect #9 - sample offset
+		lda	cha_var_cmd,X
+		cmpa	#9
+		bne	_sknosampleoffset
+
+		lda	sheila_DMAC_SND_LEN
+		suba	cha_var_parm,X
+		bcs	sk_nosample			; past end don't play!
+		sta	sheila_DMAC_SND_LEN
+
+		; adjust repeat offset
+		tst	zp_tmp
+		bne	_sksampleoffset_norepl
+
+		lda	sheila_DMAC_SND_REPOFF		; hi byte of repeat offset
+		suba	cha_var_parm,X			; note Y and Cy already set above
+		sta	sheila_DMAC_SND_REPOFF
+		bcc	_sksampleoffset_norepl		; didn't make repeat offset go -ve
+
+							; if we're here the note sample offset has overflowed the repeat offset
+		clr	zp_tmp				; clear repeat flag
+
+_sksampleoffset_norepl
+		lda	sheila_DMAC_SND_ADDR+1
+		adda	cha_var_parm,X
+		sta	sheila_DMAC_SND_ADDR+1		
+		bcc	1F
+		inc	sheila_DMAC_SND_ADDR+0
+1
+
+_sknosampleoffset
+		lda	zp_tmp				; get back repeat flag
+
 		ora	#$80
 		sta	sheila_DMAC_SND_STATUS
 sk_nosample	jsr	check_more_effects
@@ -439,7 +482,7 @@ sk_nosample	jsr	check_more_effects
 
 setporta	ldd	tmp_note_per
 		std	cha_var_porta_per,X
-		bra	sk_period
+		lbra	sk_period
 
 check_more_effects
 
@@ -454,14 +497,37 @@ check_more_effects
 		rts
 
 more_effects_set_vol
-		stb	cha_var_vol,X
+		cmpb	#$40
+		blo	1F
+		ldb	#$3F
+1		stb	cha_var_vol,X
 		rts
 
 more_effects_set_speed
 		cmpb	#$20
-		bhs	1F
+		bhs	more_effects_set_tempo
 		stb	g_speed
-1		;;TODO: BPM
+		rts
+more_effects_set_tempo
+		clr	zp_d24_divisor16
+		stb	zp_d24_divisor16+1		
+		lda	#$26				; number here is LE 125*1000000/50 = 2,500,000 = $2625A0
+		sta	zp_d24_dividend
+		ldd	#$25A0
+		std	zp_d24_dividend+1
+
+		jsr	div24x16
+		bvs	_sk_slow
+
+		lda	zp_d24_dividend+2
+		sta	sheila_USRVIA_t1cl
+		lda	zp_d24_dividend+1
+		sta	sheila_USRVIA_t1ch
+		rts
+
+_sk_slow	lda	#$FF
+		sta	sheila_USRVIA_t1cl
+		sta	sheila_USRVIA_t1ch
 		rts
 
 check_effects
@@ -544,7 +610,7 @@ effects_volume_slide
 		anda	#$0F
 		beq	2F
 		suba	cha_var_vol,X
-		coma
+		nega
 		bpl	1F
 		clra
 1		sta	cha_var_vol,X
@@ -571,7 +637,7 @@ effects_vib						; TODO - always sine
 		sta	cha_var_vib_cmd,X
 1		tfr	B,A
 		anda	#$0F
-		beq	1F				; don't set dept if not specd
+		beq	1F				; don't set depth if not specd
 		sta	,-S
 		lda	cha_var_vib_cmd,X
 		anda	#$F0
@@ -654,32 +720,60 @@ sk_cha_loop_done
 ; debugger display
 ;--------------------------------------------------
 debug_display
-		ldu	#$7ED0
+		ldu	#$7E80
 
 		ldx	#g_start
 		ldb	#g_size
 1		lda	,X+
-		jsr	PrHexA
+		jsr	FastPrHexA
 		decb
 		bne	1B
 
 		lda	#4
-		sta	zp_tmp
+		sta	zp_disp_tmp
 		ldx	#cha_vars
-		ldu	#$7EF8				; screen pointer
+		ldu	#$7EA8				; screen pointer
 		
 cvclp		ldb	#cha_vars_size
 cl2		lda	,X+
-		jsr	PrHexA
+		jsr	FastPrHexA
 		decb
 		bne	cl2
-		dec	zp_tmp
+
+		; do vu bar chart
+		lda	#$94
+		jsr	FastPrA				; blue graphics
+		ldb	-1,X				; get peak back from vars
+		lsrb
+		lsrb
+		lsrb					; / 8
+		beq	sk_vu_1
+		cmpb	#$F
+		bls	1F
+		ldb	#$F
+1		pshs	B
+		lda	#$7F
+vu_lp1		jsr	FastPrA
+		decb	
+		bne	vu_lp1
+		puls	B
+sk_vu_1		negb
+		addb	#$0F
+		beq	sk_vu_2
+		lda	#','
+vu_lp2		jsr	FastPrA
+		decb	
+		bne	vu_lp2
+sk_vu_2
+
+
+		dec	zp_disp_tmp
 		beq	sk_dispdone
-		leau	(40-(cha_vars_size*2)),U
+		leau	(80-(16 + cha_vars_size*2)),U
 		bra	cvclp
 sk_dispdone
 
-		lda	#$20
+		lda	#FLAGS_EXEC
 		ora	g_flags
 		sta	g_flags
 
@@ -695,26 +789,26 @@ sk_dispdone
 track_disp
 		ldu	#$7C00
 		ldb	#15
-		stb	zp_trk_tmp			; line counter
+		stb	zp_disp_lin_ctr			; line counter
 		ldb	g_row_pos
 		subb	#7
-		stb	zp_trk_tmp+1			; current row #
+		stb	zp_disp_row_num		; current row #
 		addb	#7
 		lda	#16
 		mul
-		addd	g_pat_bas
+		addd	#cur_patt_data
 		subd	#16*7
 		tfr	D,Y
 
-track_dlp	lda	zp_trk_tmp+1
+track_dlp	lda	zp_disp_row_num
 		bmi	track_blank_line
 		cmpa	#64
 		bhs	track_blank_line
-		ldb	zp_trk_tmp
+		ldb	zp_disp_lin_ctr
 		cmpb	#8
 		jsr	track_line
-track_cnt	inc	zp_trk_tmp+1
-		dec	zp_trk_tmp
+track_cnt	inc	zp_disp_row_num
+		dec	zp_disp_lin_ctr
 		bne	track_dlp
 
 		rts
@@ -737,25 +831,25 @@ track_line
 		lda	#$82
 		bra	2F
 1		lda	#$81
-2		jsr	PrA
+2		jsr	FastPrA
 		puls	A
-		jsr	PrHexA
+		jsr	FastPrHexA
 		ldb	#3				; channel counter
-		stb	zp_trk_tmp+2
+		stb	zp_disp_cha_ctr
 
 track_lp	lda	#' '
-		jsr	PrA
+		jsr	FastPrA
 		ldd	0,Y
 		anda	#$0F
 		jsr	PrNote				; note
 		lda	#' '
-		jsr	PrA
+		jsr	FastPrA
 		lda	2,Y
-		jsr	PrHexA
+		jsr	FastPrHexA
 		lda	3,Y
-		jsr	PrHexA		
+		jsr	FastPrHexA		
 		leay	4,Y
-		dec	zp_trk_tmp+2	
+		dec	zp_disp_cha_ctr
 		bpl	track_lp
 		lda	#' '
 		sta	,U+
@@ -768,16 +862,16 @@ PrNote		pshs	D
 		cmpd	#$400
 		bhs	PrNoNote
 		ldb	#3
-		stb	zp_trk_tmp+3			; octave
+		stb	zp_disp_oct			; octave
 prnotelp	ldb	#12
-		stb	zp_trk_tmp+4			; semitones in an octave	
+		stb	zp_disp_per			; semitones in an octave	
 		leax	pertab,PCR
 		ldd	,S
 		cmpd	,X++
 		bhi	PrNoteOct
 prnotelp2	cmpd	,X++
 		bhs	PrNoteF
-		dec	zp_trk_tmp+4
+		dec	zp_disp_per
 		bpl	prnotelp2
 
 PrNoNote	lda	#'-'
@@ -791,12 +885,12 @@ PrNoteOct						; too high try next octave
 		lsra
 		rorb
 		std	,S
-		dec	zp_trk_tmp+3
+		dec	zp_disp_oct
 		bne	prnotelp
 
 PrNoteF		leas	2,S				; reset stack
 		ldb	#12
-		subb	zp_trk_tmp+4
+		subb	zp_disp_per
 		aslb
 		leax	nottab,PCR
 		abx
@@ -804,8 +898,8 @@ PrNoteF		leas	2,S				; reset stack
 		sta	,U+
 		lda	,X+
 		sta	,U+
-		lda	zp_trk_tmp+3
-		jmp	PrNybble
+		lda	zp_disp_oct
+		jmp	FastPrNyb
 
 
 
@@ -881,6 +975,7 @@ doit
 		lda	tmp_note_per
 		sbca	#0
 		sta	tmp_note_per
+		bcs	spp_done			; it overflowed!
 		; check for overflow
 		jsr	check_porta_dir
 		bhi	exitnotover			; not overflowed
@@ -935,8 +1030,12 @@ store_porta_per
 lookup_song
 		; TODO: check against length and restart?!
 		anda	#$7F
-		ldx	#MODULE_SONG
+		cmpa	g_song_len
+		bhs	1F
+		leax	song_data,PCR		
 		lda	A,X
+		rts
+1		lda	#$80				; retuern -ve for end
 		rts
 ; A = pattern #
 ; return:
@@ -944,15 +1043,33 @@ lookup_song
 ;	A = 0
 ;	Z
 start_pattern
-		asla
-		asla
-		adda	#MODULE_PATTERNS/$100
-		clrb
-		std	g_pat_bas
+		clr	sheila_DMAC_DMA_SEL		
+		tfr	A,B
+		clra
+		aslb					; don't need a shift here as A < 128
+		aslb
+		rola
+		addd	#HDR_PATT_DATA_OFFS/256
+		std	sheila_DMAC_DMA_SRC_ADDR	; page # of pattern
+		ldb	#HDR_PATT_DATA_OFFS%256
+		stb	sheila_DMAC_DMA_SRC_ADDR+2	; lo address
+
+		ldb	#$FF
+		stb	sheila_DMAC_DMA_DEST_ADDR+0	; SYS
+		ldd	#cur_patt_data
+		std	sheila_DMAC_DMA_DEST_ADDR+1	; address of current pattern buffer
+
+		ldd	#PATTERN_LEN-1
+		std	sheila_DMAC_DMA_COUNT
+
+		lda	#DMACTL_ACT + DMACTL_HALT + DMACTL_STEP_SRC_UP + DMACTL_STEP_DEST_UP
+		sta	sheila_DMAC_DMA_CTL
+
+
 		lda	#16
 		ldb	g_row_pos
 		mul
-		addd	g_pat_bas
+		addd	#cur_patt_data
 		std	zp_note_ptr
 		rts
 ;
@@ -988,22 +1105,22 @@ start_pattern
 ;		sta	zp_si_ptr + 1
 ;		jmp	(zp_si_ptr)              ; Jump back to code after string
 ;
-PrHexA		pshs	A
+FastPrHexA	pshs	A
 		LSRA
 		LSRA
 		LSRA
 		LSRA
-		JSR 	PrNybble
+		JSR 	FastPrNyb
 		puls	A
-PrNybble	ANDA	#15
+FastPrNyb	ANDA	#15
 		CMPA	#10
-		blo	PrDigit
+		blo	FastPrDigit
 		ADDA	#7
-PrDigit		ADDA	#'0'
-PrA		sta	,U+
+FastPrDigit	ADDA	#'0'
+FastPrA		sta	,U+
 		rts
-PrSp		lda	#' '
-		bra	PrA
+FastPrSp	lda	#' '
+		bra	FastPrA
 
 key_mute_cha_0
 		lda	#0
@@ -1024,7 +1141,7 @@ mute_cha_A	ldb	#cha_vars_size
 		eora	#$80
 		sta	cha_var_s_flags,X
 		rts
-key_pause	lda	#$40
+key_pause	lda	#FLAGS_key_pause
 		eora	g_flags
 		sta	g_flags
 		rts
@@ -1169,6 +1286,18 @@ printX		lda	,X+
 		bra	printX
 1		rts
 
+div24x16
+		clra
+		ldb	zp_d24_dividend
+		ldw	zp_d24_dividend + 1
+		divq	zp_d24_divisor16
+		bvs	div24x16_over
+		clr	zp_d24_dividend
+		stw	zp_d24_dividend+1
+		std	zp_d24_remain
+div24x16_over	rts
+
+
 		; fixed point semitones (16 bits), missing 0th as always equal
 		; used by arpeggio
 semitones	fdb	0
@@ -1219,22 +1348,23 @@ vibtab		fcb    $00, $18, $31, $4A, $61, $78, $8D, $A1,
 		fcb    $FF, $FD, $FA, $F4, $EB, $E0, $D4, $C5,
 		fcb    $B4, $A1, $8D, $78, $61, $4A, $31, $18
 
+; 8bit
+;;finetunetab:	.word 256, 254, 252, 251, 249, 247, 245, 243, 271, 269, 267, 265, 264, 262, 260, 258
+finetunetab	fdb	32768, 32532, 32298, 32066, 31835, 31606, 31379, 31153, 34716, 34467, 34219, 33973, 33728, 33486, 33245, 33005
+; revers
+;;finetunetab:	.word	32768, 33005, 33245, 33486, 33728, 33973, 34219, 34467, 30929, 31153, 31379, 31606, 31835, 32066, 32298, 32532
 
-OSFILEBLK	fdb	MODNAME
-		rzb	$10
-BLITSAMLOAD	fcb	$FF
-		fdb	MODULE_BASE		; src		
-		fcb	0
-		fdb	0			; dest
-		fdb	$4000			; len
-MODNAME		rzb	$30
-MODNAME_DIR	rzb	$2
+
 
 tmp_note_per	rzb	2
 tmp_note_porta	rzb	2
 tmp_note_cmd	rzb	1
 
+	IF BUILD_TIMER_VSYNC
 old_EVNTV	rzb	2
+	ELSE
+old_IRQ2V	rzb	2
+	ENDIF
 
 g_start
 g_speed		rzb	1
@@ -1244,10 +1374,10 @@ g_tick_ctr	rzb	1
 g_row_pos	rzb	1
 g_arp_tick	rzb	1
 g_flags		rzb	1			; $40 = key_pause; $20 set at end of a vsync (can be reset in calling loop)
-g_pat_bas	rzb	2
 g_pat_brk	rzb	1			; when not $FF indicates a pending pattern break
 g_pat_rep	rzb	1
 g_song_skip	rzb	1
+g_song_len	rzb	1
 g_end
 g_size		equ	g_end-g_start
 
@@ -1259,5 +1389,10 @@ cha_1_vars	rzb	cha_vars_size
 cha_2_vars	rzb	cha_vars_size
 cha_3_vars	rzb	cha_vars_size
 
-str_module	fcb	"Module ", 0
-str_col_modname fcb	$81,":",$82,0
+sam_data	rzb	32*s_saminfo_sizeof
+song_data	rzb	SONG_DATA_LEN
+cur_patt_data	rzb	PATTERN_LEN
+
+
+
+		include "modload.asm"

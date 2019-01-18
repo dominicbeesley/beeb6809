@@ -29,7 +29,7 @@
 
 
 		LDB	#9
-		STB	SHEILA_ROMCTL_SWR	; mos memory at 8000
+		STB	sheila_ROMCTL_SWR	; mos memory at 8000
 
 		; map RAM bank $8 in top ROM hole and copy $4000-$7FFF there, missing out $FC00-$FEFF
 		LDX	#$1000
@@ -41,9 +41,9 @@
 		BNE	1B
 
 		LDB	#1
-		STB	SHEILA_ROMCTL_SWR	; swram bank #1 memory at 8000
+		STB	sheila_ROMCTL_SWR	; swram bank #1 memory at 8000
 		LDB	#$01
-		STB	SHEILA_ROMCTL_MOS	; enable SWMOS
+		STB	sheila_ROMCTL_MOS	; enable SWMOS
 
 
 1		CWAI	#$FF				; wait for BREAK

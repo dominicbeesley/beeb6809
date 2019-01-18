@@ -37,7 +37,7 @@ DEPS=			$(BASEDIR)/includes/hardware.inc \
 			6309-assembler.gen.asm \
 			6809BAS.asm			
 
-ROMNO=D
+ROMNO=E
 
 include		../../Makefile.defs
 
@@ -61,32 +61,32 @@ sizelog6309.txt: $(BEEBOUT)/6809BAS.sym
 $(BEEBOUT)/loadbasicandsyms.noi: $(BEEBOUT)/6809BAS.bin
 	$(BASEDIR)/scripts/prefixromsadds.sh $(BEEBOUT)/6809BAS.sym $(ROMNO)
 	./makeloadnoi.sh $(BEEBOUT)/6809BAS.bin $(BEEBOUT)/loadbasic.noi $(ROMNO)
-	cat $(BEEBOUT)/loadbasic.noi $(BEEBOUT)/6809BAS.sym $(BEEBOUT)/../../mos/beeb6809-mos/mosrom-noice.sym >$(BEEBOUT)/loadbasicandsyms.noi
+	cat $(BEEBOUT)/loadbasic.noi $(BEEBOUT)/6809BAS.sym $(BEEBOUT)/../../mos/beeb6809-mos/mosrom.sym >$(BEEBOUT)/loadbasicandsyms.noi
 	echo -e "WAITFORSTOP 1\nR PC mos_handle_res\n" >>$(BEEBOUT)/loadbasicandsyms.noi
 
 $(BEEBOUT)/loadbasic6309andsyms.noi: $(BEEBOUT)/6309BAS.bin
 	$(BASEDIR)/scripts/prefixromsadds.sh $(BEEBOUT)/6309BAS.sym $(ROMNO)
 	./makeloadnoi.sh $(BEEBOUT)/6309BAS.bin $(BEEBOUT)/loadbasic.noi $(ROMNO)
-	cat $(BEEBOUT)/loadbasic.noi $(BEEBOUT)/6309BAS.sym $(BEEBOUT)/../../mos/beeb6809-mos/mosrom-noice.sym >$(BEEBOUT)/loadbasic6309andsyms.noi
+	cat $(BEEBOUT)/loadbasic.noi $(BEEBOUT)/6309BAS.sym $(BEEBOUT)/../../mos/beeb6809-mos/mosrom.sym >$(BEEBOUT)/loadbasic6309andsyms.noi
 	echo -e "WAITFORSTOP 1\nR PC mos_handle_res\n" >>$(BEEBOUT)/loadbasic6309andsyms.noi
 
 $(CHIPKITOUT)/loadbasicandsyms.noi: $(CHIPKITOUT)/6809BAS.bin
 	$(BASEDIR)/scripts/prefixromsadds.sh $(CHIPKITOUT)/6809BAS.sym $(ROMNO)
 	./makeloadnoi.sh $(CHIPKITOUT)/6809BAS.bin $(CHIPKITOUT)/loadbasic.noi $(ROMNO)
-	cat $(CHIPKITOUT)/loadbasic.noi $(CHIPKITOUT)/6809BAS.sym $(BEEBOUT)/../../mos/beeb6809-mos/mosrom-noice.sym >$(CHIPKITOUT)/loadbasicandsyms.noi
+	cat $(CHIPKITOUT)/loadbasic.noi $(CHIPKITOUT)/6809BAS.sym $(BEEBOUT)/../../mos/beeb6809-mos/mosrom.sym >$(CHIPKITOUT)/loadbasicandsyms.noi
 	echo -e "WAITFORSTOP 1\nR PC mos_handle_res\n" >>$(BEEBOUT)/loadbasicandsyms.noi
 
 $(CHIPKITOUT)/loadbasic6309andsyms.noi: $(CHIPKITOUT)/6309BAS.bin
 	$(BASEDIR)/scripts/prefixromsadds.sh $(CHIPKITOUT)/6309BAS.sym $(ROMNO)
 	./makeloadnoi.sh $(CHIPKITOUT)/6309BAS.bin $(CHIPKITOUT)/loadbasic.noi $(ROMNO)
-	cat $(CHIPKITOUT)/loadbasic.noi $(CHIPKITOUT)/6309BAS.sym $(BEEBOUT)/../../mos/beeb6809-mos/mosrom-noice.sym >$(CHIPKITOUT)/loadbasic6309andsyms.noi
+	cat $(CHIPKITOUT)/loadbasic.noi $(CHIPKITOUT)/6309BAS.sym $(BEEBOUT)/../../mos/beeb6809-mos/mosrom.sym >$(CHIPKITOUT)/loadbasic6309andsyms.noi
 	echo -e "WAITFORSTOP 1\nR PC mos_handle_res\n" >>$(BEEBOUT)/loadbasic6309andsyms.noi
 
 $(BEEBOUT)/6309BAS.bin: 6809BAS.asm
-		$(AS) $(ASFLAGS) -3 --define CPU_6309 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
+		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6309 --define CPU_6309 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 $(CHIPKITOUT)/6309BAS.bin: 6809BAS.asm
-		$(AS) $(ASFLAGS) -3 --define CPU_6309 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
+		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6309 --define CPU_6309 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 
 

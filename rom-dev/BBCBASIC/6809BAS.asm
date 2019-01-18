@@ -21,7 +21,7 @@
 DEBUG			EQU	1
 LOADADDR		EQU $8000
 COMPADDR		EQU $8000
-TABLESADDR		EQU $BE80
+TABLESADDR		EQU $BF00
 
 ZP_MOS_ERROR_PTR_QRY	EQU	$FD		; TODOFLEX - move this defn somewhere?
 
@@ -113,7 +113,7 @@ ROM_LANGST	RESET_MACH_STACK
 		CMPX	ZP_HIMEM				; check to see if the returned HIMEM is > than start of ROM
 		BHS	1F					; if it is ignore it and set to start of ROM - this for
 		STX	ZP_HIMEM				; old matchbox copros with unfixed tube client code
-1		DECA
+1		LDA	#$83					; DB: must reload value here as A might be set above
 		JSR	OSBYTE
 		TFR	X,D					; A=high byte of returned bottom of memory
 		CMPA	#8
@@ -1790,7 +1790,7 @@ indStringStore	CALL	str600CRterm			;  Store <cr> at end of string buffer
 
 
 cmdPRINT_HASH						; L9141
-		TODODEADEND "PRINT#"
+		TODODEADEND "P.#"
 ;		CALL LBA3C
 ;L9144:		PHY
 ;		CALL skipSpacesCheckCommaAtY
@@ -2067,12 +2067,14 @@ L92CC
 		BRA	L92CC
 L92F1		CALL	scanNextStmtFromY
 		CALL	popIntANew
+		PSHS	Y
 		CALL	callusrSetRegsEnterCode
+		PULS	Y
 		JUMP	continue
 L9301
 		JUMP	brkNoSuchVar
 callusrSetRegsEnterCode				; L9304
-		PSHS	U,Y
+		PSHS	U
 		LDA	$040C+3				; C% into carry
 		LSRA
 		LDA	$0404+3
@@ -2080,12 +2082,12 @@ callusrSetRegsEnterCode				; L9304
 		LDX	$0460+2
 		LDY	$0464+2
 		JSR	[ZP_INT_WA + 2]
-		PULS	U,Y,PC
+		PULS	U,PC
 L9314
 		JUMP	brkSyntax
 cmdDELETE
 
-			TODO_CMD "cmdDELETE"
+			TODO_CMD "DELETE"
 			
 ;			;  DELETE
 ;		CALL skipSpacesDecodeLineNumber
@@ -2141,7 +2143,7 @@ cmdDELETE
 ;		RTS
 cmdRENUMBER		; L9384!
 
-			TODO_CMD "cmdRENUMBER"
+			TODO_CMD "RENUMBER"
 			
 ;			;  RENUMBER
 ;		CALL L934D
@@ -2289,7 +2291,7 @@ cmdRENUMBER		; L9384!
 ;			;  ================
 cmdAUTO
 
-			TODO_CMD "cmdAUTO"
+			TODO_CMD "AUTO"
 			
 ;		CALL L934D
 ;		LDA ZP_INT_WA
@@ -4163,7 +4165,7 @@ evalL2lp1	LDB	,Y+
 ;			;  ---------------------------
 evalDoCARET						;LA027:
 		CALL checkTypeIntToReal
-		TODODEADEND "evalDoCARET"
+		TODODEADEND "evalDo^"
 ;		CALL fpStackWAtoStackReal
 ;		CALL evalLevel1ConvertReal
 ;		LDA ZP_FPA + 2
@@ -5588,14 +5590,14 @@ fpYtoPTR1toFPA						; LA896
 		JUMP	fpCopyPTR1toFPA
 fnACS
 
-			TODO_CMD "fnACS"
+			TODO_CMD "ACS"
 			
 ;			;  =ACS
 ;		CALL fnASN
 ;		BRA LA8E1
 fnASN
 
-			TODO_CMD "fnASN"
+			TODO_CMD "ASN"
 			
 ;		CALL evalLevel1ConvertReal
 ;		LDA ZP_FPA
@@ -5762,7 +5764,7 @@ brkExpRange						; LA9BC
 
 fnRAD			; LA9C8!
 
-			TODO_CMD "fnRAD"
+			TODO_CMD "RAD"
 			
 ;			;  =RAD
 ;		CALL evalLevel1ConvertReal
@@ -5770,7 +5772,7 @@ fnRAD			; LA9C8!
 ;		BRA fpFPAeqXmulFPA_checkusingX!
 fnLOG
 
-			TODO_CMD "fnLOG"
+			TODO_CMD "LOG"
 			
 ;			;  =LOG
 ;?		CALL	fnLN
@@ -5778,7 +5780,7 @@ fnLOG
 ;?		BRA	fpFPAeqXmulFPA
 fnDEG
 
-			TODO_CMD "fnDEG"
+			TODO_CMD "DEG"
 			
 ;			;  =DEG
 ;		CALL evalLevel1ConvertReal
@@ -5878,7 +5880,7 @@ LAA52
 		CALL	fpFPAeqPTR1mulFPA_internal
 		CALL	fpReal2Int
 		CALL	inc_INT_WA
-		BRA	LAA90
+		BRA	LAA90_rtsA40
 fnRND_randomize						; LAA69
 		LDX	#ZP_RND_WA
 		CALL	CopyIntA2ZPX
@@ -5896,7 +5898,7 @@ intLoadWAFromX
 		STD	ZP_INT_WA + 0
 		LDD	2,X
 		STD	ZP_INT_WA + 2
-LAA90
+LAA90_rtsA40
 		LDA	#$40
 		RTS
 ;			;  =NOT
@@ -5908,26 +5910,26 @@ fnNOT
 LAA98		COM	B,X
 		DECB
 		BPL	LAA98
-		BRA	LAA90
+		BRA	LAA90_rtsA40
 fnPOS			; LAAA3!
 		CALL	fnVPOS
 		STX	ZP_INT_WA+2
 		RTS
 fnUSR			; LAAA9!
 
-			TODO_CMD "fnUSR"
 			
-;			;  =USR
-;		CALL evalLevel1checkTypeStoreAsINT
-;		CALL callusrSetRegsEnterCode
-;		STA ZP_INT_WA
-;		STX ZP_INT_WA + 1
-;		STY ZP_INT_WA + 2
-;		PHP
-;		PLA
-;		STA ZP_INT_WA + 3
-;		CLD
-;		BRA LAA90
+			;  =USR
+		CALL	evalLevel1checkTypeStoreAsINT
+		PSHS	Y
+		CALL	callusrSetRegsEnterCode
+		PSHS	CC
+		STY	ZP_INT_WA + 1			; note store 16 bit regs one less to get low bytes
+		STX	ZP_INT_WA + 0
+		STA	ZP_INT_WA + 3
+		PULS	A
+		STA	ZP_INT_WA + 0
+		PULS	Y
+		BRA	LAA90_rtsA40
 fnVPOS			; LAABC!
 	IF FLEX
 		JUMP	brkFlexNotImpl
@@ -6026,7 +6028,7 @@ fnPI							; LAAFF!
 ;			;  ================================================
 fnEVAL
 
-		TODO_CMD "fnEVAL"
+		TODO_CMD "EVAL"
 			
 ;		CALL evalLevel1
 ;		BNE JUMPBrkTypeMismatch3		;  Evaluate value, error if not string
@@ -6071,7 +6073,7 @@ fnEVAL
 ;
 fnVAL
 
-			TODO_CMD "fnVAL"
+			TODO_CMD "VAL"
 			;  =VAL
 ;		CALL		evalLevel1
 ;		BNE		JUMPBrkTypeMismatch3
@@ -6189,7 +6191,7 @@ varFALSE
 ;		BRA returnINTminus1
 fnSGN			; LABF5!
 
-			TODO_CMD "fnSGN"
+			TODO_CMD "SGN"
 			
 ;			;  =SGN
 ;		CALL evalLevel1
@@ -6208,7 +6210,7 @@ fnSGN			; LABF5!
 		JUMP retB8asINT
 fnPOINT			; LAC0E!
 
-			TODO_CMD "fnPOINT"
+			TODO_CMD "POINT"
 			
 ;			;  =POINT
 ;		CALL evalAtYcheckTypeInAConvert2INT
@@ -6755,8 +6757,7 @@ fnINKEYDOLLAR		; LAEB3!
 			;  =INKEY$
 		CALL callOSByte81withXYfromINT
 		TFR	X,D
-		LEAY	0,Y					; check for 0
-		BEQ	returnBAsString
+		BCC	returnBAsString
 	ENDIF
 strRet0LenStr							; LAEBB
 		CLRA	
@@ -7434,7 +7435,7 @@ OSWORD_continue
 
 cmdWIDTH
 
-			TODO_CMD "cmdWIDTH"
+			TODO_CMD "WIDTH"
 			
 ;			;  WIDTH
 ;		CALL evalForceINT
@@ -8238,7 +8239,7 @@ findProgLineOrBRK
 ;		BRA LB844
 cmdINPUT			; LB8B6!
 
-			TODO_CMD "cmdINPUT"
+			TODO_CMD "INPUT"
 			
 ;			;  INPUT
 ;		CALL SkipSpaceCheckHash

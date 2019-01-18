@@ -2,7 +2,7 @@ mos_MACHINE_TYPE_BYTE			EQU $63
 
 * Address of MOS ROM base
 MOSROMBASE				EQU $C000
-MOSSTRINGS				EQU $F4A0
+MOSSTRINGS				EQU $F500
 
 * default direct page for MOS ROM
 MOSROMSYS_DP				EQU $0
@@ -210,7 +210,7 @@ vduvar_GRA_CUR_INT_OLD			EQU $0314	; Old graphics cursor in external coordinates
 vduvar_TXT_CUR_X			EQU $0318	; Current text cursor X
 vduvar_TXT_CUR_Y			EQU $0319	; Current text cursor Y
 vduvar_GRA_CUR_CELL_LINE		EQU $031A	; Line within current graphics cell of graphics cursor
-vdvvar_VDU_Q_START			EQU $031B
+vduvar_VDU_Q_START			EQU $031B
 vduvar_VDU_Q_END			EQU $0324	; end of VDU Q (well 1 after!)
 vduvar_GRA_CUR_INT			EQU $0324	; Current graphics cursor in internal coordinates
 vduvar_TEMP_8				EQU $0328	; Bitmap read from screen by OSBYTE 135, various coordinate routines
@@ -317,3 +317,14 @@ soft_keys_start				EQU $B00
 vec_nmi					EQU $0D00
 
 swrom_wksp_tab				EQU $0DF0
+
+; REMAPPED HARDWARE VECTOS
+
+HWVEC_DIV0				EQU	$F7F0
+HWVEC_SWI3V				EQU	$F7F2
+HWVEC_SWI2V				EQU	$F7F4
+HWVEC_FIRQV				EQU	$F7F6
+HWVEC_IRQV				EQU	$F7F8
+HWVEC_SWIV				EQU	$F7FA
+HWVEC_NMIV				EQU	$F7FC
+HWVEC_RESETV				EQU	$F7FE

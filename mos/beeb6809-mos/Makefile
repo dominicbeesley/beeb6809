@@ -1,115 +1,85 @@
 ASFLAGS=-3 -v
-TARGETS=mosrom.bin
-TARGETS_EXTRA_CHIPKIT=$(CHIPKITOUT)/mosrom-noice.bin
-TARGETS_EXTRA_BEEB=	$(BEEBOUT)/mosrom-6809.bin \
-					$(BEEBOUT)/mosrom-6809-noice.bin \
-					$(BEEBOUT)/mosrom-noice.bin \
-					$(BEEBOUT)/mosrom-6809-noice-my.bin \
-					$(BEEBOUT)/mosrom-noice-my.bin \
-					$(BEEBOUT)/mosrom-noice-nat.bin
+TARGETS=
+TARGETS_CHIPKIT=	mosrom.bin
+TARGETS_BEEB=		mosrom-6809.bin \
+			mosrom.bin \
+			mosrom-nat.bin
+
 include		../../Makefile.defs
 
-DEPS=../../includes/hardware.inc ../../includes/common.inc ../../includes/mosrom.inc ../../includes/noice.inc 
+DEPS=../../includes/hardware.inc ../../includes/common.inc ../../includes/mosrom.inc extras.noi
 
 CLEAN_EXTRA=$(addprefix $(CHIPKITOUT)/,mosloadandrun.noi mosloadandsyms.noi \
-	 mosloadandsymsrun.noi mosrom-noice.bin mosrom-noice.sym mosrom-noice.lst) \
-	 $(addprefix $(BEEBOUT)/,mosloadandrun.noi mosloadandsyms.noi \
-	 mosloadandsymsrun.noi mosrom-noice.bin mosrom-noice.sym mosrom-noice.lst)
+	 mosloadandsymsrun.noi) \
+	 $(addprefix $(BEEBOUT)/,mosloadandrun.noi mosloadandrun-6809.noi mosloadandrun-nat.noi) 
 
 #mosrom.bin:		mosrom.asm $(DEPS)
 #			$(AS) $(ASFLAGS) --define NOICE=0 -o $@ -l $(basename $@).lst $<
 
 
 $(CHIPKITOUT)/mosloadandrun.noi:
-			./makeloadnoi.sh $(CHIPKITOUT) mosrom-noice.bin >$@
+			./makeloadnoi.sh $(CHIPKITOUT) mosrom.bin >$@
 
-$(CHIPKITOUT)/mosrom-noice.bin:	mosrom.asm $(DEPS) ../noice/noice/mon-noice-6309-chipkit-ovr.ovr $(CHIPKITOUT)/mosloadandrun.noi
+$(CHIPKITOUT)/mosrom.bin:	mosrom.asm $(DEPS) $(CHIPKITOUT)/mosloadandrun.noi
 			./mkversion.sh
-			$(AS) $(ASFLAGS) --define NOICE=1 --define MACH_CHIPKIT=1 -o $@ -l $(basename $@).lst $<
+			$(AS) $(ASFLAGS) --define MACH_CHIPKIT=1 -o $@ -l $(basename $@).lst $<
 			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 						
-			cat $(CHIPKITOUT)/mosloadandrun.noi $(basename $@).sym >$(CHIPKITOUT)/mosloadandsyms.noi
-			cat $(CHIPKITOUT)/mosloadandrun.noi $(basename $@).sym >$(CHIPKITOUT)/mosloadandsymsrun.noi
+			cat $(basename $@).sym >>$(CHIPKITOUT)/mosloadandrun.noi
 
-			echo "WAITFORSTOP" >>$(CHIPKITOUT)/mosloadandsymsrun.noi
-			echo "GO mos_handle_res" >>$(CHIPKITOUT)/mosloadandsymsrun.noi
+			if [ -a ./extras.noi ]; then \
+				cat ./extras.noi >>$(CHIPKITOUT)/mosloadandrun.noi; \
+			fi
 
-$(BEEBOUT)/mosrom.bin:	mosrom.asm $(DEPS) 
+			echo "WAITFORSTOP" >>$(CHIPKITOUT)/mosloadandrun.noi
+			echo "GO 2000" >>$(CHIPKITOUT)/mosloadandrun.noi
+
+$(BEEBOUT)/mosrom-6809.bin:	mosrom.asm $(DEPS)
 			./mkversion.sh
-			$(AS) -v -3 --define NOICE=0 --define CPU_6809=1 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
-			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
-$(CHIPKITOUT)/mosrom.bin:	mosrom.asm $(DEPS) 
-			./mkversion.sh
-			$(AS) -v -3 --define NOICE=0 --define CPU_6809=1 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
-			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
-
-$(BEEBOUT)/mosrom-6809.bin:	mosrom.asm $(DEPS) 
-			./mkversion.sh
-			$(AS) -v --define NOICE=0 --define CPU_6809=1 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
-			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
-
-
-
-$(BEEBOUT)/mosrom-6809-noice.bin:	mosrom.asm $(DEPS) ../noice/noice/mon-noice-6809-beeb-ovr.ovr 
-			./mkversion.sh
-			$(AS) -v --define NOICE=1 --define CPU_6809=1 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
+			$(AS) -v --define CPU_6809=1 --define MACH_BEEB=1 --define BLITTER=1 -o $@ -l $(basename $@).lst $<
 			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 						
-			./makeloadnoi.sh $(BEEBOUT) mosrom-6809-noice.bin >$(BEEBOUT)/mosloadandrun-6809.noi
-			cat $(BEEBOUT)/mosloadandrun-6809.noi $(basename $@).sym >$(BEEBOUT)/mosloadandsyms-6809.noi
-			cat $(BEEBOUT)/mosloadandrun-6809.noi $(basename $@).sym >$(BEEBOUT)/mosloadandsymsrun-6809.noi
+			./makeloadnoi.sh $(BEEBOUT) mosrom-6809.bin >$(BEEBOUT)/mosloadandrun-6809.noi
+			cat $(basename $@).sym >>$(BEEBOUT)/mosloadandrun-6809.noi
 
-			echo "WAITFORSTOP" >>$(BEEBOUT)/mosloadandsymsrun-6809.noi
-			echo "GO mos_handle_res" >>$(BEEBOUT)/mosloadandsymsrun-6809.noi
+			if [ -a ./extras.noi ]; then \
+				cat ./extras.noi >>$(BEEBOUT)/mosloadandrun-6809.noi; \
+			fi
 
-$(BEEBOUT)/mosrom-noice.bin:	mosrom.asm $(DEPS) ../noice/noice/mon-noice-6309-beeb-ovr.ovr 
+
+			echo "WAITFORSTOP" >>$(BEEBOUT)/mosloadandrun-6809.noi
+			echo "GO 2000" >>$(BEEBOUT)/mosloadandrun-6809.noi
+
+$(BEEBOUT)/mosrom.bin:	mosrom.asm $(DEPS)
 			./mkversion.sh
-			$(AS) -v -3 --define NOICE=1 --define CPU_6309=1 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
+			$(AS) -v -3 --define CPU_6309=1 --define MACH_BEEB=1 --define BLITTER=1 -o $@ -l $(basename $@).lst $<
 			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 						
-			./makeloadnoi.sh $(BEEBOUT) mosrom-noice.bin >$(BEEBOUT)/mosloadandrun.noi
-			cat $(BEEBOUT)/mosloadandrun.noi $(basename $@).sym >$(BEEBOUT)/mosloadandsyms.noi
-			cat $(BEEBOUT)/mosloadandrun.noi $(basename $@).sym >$(BEEBOUT)/mosloadandsymsrun.noi
+			./makeloadnoi.sh $(BEEBOUT) mosrom.bin >$(BEEBOUT)/mosloadandrun.noi
+			cat $(basename $@).sym >>$(BEEBOUT)/mosloadandrun.noi
 
-			echo "WAITFORSTOP" >>$(BEEBOUT)/mosloadandsymsrun.noi
-			echo "GO mos_handle_res" >>$(BEEBOUT)/mosloadandsymsrun.noi
+			if [ -a ./extras.noi ]; then \
+				cat ./extras.noi >>$(BEEBOUT)/mosloadandrun.noi; \
+			fi
 
-$(BEEBOUT)/mosrom-noice-nat.bin:	mosrom.asm $(DEPS) ../noice/noice/mon-noice-6309-beeb-ovr.ovr 
+			echo "WAITFORSTOP" >>$(BEEBOUT)/mosloadandrun.noi
+			echo "GO 2000" >>$(BEEBOUT)/mosloadandrun.noi
+
+$(BEEBOUT)/mosrom-nat.bin:	mosrom.asm $(DEPS)
 			./mkversion.sh
-			$(AS) -v -3 --define NATIVE=1 --define NOICE=1 --define CPU_6309=1 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
+			$(AS) -v -3 --define NATIVE=1 --define CPU_6309=1 --define MACH_BEEB=1 --define BLITTER=1 -o $@ -l $(basename $@).lst $<
 			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 						
-			./makeloadnoi.sh $(BEEBOUT) mosrom-noice-nat.bin >$(BEEBOUT)/mosloadandrun-nat.noi
-			cat $(BEEBOUT)/mosloadandrun-nat.noi $(basename $@).sym >$(BEEBOUT)/mosloadandsyms-nat.noi
-			cat $(BEEBOUT)/mosloadandrun-nat.noi $(basename $@).sym >$(BEEBOUT)/mosloadandsymsrun-nat.noi
+			./makeloadnoi.sh $(BEEBOUT) mosrom-nat.bin >$(BEEBOUT)/mosloadandrun-nat.noi
+			cat $(basename $@).sym >>$(BEEBOUT)/mosloadandrun-nat.noi
 
-			echo "WAITFORSTOP" >>$(BEEBOUT)/mosloadandsymsrun-nat.noi
-			echo "GO mos_handle_res" >>$(BEEBOUT)/mosloadandsymsrun-nat.noi
+			if [ -a ./extras.noi ]; then \
+				cat ./extras.noi >>$(BEEBOUT)/mosloadandrun-nat.noi; \
+			fi
 
 
-$(BEEBOUT)/mosrom-6809-noice-my.bin:	mosrom.asm $(DEPS) ../noice/noice/mon-noice-my-6809-beeb-ovr.ovr 
-			./mkversion.sh
-			$(AS) -v --define NOICE=1 --define NOICE_MY=1 --define CPU_6809=1 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
-			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
-						
-			./makeloadnoi.sh $(BEEBOUT) mosrom-6809-noice-my.bin >$(BEEBOUT)/mosloadandrun-6809-my.noi
-			cat $(BEEBOUT)/mosloadandrun-6809-my.noi $(basename $@).sym >$(BEEBOUT)/mosloadandsyms-6809-my.noi
-			cat $(BEEBOUT)/mosloadandrun-6809-my.noi $(basename $@).sym >$(BEEBOUT)/mosloadandsymsrun-6809-my.noi
-
-			echo "WAITFORSTOP" >>$(BEEBOUT)/mosloadandsymsrun-6809-my.noi
-			echo "GO mos_handle_res" >>$(BEEBOUT)/mosloadandsymsrun-6809-my.noi
-
-$(BEEBOUT)/mosrom-noice-my.bin:	mosrom.asm $(DEPS) ../noice/noice/mon-noice-my-6309-beeb-ovr.ovr 
-			./mkversion.sh
-			$(AS) -v -3 --define NOICE=1 --define NOICE_MY=1 --define CPU_6309=1 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
-			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
-						
-			./makeloadnoi.sh $(BEEBOUT) mosrom-noice-my.bin >$(BEEBOUT)/mosloadandrun-my.noi
-			cat $(BEEBOUT)/mosloadandrun-my.noi $(basename $@).sym >$(BEEBOUT)/mosloadandsyms-my.noi
-			cat $(BEEBOUT)/mosloadandrun-my.noi $(basename $@).sym >$(BEEBOUT)/mosloadandsymsrun-my.noi
-
-			echo "WAITFORSTOP" >>$(BEEBOUT)/mosloadandsymsrun-my.noi
-			echo "GO mos_handle_res" >>$(BEEBOUT)/mosloadandsymsrun-my.noi
+			echo "WAITFORSTOP" >>$(BEEBOUT)/mosloadandrun-nat.noi
+			echo "GO 2000" >>$(BEEBOUT)/mosloadandrun-nat.noi
 
 
 #clean:

@@ -1335,10 +1335,10 @@ LCBC1_clear_whole_screen
 		lda	#$0C				;	CBCF
 		jsr	mos_stx_6845rA			;	CBD1
 
-		ldb	SHEILA_ROMCTL_MOS
+		ldb	sheila_ROMCTL_MOS
 		pshs	B
 		andb	#~ROMCTL_BITS_FLEX
-		stb	SHEILA_ROMCTL_MOS
+		stb	sheila_ROMCTL_MOS
 
 
 ;;	lda	vduvar_TXT_BACK			;	CBD4
@@ -1372,7 +1372,7 @@ LCBC1_clear_whole_screen
 	ENDIF
 
 		puls	B
-		stb	SHEILA_ROMCTL_MOS
+		stb	sheila_ROMCTL_MOS
 
 		rts
 ;; ----------------------------------------------------------------------------
@@ -1608,10 +1608,10 @@ x_clear_a_line
 		sta	zp_vdu_wksp+2
 		ldx	zp_vdu_top_scanline
 		lda	vduvar_TXT_BACK
-		ldb	SHEILA_ROMCTL_MOS
+		ldb	sheila_ROMCTL_MOS
 		pshs	B
 		andb	#~ROMCTL_BITS_FLEX
-		stb	SHEILA_ROMCTL_MOS
+		stb	sheila_ROMCTL_MOS
 
 LCEBF		ldb	vduvar_BYTES_PER_CHAR
 LCEC5		sta	,X+
@@ -1627,7 +1627,7 @@ LCEC5		sta	,X+
 LCEDA		dec	zp_vdu_wksp+2
 		bpl	LCEBF
 		puls	B
-		stb	SHEILA_ROMCTL_MOS
+		stb	sheila_ROMCTL_MOS
 		stx	zp_vdu_top_scanline
 		puls	A
 LCEE3_sta_TXT_CUR_X_setC_rts	
@@ -1717,10 +1717,10 @@ LCFBF_renderchar2
 render_logo2
 
 		; MINIMOS - page in screen memory
-		ldb	SHEILA_ROMCTL_MOS
+		ldb	sheila_ROMCTL_MOS
 		pshs	B
 		andb	#~ROMCTL_BITS_FLEX
-		stb	SHEILA_ROMCTL_MOS
+		stb	sheila_ROMCTL_MOS
 
 
 		ldb	#7
@@ -1767,7 +1767,7 @@ render_logo2
 		std	,Y++						;5+1		2
 
 		puls	b
-		stb	SHEILA_ROMCTL_MOS
+		stb	sheila_ROMCTL_MOS
 
 		rts					;	CFDB
 ;;render_logox4
@@ -1824,7 +1824,7 @@ LD017rts
 		puls	U
 
 		puls	b
-		stb	SHEILA_ROMCTL_MOS
+		stb	sheila_ROMCTL_MOS
 
 		rts
 ;; ----------------------------------------------------------------------------
@@ -1999,15 +1999,15 @@ mos_handle_res
 		lds	#STACKTOP			; stack
 
 		ldb	#1
-		stb	SHEILA_ROMCTL_SWR
+		stb	sheila_ROMCTL_SWR
 
 		ldb	#$11
-		stb	SHEILA_ROMCTL_MOS		; SWMOS
+		stb	sheila_ROMCTL_MOS		; SWMOS
 
 		jsr	noice_handle_res
 
 		ldb	#1
-		stb	SHEILA_ROMCTL_SWR		; use bank #1 for ram at $8000-BFFF
+		stb	sheila_ROMCTL_SWR		; use bank #1 for ram at $8000-BFFF
 
 
 ;========================================================

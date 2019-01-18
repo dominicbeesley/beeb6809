@@ -1,6 +1,10 @@
 .PHONY:		all
 
-all: all_beeb all_chipkit all_flex all_matchbox
+all: all_beeb all_chipkit all_flex all_matchbox hardware-overview.html
+
+
+hardware-overview.html:	hardware-overview.md
+	./scripts/Markdown-Master/Markdown.pl <$< >$@
 
 all_chipkit:
 	$(MAKE) -C mos all_chipkit

@@ -1,10 +1,24 @@
 		include "../../includes/hardware.inc"
 		include "../../includes/common.inc"
 		include "../../includes/mosrom.inc"
-		include "../../includes/noice.inc"
 		include "../../includes/oslib.inc"
 		include "./gen-version.inc"
 
+
+; TODO: RESET vector is called by instruction 3E on 6809
+; 	this could be used to form an illegal op
+;	use 3E for NOICE debug
+
+
+	IF CPU_6809
+m_NEGD		MACRO
+		jsr	x_negation_routine_newAPI
+		ENDM
+	ELSE
+m_NEGD		MACRO
+		negd
+		ENDM
+	ENDIF
 
 
 
@@ -34,12 +48,8 @@ __STR		SET	1B
 
 ASSERT		MACRO
 		DEBUGPR	\1
-	IF NOICE
-		SWI
-	ELSE
 		ORCC	#$FF
 		CWAI	#$FF				; wait for NMI!
-	ENDIF
 		ENDM
 
 TODO		MACRO
@@ -52,14 +62,11 @@ TODOSKIP	MACRO
 		ENDM
 
 DEBUG_INFO	MACRO
-	IF NOICE = 1 
 		DEBUGPR \1
-	ENDIF
 		ENDM
 
 
 		; NOTE: MOS only runs on a 6309 and uses 6309 extra registers
-		; NOTE: currently doesn't support native mode!
 
 		CODE
 		ORG	MOSROMBASE
@@ -339,18 +346,21 @@ mostbl_VDU_6845_mode_7
 		FCB	$3F,$28,$33,$24,$1E,$02,$19,$1B,$93,$12,$72,$13
 ;; ----------------------------------------------------------------------------
 ;; VDU ROUTINE VECTOR ADDRESSES !!!!!ADDRESSES!!!!
-mostbl_VDU_ROUTINE_VECTOR_ADDRESSES
-		FDB	x_draw_line_main_right				;	C4AA
-		FDB	x_draw_line_main_up				;	C4AC
+mostbl_drawline_major_routine
+		FDB	x_drawline_major_right				;	C4AA
+		FDB	x_drawline_major_up				;	C4AC
 ;; ----------------------------------------------------------------------------
 ;; VDU ROUTINE BRANCH VECTOR ADDRESS LO !!!!!ADDRESSES!!!!
-;;mostbl_VDU_ROUTINE_BRANCH_VECTOR_ADDRESS_LO
-;;	FCB	x_horizontal_scan_module_right % 256, x_horizontal_scan_module_left % 256, x_vertical_scan_module_up % 256, x_vertical_scan_module_dn % 256			;	C4AE
+;;mostbl_drawline_minor_routine_LO
+;;	FCB	x_drawline_minor_right % 256, x_drawline_minor_left % 256, x_drawline_minor_up % 256, x_drawline_minor_down % 256			;	C4AE
 ;; VDU ROUTINE BRANCH VECTOR ADDRESS HI !!!!!ADDRESSES!!!!
-;;mostbl_VDU_ROUTINE_BRANCH_VECTOR_ADDRESS_HI
-;;	FCB	x_horizontal_scan_module_right / 256, x_horizontal_scan_module_left / 256, x_vertical_scan_module_up / 256, x_vertical_scan_module_dn / 256			;	C4B2
-mostbl_VDU_ROUTINE_BRANCH_VECTOR_ADDRESS
-		FDB	x_horizontal_scan_module_right, x_horizontal_scan_module_left, x_vertical_scan_module_up, x_vertical_scan_module_dn
+;;mostbl_drawline_minor_routine_HI
+;;	FCB	x_drawline_minor_right / 256, x_drawline_minor_left / 256, x_drawline_minor_up / 256, x_drawline_minor_down / 256			;	C4B2
+mostbl_drawline_minor_routine
+		FDB	x_drawline_minor_right
+		FDB	x_drawline_minor_left
+		FDB	x_drawline_minor_up
+		FDB	x_drawline_minor_down
 ;; TELETEXT CHARACTER CONVERSION TABLE
 mostbl_TTX_CHAR_CONV
 		FCB	$23,$5F,$60,$23			;	C4B6
@@ -902,7 +912,7 @@ LC805		anda	vduvar_COL_COUNT_MINUS1
 		sta	zp_vdu_txtcolourOR
 LC82B		rts
 LC82C		lda	vduvar_VDU_Q_END - 2
-		ldy	vduvar_GRA_FORE
+		ldy	#vduvar_GRA_FORE
 		sta	b,y
 		rts
 ;; ----------------------------------------------------------------------------
@@ -1218,8 +1228,9 @@ mos_VDU_26
 LC9C1		sta	b,x
 		decb					;	C9C4
 		bpl	LC9C1				;	C9C5
-		lda	vduvar_MODE			;	C9C7
-		m_tax
+		ldb	vduvar_MODE			;	C9C7
+		clra
+		tfr	D,X
 		lda	mostbl_vdu_window_right,x	;	C9CA
 		sta	vduvar_TXT_WINDOW_RIGHT		;	C9CD
 		jsr	LCA88_newAPI			;	C9D0
@@ -1489,7 +1500,7 @@ mos_VDU_set_mode_bmsk1
 	ENDIF
 	IF MACH_CHIPKIT
 		lda	mostbl_VDU_hwscroll_offs,x
-		sta	SHEILA_MEMC_SCROFF
+		sta	sheila_MEMC_SCROFF
 	ENDIF
 		lda	mostbl_VDU_screensize_h,x	;	CB76
 		sta	vduvar_SCREEN_SIZE_HIGH		;	CB79
@@ -2305,7 +2316,7 @@ x_PLOT_ROUTINES_ENTER_HERE
 		bra	LD080					; logic inverse colour must be wanted
 ;; graphics colour wanted
 x_graphics_colour_wanted
-		m_tax						; X=A if A=0 its a foreground colour 1 its background
+		jsr	mos_tax					; X=A if A=0 its a foreground colour 1 its background
 		ldb	vduvar_GRA_PLOT_FORE,x			; get fore or background graphics PLOT mode
 		lda	vduvar_GRA_FORE,x			; get fore or background graphics colour
 ;;;	tax						; X=A
@@ -2417,7 +2428,6 @@ x_Check_window_limits_atX
 		clr	zp_vdu_wksp			;	D111
 		ldy	#vduvar_GRA_WINDOW + 2		;	D113 - bottom
 		jsr	x_cursor_and_margins_check	;	D115	; check Y against BOTTOM/TOP
-		CLC					; TODO: remove - unnecessary?
 		asl	zp_vdu_wksp			;	D118
 		asl	zp_vdu_wksp			;	D11A
 		leax	-2,X
@@ -2515,137 +2525,207 @@ LD1D5		asl	vduvar_GRA_CUR_EXT,x
 ;; ----------------------------------------------------------------------------
 ;; compare X and Y PLOT spans
 
-vduvar_TEMP_draw_W	equ	vduvar_TEMP_8 + 0
-vduvar_TEMP_draw_H	equ	vduvar_TEMP_8 + 2
-vduvar_TEMP_draw_XY	equ	vduvar_TEMP_8 + 4
-vduvar_TEMP_draw_Y	equ	vduvar_TEMP_8 + 6
+vduvar_TEMP_draw_W		equ	vduvar_TEMP_8 + 0
+vduvar_TEMP_draw_H		equ	vduvar_TEMP_8 + 2
+vduvar_TEMP_draw_XY		equ	vduvar_TEMP_8 + 4
+vduvar_TEMP_draw_Y		equ	vduvar_TEMP_8 + 6
 
-zp_vdu_wksp_draw_X_save	equ	zp_vdu_wksp+2		; save X (counter?)
-zp_vdu_wksp_draw_stop	equ	zp_vdu_wksp+3		; pointer to end of line to be drawn (contains $20 or $24)
-zp_vdu_wksp_draw_slope	equ	zp_vdu_wksp+4		; either 0 or 2 depending on slop of line
-zp_vdu_wksp_draw_start	equ	zp_vdu_wksp+5		; pointer to start of line to be drawn (contains either $20 or $24)
-zp_vdu_wksp_draw_flags	equ	zp_vdu_wksp+1		; contains $80 if dotted line to be drawn, $40 if current point is out of bounds
-zp_vdu_wksp_draw_sav	equ	zp_vdu_wksp+6		; DB: new used to save single byte register. TODO: check for clash!
+zp_vdu_wksp_draw_flags		equ	zp_vdu_wksp + 1		; contains $80 if dotted line to be drawn, $40 if current point is out of bounds
+zp_vdu_wksp_draw_loop_ctr	equ	zp_vdu_wksp + 2		; save X (counter?)
+zp_vdu_wksp_draw_stop		equ	zp_vdu_wksp + 3		; pointer to end of line to be drawn (contains $20 or $24)
+zp_vdu_wksp_draw_slope		equ	zp_vdu_wksp + 4		; either 0 or 2 depending on slop of line
+zp_vdu_wksp_draw_start		equ	zp_vdu_wksp + 5		; pointer to start of line to be drawn (contains either $20 or $24)
+zp_vdu_wksp_draw_sav		equ	zp_vdu_wksp + 6		; DB: new used to save single byte register. TODO: check for clash!
+	; bits	purpose
+	; 7	dotted line
+	; 6	start point out of bounds
+DRAWFLAGS_START_OOB	equ	$80			; note these are opposite way round to 6502
+DRAWFLAGS_START_DOT	equ	$40
 
-vduvar_GRA_WKSP_jmp	equ	vduvar_GRA_WKSP+2	; code to draw pixels?
 
-x_mos_draw_line
-		jsr	x_PLOTXYsubGRACURStoTEMP8		; get line width/height
-		lda	vduvar_TEMP_draw_H			; eor top bytes of height
-		eora	vduvar_TEMP_draw_W			; and width
-		bmi	LD207					; if differing signs
-		ldd	vduvar_TEMP_draw_W			; compare width to height
-		subd	vduvar_TEMP_draw_H			; NOTE: swapped sense here for differing C flag behaviour TODO: check!
-		jmp	LD214					;
-; ----------------------------------------------------------------------------
-LD207		ldd	vduvar_TEMP_draw_W			;	D207
-		addd	vduvar_TEMP_draw_H			;	D20B
-LD214		rora						;	D214
-		ldb	#$00					;	D215
-		eora	vduvar_TEMP_draw_H			;	D217
-		bpl	LD21E					;	D21A
-		ldb	#$02					;	D21C
-LD21E		stb	zp_vdu_wksp_draw_slope				;	D21E
-		ldx	#mostbl_VDU_ROUTINE_VECTOR_ADDRESSES
+vduvar_GRA_WKSP_0_ENDMAJ	equ	vduvar_GRA_WKSP + 0
+vduvar_GRA_WKSP_2_JMP		equ	vduvar_GRA_WKSP + 2	; code to draw pixels?
+vduvar_GRA_WKSP_4_DOTORNOT	equ	vduvar_GRA_WKSP + 4	; when to draw a dot for dotted lines
+vduvar_GRA_WKSP_5_ERRACC	equ	vduvar_GRA_WKSP + 5	; the error accumulator, starts with 1/2 the major
+vduvar_GRA_WKSP_7_DELTA_MINOR	equ	vduvar_GRA_WKSP + 7	; the minor delta (mag of W or H which ever is less)
+vduvar_GRA_WKSP_9_DELTA_MAJOR	equ	vduvar_GRA_WKSP + 9	; the minor delta (mag of W or H which ever is greater)
+
+x_mos_draw_line						; LD1ED
+		jsr	x_PLOTXYsubGRACURStoTEMP8	; get line width/height
+		lda	vduvar_TEMP_draw_H		; eor top bytes of height
+		eora	vduvar_TEMP_draw_W		; and width
+		bmi	1F				; if differing signs
+		ldd	vduvar_TEMP_draw_W		; compare width to height
+		subd	vduvar_TEMP_draw_H		; NOTE: swapped sense here for differing C flag behaviour TODO: check!
+		bra	2F				;
+; ---------------------------------------------------------------------------
+1		ldd	vduvar_TEMP_draw_W		; signs are different add width to
+		addd	vduvar_TEMP_draw_H		; height
+2		
+		; 	W	H	C
+		;	-	-	|W|>|H|
+		;	+	+	|W|<|H|
+		;	-	+	|W|<|H|
+		;	+	-	|W|>|H|
+
+		rora						
+		ldb	#$00					
+		eora	vduvar_TEMP_draw_H			
+
+		; 	W	H	C
+		;	-	-	|W|<|H|
+		;	+	+	|W|<|H|
+		;	-	+	|W|<|H|
+		;	+	-	|W|<|H|
+
+		bpl	1F		; branch if |W| > |H|			
+		ldb	#$02					
+
+		; at this point B = 0 if |W| < |H|
+
+
+1		stb	zp_vdu_wksp_draw_slope			;	D21E
+		ldx	#mostbl_drawline_major_routine
 		ldx	B,X
 		stx	vduvar_VDU_VEC_JMP			;	D229
-		ldx	#vduvar_TEMP_8
-		tst	B,X
-		bpl	LD235					; test direction
-		ldx	#vduvar_GRA_CUR_INT			; start drawing from current cursor
-		bra	LD237
-LD235		ldx	#vduvar_VDU_Q_PLT_X			; start from plot point and work back
-LD237		STX_B	zp_vdu_wksp_draw_start			; 
-		ldy	#vduvar_TEMP_draw_XY			;	D239
-		jsr	copy4fromXtoY				;	D23B
-		ldb	zp_vdu_wksp_draw_start			;	D23E
-		eorb	#$04					;	D240
-		stb	zp_vdu_wksp_draw_stop			;	D242
-		orb	zp_vdu_wksp_draw_slope			;	D244
-		lda	#$3					; point at page 3
-		tfr	D,X					;	D246
-		jsr	copy2fromXto330				;	D247
-		lda	vduvar_VDU_Q_PLT_CODE			;	D24A
-		anda	#$10					;	D24D
-		asla						;	D24F
-		asla						;	D250
-		asla						;	D251
-		sta	zp_vdu_wksp_draw_flags			;	D252
-		ldx	#vduvar_TEMP_draw_XY			;	D254
-		jsr	x_Check_window_limits_atX		;	D256
-		sta	zp_vdu_wksp+2				;	D259
-		beq	LD263					;	D25B
-		lda	#$40					;	D25D
-		ora	zp_vdu_wksp_draw_flags			;	D25F
-		sta	zp_vdu_wksp_draw_flags			;	D261
-LD263		ldb	zp_vdu_wksp_draw_stop			;	D263
-		lda	#3					; 		TODO: page 3 bodge
-		tfr	D,X
-		jsr	x_Check_window_limits_atX		;	D265
-		bita	zp_vdu_wksp+2				;	D268
-		beq	1F					;	D26A
-		rts						; if both start and stop out of bounds POH
+
+		; at this point the choice has been made whether to:
+		; move up every pixel (|H|>|W|) or 
+		; move right every pixel (|H|<|W|)
+
+		ldx	#vduvar_TEMP_8			; get sign of either X or Y
+		tst	B,X				; depending on B (Y if moving up, X if moving right)
+		bpl	1F				; test direction
+		ldx	#vduvar_GRA_CUR_INT		; start drawing from current cursor
+		bra	2F
+1		ldx	#vduvar_VDU_Q_PLT_X		; start from plot point and work back
+2		STX_B	zp_vdu_wksp_draw_start		; store the low byte of the start coords pointer
+		ldy	#vduvar_TEMP_draw_XY		; 
+		jsr	copy4fromXtoY			; copy starting coord to XY accumulator
+		ldb	zp_vdu_wksp_draw_start		; get the ending coordinate
+		eorb	#$04				; by eor'ing with 4
+		stb	zp_vdu_wksp_draw_stop		; and store the low byte of this
+		orb	zp_vdu_wksp_draw_slope		; select X or Y depending on slope 
+		ldx	#vduvars_start			; point at page 3
+		abx					; X points at ending X or Y depending on slope
+		jsr	copy2fromXto330			; store in vduvar_GRA_WKSP_0_ENDMAJ
+
+		lda	vduvar_VDU_Q_PLT_CODE			
+		anda	#$10				; dotted line
+		asla					; 
+		asla					; 
+		sta	zp_vdu_wksp_draw_flags		; store in flags as bit 7
+
+		ldx	#vduvar_TEMP_draw_XY		; get starting coordinate
+		jsr	x_Check_window_limits_atX	; check bounds
+		sta	zp_vdu_wksp_draw_loop_ctr	; store for later check of ending coords
+		beq	1F				; if eq then in bounds don't set flag
+
+	IF CPU_6309
+		oim	#DRAWFLAGS_START_OOB, zp_vdu_wksp_draw_flags	; flag start point is out of bounds
+	ELSE
+		rol	zp_vdu_wksp_draw_flags
+		SEC
+		ror	zp_vdu_wksp_draw_flags		
+	ENDIF
+
+1		ldb	zp_vdu_wksp_draw_stop		; LD263
+		ldx	#vduvars_start
+		abx
+		jsr	x_Check_window_limits_atX	; check to see if endpoint is OOB
+		bita	zp_vdu_wksp_draw_loop_ctr	; and with saved OOB flags from above
+		beq	1F				; not the same
+		rts					; if both start and stop out of bounds 
+							; _in the same extreme_ POH
 ;; ----------------------------------------------------------------------------
-1		ldb	zp_vdu_wksp_draw_slope			; LD26D
-		beq	1F					; depending on slope
-		lsra						; shift top bound flag into right bound flag
-		lsra						;
-1		anda	#$02					; check right bound (or top) flag
-		beq	1F					;	D275
-;;;	txa						;	D277
-		orb	#$04					; == 6 or 4 depending on slope
-		lda	#3
-		tfr	D,X
-;;;	tax						;	D27A
-		jsr	copy2fromXto330				; copy right (or top) bound into vduvar_GRA_WKSP
-1		jsr	LD42C				;	D27E
-		ldb	zp_vdu_wksp_draw_slope			;	D281
+1
+	IF BLITTER
+		ora	zp_vdu_wksp_draw_flags
+		sta	zp_vdu_wksp_draw_flags		; used int blitter test
+	ENDIF
+		ldb	zp_vdu_wksp_draw_slope		; LD26D
+		beq	1F				; depending on slope
+		lsra					; shift top bound flag into right bound flag
+		lsra					;
+1		anda	#$02				; check right bound (or top) flag
+		beq	x_drawline_majorend_notoob	; skip following if not oob
+		orb	#$04				; == 6 or 4 depending on slope
+		ldx	#vduvars_start
+		abx
+		jsr	copy2fromXto330			; copy right (or top) graphics window value into
+							; vduvar_GRA_WKSP_0_ENDMAJ, replacing requested coord
+x_drawline_majorend_notoob
+		jsr	x_drawline_init_bresenham	;	D27E
+
+	IF BLITTER
+
+		lda	sysvar_USERFLAG
+		coma
+		ora	zp_vdu_wksp_draw_flags
+		lbeq	x_drawline_blit
+	ENDIF
+
+
+
+		ldb	zp_vdu_wksp_draw_slope		;	D281
 		eorb	#$02				;	D283
 		stb	zp_vdu_wksp_draw_sav
-;;;	tax					;	D285
-;;;	tay					;	D286
+;;;	tax						;	D285
+;;;	tay						;	D286
 		lda	vduvar_TEMP_draw_W		; check for with width / height -ve
 		eora	vduvar_TEMP_draw_H		;	D28A
 		bpl	LD290				;	D28D
 		incb					;	D28F
-LD290		ldx	#mostbl_VDU_ROUTINE_BRANCH_VECTOR_ADDRESS
+LD290		ldx	#mostbl_drawline_minor_routine
 		aslb
 		ldx	B,X
-		asrb
-		stx	vduvar_GRA_WKSP_jmp		;	D293
+		rorb
+		stx	vduvar_GRA_WKSP_2_JMP		;	D293
 		lda	#$7F				;	D29C
-		sta	vduvar_GRA_WKSP+4		;	D29E
-		lda	#$40
-		bita	zp_vdu_wksp_draw_flags		;	D2A1
-		tfr	B,A				; TODO: check!
-		bne	LD2CE				;	D2A3
+		sta	vduvar_GRA_WKSP_4_DOTORNOT	;	D29E
+	IF BLITTER
+		lda	zp_vdu_wksp_draw_flags		; test and remove end OOB flags
+		anda	#$C0
+		sta	zp_vdu_wksp_draw_flags
+	ELSE
+		tsta
+	ENDIF
+		tfr	B,A
+		bmi	LD2CE				;	D2A3
 		ldx	#mostbl_VDU_mode_size+7
 		ldb	B,X				; 4, 0, 6 or 2 depending on B
-;	tax					;	D2A8
+;	tax						;	D2A8
 		ldx	#vduvar_GRA_WINDOW_LEFT
 		ldd	B,X				; 	D2AA
 		LDY_B	zp_vdu_wksp_draw_sav
 		subd	vduvar_TEMP_draw_XY,Y
-;;;	sbc	vduvar_TEMP_8+4,y		;	D2AD
-;;;	sta	zp_vdu_wksp			;	D2B0
-;;;	lda	vduvar_GRA_WINDOW_LEFT+1,x	;	D2B2
-;;;	sbc	vduvar_TEMP_8+5,y		;	D2B5
-;;;	ldy	zp_vdu_wksp			;	D2B8
-;;;	tax					;	D2BA
+;;;	sbc	vduvar_TEMP_8+4,y			;	D2AD
+;;;	sta	zp_vdu_wksp				;	D2B0
+;;;	lda	vduvar_GRA_WINDOW_LEFT+1,x		;	D2B2
+;;;	sbc	vduvar_TEMP_8+5,y			;	D2B5
+;;;	ldy	zp_vdu_wksp				;	D2B8
+;;;	tax						;	D2BA
 		bpl	LD2C0				;	D2BB
-		jsr	x_negation_routine_newAPI	;	D2BD
+		m_NEGD	;	D2BD
 LD2C0
-;;;	tax					;	D2C0
-;;;	iny					;	D2C1
-;;;	bne	LD2C5				;	D2C2
-;;;	inx					;	D2C4
-;LD2C5:	txa					;	D2C5
-		addd	#1
-		tsta
-		beq	LD2CA					;	D2C6
+;;;	tax						;	D2C0
+;;;	iny						;	D2C1
+;;;	bne	LD2C5					;	D2C2
+;;;	inx						;	D2C4
+;LD2C5:	txa						;	D2C5
+;;;		addd	#1
+;;;
+;;;		tsta
+		incb
+		bne	LD2C5
+		inca
+LD2C5		tsta	; TODO REMOVE?
+	
+		beq	1F					;	D2C6
 		ldb	#$00					;	D2C8
-LD2CA		stb	zp_vdu_wksp_draw_start			;	D2CA
+1		stb	zp_vdu_wksp_draw_start			;	D2CA
 		beq	LD2D7					;	D2CC
+
 LD2CE		
 ;;;	txa						;	D2CE
 		lsra						;	D2CF
@@ -2655,34 +2735,35 @@ LD2CE
 		sta	zp_vdu_wksp_draw_slope			;	D2D5
 LD2D7		ldx	#vduvar_TEMP_draw_XY			;	D2D7
 		jsr	x_setup_screen_addr_from_intcoords_atX	;	D2D9
-		ldx	zp_vdu_wksp_draw_X_save
+		ldx	zp_vdu_wksp_draw_loop_ctr
 		leax	-1,X
+		stx	zp_vdu_wksp_draw_loop_ctr
 x_drawline_loop						; LD2E3
-		lda	zp_vdu_wksp_draw_flags			;	D2E3
-		beq	LD306					;	D2E5
-		bpl	LD2F9					;	D2E7
-		tst	vduvar_GRA_WKSP+4			;	D2E9
-		bpl	LD2F3					;	D2EC
-		dec	vduvar_GRA_WKSP+4			;	D2EE
-		bne	LD316					;	D2F1
-LD2F3		inc	vduvar_GRA_WKSP+4			;	D2F3
-		asla						;	D2F6
-		bpl	LD306					;	D2F7
-LD2F9		stx	zp_vdu_wksp_draw_X_save
+		lda	zp_vdu_wksp_draw_flags		; check flags
+		beq	x_drawline_plot_point		; no flags - plot this point
+		asla
+		bpl	x_drawline_notdotted		; if not $80 set then not dotted line
+		tst	vduvar_GRA_WKSP_4_DOTORNOT	;	D2E9
+		bpl	LD2F3				;	D2EC
+		dec	vduvar_GRA_WKSP_4_DOTORNOT	;	D2EE
+		bne	LD316				;	D2F1
+LD2F3		inc	vduvar_GRA_WKSP_4_DOTORNOT	;	D2F3
+		bcc	x_drawline_plot_point		; not expecting to go oob
+x_drawline_notdotted					; LD2F9	
 		ldx	#vduvar_TEMP_draw_XY			;	D2FB
 		jsr	x__check_in_window_bounds_setup_screen_addr_atX				;	D2FD
-;;;	ldx	zp_vdu_wksp_draw_X_save			;	D300
+;;;	ldx	zp_vdu_wksp_draw_loop_ctr			;	D300
 		tsta						;	D302
 		bne	LD316					;	D304
-LD306		lda	zp_vdu_grpixmask			;	D306
+
+x_drawline_plot_point					; LD306	
+
+		lda	zp_vdu_grpixmask			;	D306
 		anda	zp_vdu_gracolourOR			;	D308
-
-
 		ldb	vduvar_GRA_CUR_CELL_LINE
 		ldx	zp_vdu_gra_char_cell
 		abx
 		ora	,X
-		;;;	ora	(zp_vdu_gra_char_cell),y	;	D30A
 		sta	zp_vdu_wksp			;	D30C
 		lda	zp_vdu_gracolourEOR		;	D30E
 		anda	zp_vdu_grpixmask		;	D310
@@ -2691,55 +2772,46 @@ LD306		lda	zp_vdu_grpixmask			;	D306
 		;;;	sta	(zp_vdu_gra_char_cell),y	;	D314
 LD316
 ;;;	sec					;	D316
-		ldd	vduvar_GRA_WKSP+5		;	D317
-		subd	vduvar_GRA_WKSP+7		;	D31A
-		stb	vduvar_GRA_WKSP+6		;	D31D
-;;;	lda	vduvar_GRA_WKSP+6		;	D320
-;;;	sbc	vduvar_GRA_WKSP+8		;	D323
+		ldd	vduvar_GRA_WKSP_5_ERRACC		;	D317
+		subd	vduvar_GRA_WKSP_7_DELTA_MINOR		;	D31A
 		bcc	LD339				;	D326
-		sta	zp_vdu_wksp			;	D328
-		ldb	vduvar_GRA_WKSP+6		;	D32A
-		addb	vduvar_GRA_WKSP+10		;	D32D
-		stb	vduvar_GRA_WKSP+6		;	D330
-		lda	zp_vdu_wksp			;	D333
-		adca	vduvar_GRA_WKSP+9		;	D335
+		addd	vduvar_GRA_WKSP_9_DELTA_MAJOR		;	D32D
 		SEC					;	D338
-LD339		sta	vduvar_GRA_WKSP+5		;	D339
+LD339		std	vduvar_GRA_WKSP_5_ERRACC		;	D339
 		pshs	CC				;	D33C
 		bcc	LD348				;	D33D
-		jmp	[vduvar_GRA_WKSP_jmp]		;	D33F
+		jmp	[vduvar_GRA_WKSP_2_JMP]		;	D33F
 ;; ----------------------------------------------------------------------------
 ;; vertical scan module 1
-x_vertical_scan_module_up			; LD342
+x_drawline_minor_up			; LD342
 		dec	vduvar_GRA_CUR_CELL_LINE	;	D342
 		bpl	LD348				;	D343
 		jsr	x_move_display_point_up_a_line	;	D345
-LD348		jmp	[vduvar_VDU_VEC_JMP]		;	D348
+LD348		jmp	[vduvar_VDU_VEC_JMP]		; call major increment routine
 ;; ----------------------------------------------------------------------------
 ;; vertical scan module 2
-x_vertical_scan_module_dn			; LD34B
+x_drawline_minor_down			; LD34B
 		inc	vduvar_GRA_CUR_CELL_LINE
 		ldb	vduvar_GRA_CUR_CELL_LINE	; increment cell line counter
 		cmpb	#$08				; if overflowed
 		bne	LD348				; add a line's worth to pointer
 		ldd	zp_vdu_gra_char_cell		;
 		addd	vduvar_BYTES_PER_ROW		;
-		std	zp_vdu_gra_char_cell		;
 		bpl	LD363				;
 		suba	vduvar_SCREEN_SIZE_HIGH		; if we got here wrap screen
-		sta	zp_vdu_gra_char_cell		; 
 LD363		clr	vduvar_GRA_CUR_CELL_LINE
+		std	zp_vdu_gra_char_cell		;
 		jmp	[vduvar_VDU_VEC_JMP]
 ;; ----------------------------------------------------------------------------
 ;; horizontal scan module 1
-x_horizontal_scan_module_right			; LD36A
+x_drawline_minor_right			; LD36A
 		lsr	zp_vdu_grpixmask		;	D36A
 		bcc	LD348				;	D36C
 		jsr	x_move_display_move_right_to_next_cell				;	D36E
 		jmp	[vduvar_VDU_VEC_JMP]		;	D371
 ;; ----------------------------------------------------------------------------
 ;; horizontal scan module 2
-x_horizontal_scan_module_left				; LD374
+x_drawline_minor_left				; LD374
 		asl	zp_vdu_grpixmask		;	D374
 		bcc	LD348				;	D376
 		jsr	x_move_display_move_left_to_next_cell				;	D378
@@ -2747,47 +2819,52 @@ x_horizontal_scan_module_left				; LD374
 
 
 ;; ----------------------------------------------------------------------------
-x_draw_line_main_up				; LD37D
+x_drawline_major_up				; LD37D
 		dec	vduvar_GRA_CUR_CELL_LINE	;	D37E
 		bpl	1F				;	D37F
 		jsr	x_move_display_point_up_a_line	;	D381
 		bra	1F				;	D384
-x_draw_line_main_right				; LD386
+x_drawline_major_right				; LD386
 		lsr	zp_vdu_grpixmask		;	D386
 		bcc	1F				;	D388
 		jsr	x_move_display_move_right_to_next_cell				;	D38A
 1		puls	CC				;	D38D
-		ldx	zp_vdu_wksp_draw_X_save
-		leax	1,X
-		stx	zp_vdu_wksp_draw_X_save
+;;		ldx	zp_vdu_wksp_draw_loop_ctr
+;;		leax	1,X
+;;		stx	zp_vdu_wksp_draw_loop_ctr
+		inc	zp_vdu_wksp_draw_loop_ctr+1
+		bne	1F
+		inc	zp_vdu_wksp_draw_loop_ctr+0
 		beq	LD39Frts				;	D393
-LD395		lda	#$40
-		bita	zp_vdu_wksp_draw_flags		;	D395
-		bne	LD3A0				;	D397
+1		tst	zp_vdu_wksp_draw_flags		;	D395
+		bmi	x_drawline_move_coords_for_check				;	D397
 		lbcc	x_drawline_loop				;	D399
 		dec	zp_vdu_wksp_draw_start			;	D39B
 		lbne	x_drawline_loop				;	D39D
 LD39Frts
 		rts					;	D39F
 ;; ----------------------------------------------------------------------------
-LD3A0		lda	zp_vdu_wksp_draw_slope			;	D3A0
-		ldx	#vduvar_TEMP_draw_XY
+; Still doing starting bounds check update the X/Y coords 
+x_drawline_move_coords_for_check			; LD3A0
+		lda	zp_vdu_wksp_draw_slope			;	D3A0
+		ldy	#vduvar_TEMP_draw_XY
 		anda	#$02				;	D3A4
-		bcs	LD3C2				;	D3A7
+		bcc	LD3C2				; DB: swapped sense here
+
 		tst	zp_vdu_wksp_draw_slope		;	D3A9
 		bmi	LD3B7				;	D3AB
-		ldy	A,X
-		leay	1,y
-		sty	A,X
+		ldx	A,Y
+		leax	1,X
+		stx	A,Y
 ;	inc	vduvar_TEMP_8+4,x		;	D3AD
 ;	bne	LD3C2				;	D3B0
 ;	inc	vduvar_TEMP_8+5,x		;	D3B2
 ;	bcc	LD3C2				;	D3B5
 		bra	LD3C2
 LD3B7		
-		ldy	A,X
-		leay	-1,y
-		sty	A,X
+		ldx	A,Y
+		leax	-1,X
+		stx	A,Y
 
 ;;;	lda	vduvar_TEMP_8+4,x		;	D3B7
 ;;;	bne	LD3BF				;	D3BA
@@ -2795,9 +2872,9 @@ LD3B7
 ;;;LD3BF:	dec	vduvar_TEMP_8+4,x	;	D3BF
 
 LD3C2		eora	#$02				;	D3C3
-		ldy	A,X
-		leay	1,Y
-		sty	A,X
+		ldx	A,Y
+		leax	1,X
+		stx	A,Y
 ;;;	inc	vduvar_TEMP_8+4,x		;	D3C6
 ;;;	bne	LD3CE				;	D3C9
 ;;;	inc	vduvar_TEMP_8+5,x		;	D3CB
@@ -2817,21 +2894,27 @@ x_move_display_point_up_a_line
 		rts
 ;; ----------------------------------------------------------------------------
 		;TODO: use index register instead?
+		; keep 8 bit ops, slightly quicker
 x_move_display_move_right_to_next_cell			; LD3ED
 		lda	vduvar_LEFTMOST_PIX_MASK	;	D3ED
 		sta	zp_vdu_grpixmask		;	D3F0
-		ldd	zp_vdu_gra_char_cell		;	D3F2
-		addd	#8				; DB: note changed from 7 (was expecting C set on entry)
-		std	zp_vdu_gra_char_cell		;	D3F6
-		rts					;	D3FC
+		ldb	zp_vdu_gra_char_cell+1
+		addb	#8
+		stb	zp_vdu_gra_char_cell+1
+		bcc	1F
+		inc	zp_vdu_gra_char_cell
+1		rts					;	D3FC
 ;; ----------------------------------------------------------------------------
+		; keep 8 bit ops, slightly quicker
 x_move_display_move_left_to_next_cell
 		lda	vduvar_RIGHTMOST_PIX_MASK	;	D3FD
 		sta	zp_vdu_grpixmask		;	D400
-		ldd	zp_vdu_gra_char_cell
-		subd	#8
-		std	zp_vdu_gra_char_cell
-		rts
+		ldb	zp_vdu_gra_char_cell+1
+		subb	#8
+		stb	zp_vdu_gra_char_cell+1
+		bcc	1F
+		dec	zp_vdu_gra_char_cell+0
+1		rts
 ;; ----------------------------------------------------------------------------
 ;; :: coordinate subtraction
 x_PLOTXYsubGRACURStoTEMP8
@@ -2845,35 +2928,39 @@ x_coords_to_width_height			; LD411
 		rts					;	D42B
 ;; ----------------------------------------------------------------------------
 
-; fix out of bounds at start
+; caculate the initial error accumulator and deltas
 ; on entry 	X = 306 or 304 depending on slope
 ; 		Y = zp_vdu_wksp+2 (332)
 
-LD42C		lda	zp_vdu_wksp_draw_slope		; depending on slope
+x_drawline_init_bresenham				; LD42C
+		lda	zp_vdu_wksp_draw_slope		; depending on slope
 		bne	LD437				;
 		ldx	#vduvar_TEMP_draw_W		;
 		ldy	#vduvar_TEMP_draw_H		;
-		jsr	x_exchange_2atY_with_2atX	; swap width / height
+		jsr	x_exchange_2atY_with_2atX	; swap width / height if going up
 LD437		ldx	#vduvar_TEMP_draw_W		;
-		ldy	#vduvar_GRA_WKSP+7		;
-		jsr	copy4fromXtoY			; save W
+		ldy	#vduvar_GRA_WKSP_7_DELTA_MINOR	;
+		jsr	copy4fromXtoY			; 
 		LDX_B	zp_vdu_wksp_draw_slope		;	D43F
-		ldd	vduvar_GRA_WKSP
-		subd	vduvar_TEMP_draw_XY,X		; subtract 
-		bmi	LD453				;	D44E
-		jsr	x_negation_routine_newAPI	;	D450
-LD453		std	zp_vdu_wksp_draw_X_save
-		ldx	#vduvar_GRA_WKSP + 5		;	D457
-LD459		jsr	2F				;	D459
+		ldd	vduvar_GRA_WKSP_0_ENDMAJ	; get major end point
+		subd	vduvar_TEMP_draw_XY,X		; subtract major start point
+		bmi	LD453				; get absolute value
+		m_NEGD					;	D450
+
+LD453		std	zp_vdu_wksp_draw_loop_ctr	
+		ldx	#vduvar_GRA_WKSP_5_ERRACC	;	D457
+LD459		jsr	x_drawline_init_get_delta	;	D459
 		lsra					;	D45C
 		rorb					;	D461
-		std	0,X
+		std	0,X				; store half the major delta as the initial error (middle of point)
 		leax	-2,X
-2		ldd	2,X				;	D467
-		bpl	1F				;	D46D
-		jsr	x_negation_routine_newAPI	;	D46F
-		std	2,X
-1		rts					;	D47B
+
+x_drawline_init_get_delta
+		ldd	4,X				; get the delta
+		bpl	1F				; if +ve skip
+		m_NEGD					; negate
+		std	4,X				; store the delta
+1		rts					; LD47B
 ;; ----------------------------------------------------------------------------
 copy8fromXtoY
 		ldb	#$08				; LD47C
@@ -2895,17 +2982,84 @@ x_copy_B_bytes_from_XtoY			; LDF8C
 		decb
 		bne	x_copy_B_bytes_from_XtoY
 		rts
+
+	IF CPU_6809
+
 ;; ----------------------------------------------------------------------------
 ;; negation routine
 x_negation_routine_newAPI
-	IF CPU_6809
 		coma					; TODO CHECK!
 		comb
 		addd	#1
-	ELSE
-		negd
-	ENDIF
 		rts
+	ENDIF
+
+
+	IF BLITTER
+x_drawline_blit
+		ldx	#vduvar_TEMP_draw_XY
+		jsr 	x_setup_screen_addr_from_intcoords_atX
+
+		; line drawing test
+		;============================
+		; set start point address
+		lda	#$FF
+		sta	sheila_DMAC_ADDR_C
+		sta	sheila_DMAC_ADDR_D
+		ldx	zp_vdu_gra_char_cell
+		ldb	vduvar_GRA_CUR_CELL_LINE
+		abx
+		stx	sheila_DMAC_ADDR_C+1
+		stx	sheila_DMAC_ADDR_D+1
+		ldx	vduvar_BYTES_PER_ROW
+		stx	sheila_DMAC_STRIDE_C
+		stx	sheila_DMAC_STRIDE_D
+
+		; set start point pixel mask and colour
+		lda	zp_vdu_gracolourOR
+		eora	zp_vdu_gracolourEOR
+		sta	sheila_DMAC_DATA_B		
+		lda	zp_vdu_grpixmask				
+		sta	sheila_DMAC_DATA_A
+		; set major length
+		ldd	zp_vdu_wksp_draw_loop_ctr
+		m_NEGD
+		std	sheila_DMAC_WIDTH		; 16 bits!
+		; set slope
+		ldd	vduvar_GRA_WKSP_9_DELTA_MAJOR
+		std	sheila_DMAC_ADDR_B+1		
+		ldd	vduvar_GRA_WKSP_5_ERRACC
+		std	sheila_DMAC_ADDR_A+1		; initial error accumulator value
+		ldd	vduvar_GRA_WKSP_7_DELTA_MINOR
+		std	sheila_DMAC_STRIDE_A
+
+		;set func gen to be plot B masked by A
+		lda	#$CA				; B masked by A
+		sta	sheila_DMAC_FUNCGEN
+
+		; set bltcon 0
+		lda	#BLITCON_EXEC_C + BLITCON_EXEC_D
+		sta	sheila_DMAC_BLITCON
+		; set bltcon 1 - right/down
+		ldb	zp_vdu_wksp_draw_slope
+		lda	vduvar_TEMP_draw_W		; check for with width / height -ve
+		eora	vduvar_TEMP_draw_H		;	D28A
+		bpl	1F				;	D28D
+		incb					;	D28F
+1		ldx	#mostbl_slope2bltcon		
+		lda	B,X
+		ora	#BLITCON_ACT_ACT + BLITCON_ACT_CELL + BLITCON_ACT_LINE
+		
+		sta	sheila_DMAC_BLITCON
+
+		nop
+		nop
+		rts
+
+mostbl_slope2bltcon
+		FCB	$20,$00,$10,$30
+
+	ENDIF
 
 ;	pha					;	D49B
 ;	tya					;	D49C
@@ -3326,7 +3480,7 @@ mos_OSBYTE_135
 ;;;	bpl	LD7CB					;	D7D5
 mos_OSBYTE_135_YeqMODE_XeqArts
 		LDY_B	vduvar_MODE				;	D7D7
-		m_tax						;	D7DA
+mos_tax		m_tax
 		rts						;	D7DB
 ;; ----------------------------------------------------------------------------
 LD7DC		jsr	x_set_up_pattern_copy		;set up copy of the pattern bytes at text cursor
@@ -3557,7 +3711,7 @@ x_cancel_cursor_edit				; LD918
 ;; OSBYTE 132  Read bottom of display RAM;  
 mos_OSBYTE_132
 		ldb	vduvar_MODE			; get current screen mode
-;; OSBYTE 133  Read lowestFDBess for given mode
+;; OSBYTE 133  Read lowest address for given mode
 mos_OSBYTE_133
 		andb	#$07				; modulo 7 TODO: EXTRA MODES
 		IF MACH_CHIPKIT
@@ -3573,7 +3727,8 @@ mos_OSBYTE_133
 		lda	B,X				;	D92D
 		clrb
 		tfr	D,X				; return X is full adress, Y is high byte
-		m_tay
+		jmp	LE71F_tay_c_rts
+;		m_tay
 ;;;	tst	sysvar_RAM_AVAIL		;	D932 - removed < 32k check
 ;;;	bmi	LD93E				;	D935
 ;;;	anda	#$3F				;	D937
@@ -3581,11 +3736,11 @@ mos_OSBYTE_133
 ;;;	bcs	LD93E				;	D93B
 ;;;	txa					;	D93D
 ;;;LD93E:	tay					;	D93E
-		rts					;	D93F
+;		rts					;	D93F
 ;; ----------------------------------------------------------------------------
 vec_table
 		;TODO = fill these in!
-		FDB	x_Bad_command_error		;  LD940 USERV
+		FDB	brkBadCommand		;  LD940 USERV
 		FDB	mos_DEFAULT_BRK_HANDLER		;  LD942 BRKV
 		FDB	mos_IRQ1V_default_entry		;  LD944 IRQ1V
 		FDB	mos_IRQ2V_default_entry		;  LD946 IRQ2V
@@ -3609,11 +3764,15 @@ vec_table
 		FDB	mos_INSV_default_entry_point	;  LD96A INSV
 		FDB	mos_REMV_default_entry_point	;  LD96C REMV
 		FDB	mos_CNPV_default_entry_point	;  LD96E CNPV
-		FDB	dummy_vector_RTI		;  LD970 IND1V
-		FDB	dummy_vector_RTI		;  LD972 IND2V
-		FDB	dummy_vector_RTI		;  LD974 IND3V
+		FDB	dummy_vector_RTI		;  LD970 SWI9V
+	IF CPU_6309
+		FDB	mos_default_illegalop		;  LD972 ILOPV
+	ELSE
+		FDB	dummy_vector_RTI		;  LD972 ILOPV
+	ENDIF
+		FDB	dummy_vector_RTI		;  LD974 NMIV
 vec_table_end
-;	FDB	x_Bad_command_error			;  LD940 USERV
+;	FDB	brkBadCommand			;  LD940 USERV
 ;	FDB	mos_DEFAULT_BRK_HANDLER			;  LD942 BRKV
 ;	FDB	mos_IRQ1V_default_entry			;  LD944 IRQ1V
 ;	FDB	mos_IRQ2V_default_entry			;  LD946 IRQ2V
@@ -3728,12 +3887,12 @@ mostbl_SYSVAR_DEFAULT_SETTINGS				; LD976
 		FCB	$00					; F0 location 280 (Country code)
 		FCB	$00					; F1 location 281 (user flag)
 		;TODO this default changed to 9,600 baud
-;		FCB	$64					; F2 Serial ULA copy - original
-	IF MACH_BEEB && NOICE
-		FCB	$40					; F2 Serial ULA copy - 19200 for noice
-	ELSE
-		FCB	$52					; F2 Serial ULA copy - 4,800 for HOSTFS
-	ENDIF
+		FCB	$64					; F2 Serial ULA copy - original
+;;	IF MACH_BEEB && NOICE
+;;		FCB	$40					; F2 Serial ULA copy - 19200 for noice
+;;	ELSE
+;;		FCB	$52					; F2 Serial ULA copy - 4,800 for HOSTFS
+;;	ENDIF
 		FCB	$05					; F3 Timer switch state
 		FCB	$FF					; F4 Soft key consistency
 		FCB	$01					; F5 Printer dest
@@ -3751,6 +3910,8 @@ mos_handle_div0
 
 		DO_BRK	$FF, "Divide by 0", 0
 mos_handle_illegalop
+		jmp	[ILOPV]
+mos_default_illegalop		
 		DO_BRK	$FF, "Illegal instruction", 0		
 	ENDIF
 
@@ -3785,17 +3946,9 @@ mos_handle_res_resnmi
 		LDMD	#1
 	ENDIF
 
-
-	IF	NOICE
-		jsr	noice_handle_res
-	ENDIF
-
-
-
-		DEBUG_INFO	"mos_handle_res"
 	IF MACH_CHIPKIT
-		lda	SHEILA_ROMCTL_RAM		; if bit 7 set this is a cold reset
-		clr	SHEILA_ROMCTL_RAM		; clear and set RAM to bank 0
+		lda	sheila_ROMCTL_RAM		; if bit 7 set this is a cold reset
+		clr	sheila_ROMCTL_RAM		; clear and set RAM to bank 0
 		pshs	a				;save what's left
 		tsta
 		bmi	mos_handle_res_skip_clear_mem1	;if Power up A bit 7 == 1 
@@ -3816,64 +3969,14 @@ mos_handle_res_resnmi
 
 ; Always clear memory if no sys via interrupts enabled i.e. hard RES
 mos_handle_res_skip_clear_mem1
-		DEBUG_INFO	"hard reset"
-
-;TODO - this commented out to stop the noIce debugger getting trampled!
-
-;	ldx	#$400
-;; Clear memory 0x0400 upwards - this used to do the 16/32 K check, here we just clear everything except D00 (RTI instruction) up to $7FFF
-;mos_handle_res_clear_lp1
-;	clr	,X+
-;	cmpx	#$8000
-;	beq	1F
-;	cmpx	#vec_nmi
-;	bne	mos_handle_res_clear_lp1
-;	leax	1,X
-;	bra	mos_handle_res_clear_lp1
 
 	IF CPU_6809
-	IF NOICE=1
-;;;;;; special noice version leave holes at $D00-$D01, $A00-$B00
-		clra
-		ldy	#$A00-$400
-		ldx	#$400
-1		sta	,X+
-		leay	-1,Y
-		bne	1B
-
-		ldx	#$B00
-		ldy	#$D00-$B00
-1		sta	,X+
-		leay	-1,Y
-		bne	1B
-
-		ldx	#$D00
-		ldy	#$8000-$D00
-1		sta	,X+
-		leay	-1,Y
-		bne	1B
-	ELSE
 		clra
 		ldy	#$8000-$400
 		ldx	#$400
 1		sta	,X+
 		leay	-1,Y
 		bne	1B
-	ENDIF
-	ELSE
-	IF NOICE=1
-;;;;;; special noice version leave holes at $D00-$D01, $A00-$B00
-		clr	$400
-		ldw	#$A00-$401
-		ldx	#$400
-		ldy	#$401
-		tfm	X,Y+
-		ldy	#$B00
-		ldw	#$D00-$B01
-		tfm	X,Y+
-		ldy	#$D01
-		ldw	#$8000-$D01
-		tfm	X,Y+
 	ELSE
 		clr	$400
 		ldx	#$400
@@ -3881,8 +3984,6 @@ mos_handle_res_skip_clear_mem1
 		ldw	#$8000-$401
 		tfm	X,Y+
 	ENDIF
-	ENDIF
-
 
 1		lda	#$80
 		sta	sysvar_RAM_AVAIL
@@ -4108,9 +4209,9 @@ mos_cat_swroms_cmplp_nexthighter			; LDAD5
 		ldx	#$8000
 mos_cat_swroms_cmplp
 		lda	zp_mos_curROM
-		sta	SHEILA_ROMCTL_SWR		;set cur ROM
+		sta	sheila_ROMCTL_SWR		;set cur ROM
 		lda	,x				;Get byte 
-		stb	SHEILA_ROMCTL_SWR		;switch back to new ROM
+		stb	sheila_ROMCTL_SWR		;switch back to new ROM
 		cmpa	,x+				;and compare with previous byte called
 		bne	mos_cat_swroms_cmplp_nexthighter;if not the same then go back and do it again
 							;with next rom up
@@ -4121,7 +4222,7 @@ mos_cat_swroms_skipnotrom			; LDAFB
 		bra	mos_cat_swroms_skipnext		;always &DB0C
 mos_cat_swroms_skipvalid				; LDAFF	
 		ldb	zp_mos_curROM
-		stb	SHEILA_ROMCTL_SWR
+		stb	sheila_ROMCTL_SWR
 		lda	$8006				;get rom type
 		ldx	#oswksp_ROMTYPE_TAB
 		sta	B,X				;store it in catalogue
@@ -4197,7 +4298,7 @@ x_SCREEN_SET_UP
 		; TODO REMOVE THIS
 		jsr	mos_PRTEXT
 		fcb	"MOS=",0
-		lda	SHEILA_ROMCTL_MOS
+		lda	sheila_ROMCTL_MOS
 		jsr	PRHEX
 		jsr	OSNEWL
 		jsr	OSNEWL
@@ -4229,7 +4330,7 @@ LDB87
 ;	bne	x_resettapespeed_enter_lang	;	DBA2
 ;	lda	#$8D				;	DBA4
 ;	jsr	mos_selects_ROM_filing_system	;	DBA6
-		;;; STARRUNPLINGBOOT!!!!
+		;;; strSTARRUNPLINGBOOT!!!!
 ;	ldx	#$D2				;	DBA9
 ;	ldy	#$EA				;	DBAB
 ;	dec	sysvar_STARTUP_DISPOPT		;	DBAD
@@ -4308,7 +4409,7 @@ mos_OSRDRM
 ;mos_select_SWROM_X:
 mos_select_SWROM_B
 		stb	zp_mos_curROM			;RAM copy of rom latch 
-		stb	SHEILA_ROMCTL_SWR		;write to rom latch
+		stb	sheila_ROMCTL_SWR		;write to rom latch
 		rts					;and return
 ;; ----------------------------------------------------------------------------
 mos_handle_irq
@@ -4319,7 +4420,7 @@ mos_handle_nmi
 mos_handle_swi
 		jmp	[SWI9V]
 mos_handle_swi2
-		jmp	[SW29V]
+		rti
 ;; ----------------------------------------------------------------------------
 ;; BRK handling routine	- TODO: test for native mode!
 mos_handle_swi3
@@ -4569,24 +4670,22 @@ mos_SYSTEM_INTERRUPT_6_10mS_Clock
  ;as the current timer is only read.  Other methods would cause inaccuracies
  ;if a timer was read whilst being updated.
 
-		lda	sysvar_TIMER_SWITCH		;get current system clock store pointer (5,or 10)
-		m_tax					;put A in X
-		eora	#$0F				;and invert lo nybble (5 becomes 10 and vv)
-		pshs	A				;store A
-		m_tay					;put A in Y
+ 		ldy	#oswksp_TIME
+		ldb	sysvar_TIMER_SWITCH		;get current system clock store pointer (5,or 10)
+		leax	B,Y				
+		eorb	#$0F				;and invert lo nybble (5 becomes 10 and vv)
+		stb	sysvar_TIMER_SWITCH		;and store back in clock pointer (i.e. inverse previous
+							;contents)
+		leay	B,Y				
+		ldb	#5
 
-		SEC					;Carry is always set at this point
-LDDD9		lda	oswksp_TIME-1,x			;get timer value
+		SEC
+LDDD9		lda	,-X				;get timer value
 		adca	#$00				;update it
-		sta	oswksp_TIME-1,y			;store result in alternate
-		leax	-1,x				;decrement X
-		beq	LDDE7				;if 0 exit
-		leay	-1,y				;else decrement Y
+		sta	,-Y				;store result in alternate
+		decb
 		bne	LDDD9				;and go back and do next byte
 
-LDDE7		puls	A				;get back A
-		sta	sysvar_TIMER_SWITCH		;and store back in clock pointer (i.e. inverse previous
-							;contents)
 		ldb	#$04				;set loop pointer for countdown timer
 		ldx	#oswksp_OSWORD3_CTDOWN
 LDDED		inc	b,x				;increment byte and if 
@@ -4602,6 +4701,7 @@ LDDFA		lda	oswksp_INKEY_CTDOWN		;get byte of inkey countdown timer
 		beq	LDE0A				;if 0 DE0A
 		dec	oswksp_INKEY_CTDOWN+1		;decrement 2B2
 LDE07		dec	oswksp_INKEY_CTDOWN		;and 2B1
+
 
 LDE0A		tst	mosvar_SOUND_SEMAPHORE		;read bit 7 of envelope processing byte
 		bpl	LDE1A				;if 0 then DE1A
@@ -4824,10 +4924,6 @@ mostbl_star_commands
 		STARCMD	"ROM"	,mos_STAR_OSBYTE_A	,$8D	; *ROM      &E348, A=&8D   OSBYTE
 		STARCMD	"SAVE"	,mos_STAR_SAVE		,$00	; *SAVE     &E23E, A=0     X=>String
 		STARCMD	"SPOOL"	,mos_STAR_SPOOL		,$00	; *SPOOL    &E281, A=0     X=>String
-	IF NOICE
-		STARCMD	"SWI"	,mos_STAR_SWI		,$00
-	ENDIF
-
 ;;;	STARCMD	"TAPE'	,mos_STAR_OSBYTE_A	,$8C	; *TAPE     &E348, A=&8C   OSBYTE
 	IF MACH_CHIPKIT
 		STARCMD "TIME"	,mos_STAR_TIME		,$00	; *TIME
@@ -4929,15 +5025,6 @@ cli_get_params					; LE004
 		CLZ				; DB: not sure this is needed but *EXEC expects Z clear on entry!
 LE017rts
 		rts					;	E017
-
-	IF NOICE
-; enter the debugger can run * commands in Noice and pass paramaters here
-; this is better than just pressing the debug button where the utility might
-; return into the middle of an interrupt routine or be nested in an OS call.
-mos_STAR_SWI
-		swi					; invoke NoICE
-		rts
-	ENDIF
 ;; ----------------------------------------------------------------------------
 mos_STAR_BASIC						; LE018
 		ldb	sysvar_ROMNO_BASIC		; get BASIC rom no
@@ -5182,7 +5269,7 @@ LE19A	rts					;	E19A
 ;	lda	#$00				;	E1A0
 LE1A2		ldx	#$03				;X=3
 LPT_NETV_then_UPTV				; LE1A4
-		ldy	sysvar_PRINT_DEST		;Y=printer destination
+		LDY_B	sysvar_PRINT_DEST		;Y=printer destination
 		jsr	[NETV]				;to JMP (NETV)
 		jmp	[UPTV]				;jump to PRINT VECTOR for special routines
 
@@ -5351,12 +5438,12 @@ LE28F		puls	CC,Y					; get back original Y
 		lda	#$80					; else A=&80
 		jsr	OSFIND					; to open file Y for output
 		tsta						; Y=A
-		lbeq	x_Bad_command_error			; and if this is =0 then E310 BAD COMMAND ERROR
+		lbeq	brkBadCommand			; and if this is =0 then E310 BAD COMMAND ERROR
 		sta	sysvar_SPOOL_FILE			; store file handle
 LE29F		rts						; and exit
 ;; ----------------------------------------------------------------------------
 x_loadsave_setAXOSFILE_clrEXEClo
-		bne	x_Bad_command_error		;
+		bne	brkBadCommand		;
 		inc	osfile_ctlblk+OSFILE_OFS_EXEC + 3	; indicate a load from catalogue
 x_loadsave_setAXOSFILE					;	E2A5
 		ldx	#osfile_ctlblk			;
@@ -5383,7 +5470,7 @@ LE2C1		rts						;	E2C1
 x_SAVE_build_ctl_block
 	ldy	#osfile_ctlblk+$A			; point at "start address"
 	jsr	x_LOADSAVE_readaddr			;	E2C4
-	bcc	x_Bad_command_error			; if no hex digit found EXIT via BAD Command error
+	bcc	brkBadCommand			; if no hex digit found EXIT via BAD Command error
 	clr	zp_mos_OS_wksp				; clear bit 6
 ; READ file length from text line
 x_READ_file_length_from_text_line
@@ -5395,7 +5482,7 @@ x_READ_file_length_from_text_line
 LE2D4	
 	ldy	#osfile_ctlblk+$E			;X=E
 	jsr	x_LOADSAVE_readaddr			;
-	bcc	x_Bad_command_error			;if carry clear no hex digit so exit via error
+	bcc	brkBadCommand			;if carry clear no hex digit so exit via error
 	pshs	CC					;save flags
 	tst	zp_mos_OS_wksp
 	bpl	LE2ED					;if V set them E2ED explicit end address found
@@ -5446,17 +5533,17 @@ LE2ED
 	beq	x_loadsave_setAXOSFILE			; to do osfile
 	ldy	#osfile_ctlblk+6			;else set up execution address
 	jsr	x_LOADSAVE_readaddr			;
-	bcc	x_Bad_command_error			;if error BAD COMMAND
+	bcc	brkBadCommand			;if error BAD COMMAND
 	beq	x_loadsave_setAXOSFILE			;and if end of line reached do OSFILE
 	ldx	#osfile_ctlblk+6			;else set up load address
 	jsr	x_LOADSAVE_readaddr			;
-	bcc	x_Bad_command_error			;if error BAD command
+	bcc	brkBadCommand			;if error BAD command
 	beq	x_loadsave_setAXOSFILE			;else on end of line do OSFILE
 							;anything else is an error!!!!
 ; Bad command error
-x_Bad_command_error				; LE310
+brkBadCommand				; LE310
 		DO_BRK $FE, "Bad Command"
-x_Bad_key_error
+brkBadKey
 		DO_BRK $FB, "Bad Key"
 ;	adc	(zp_lang+100,x)			;	E313
 ;	jsr	L6F63				;	E315
@@ -5492,7 +5579,7 @@ mos_STAR_KEY
 ;; *FX	OSBYTE
 mos_STAR_FX						; LE342
 		jsr	cli_parse_number_API			; get number to pass as A to OSBYTE
-		bcc	x_Bad_command_error
+		bcc	brkBadCommand
 		tfr	B,A
 ;; *CODE	  *MOTOR  *OPT	  *ROM	  *TAPE	  *TV; enter codes    *CODE   &88 
 ; A = osbyte function
@@ -5507,20 +5594,20 @@ mos_STAR_OSBYTE_A					; LE348
 		jsr	mos_skip_spaces_at_X_eqCOMMAorCR_whenCS ; if CS (i.e. *FX) allow comma, else just skip spaces
 		beq	1F					;
 		jsr	cli_parse_number_API2			; parse X value
-		bcc	x_Bad_command_error			;
+		bcc	brkBadCommand			;
 		stb	zp_mos_GSREAD_characc			;
 		jsr	mos_skip_spaces_at_X_eqCOMMAorCR	; spaces always ok here
 		beq	1F					;
 		jsr	cli_parse_number_API2			; parse Y value
-		bcc	x_Bad_command_error			;
+		bcc	brkBadCommand			;
 		stb	zp_mos_GSREAD_quoteflag			;
 		jsr	mos_skip_spaces_at_X			;
-		bne	x_Bad_command_error			; garbage at end
+		bne	brkBadCommand			; garbage at end
 1		LDY_B	zp_mos_GSREAD_quoteflag			;
 		LDX_B	zp_mos_GSREAD_characc			;
 		puls	A					;
 		jsr	OSBYTE					; exec OSBYTE
-		bvs	x_Bad_command_error			; BRK if VS
+		bvs	brkBadCommand			; BRK if VS
 		rts						;
 ;; ----------------------------------------------------------------------------
 ;LE377:	sec					;	E377
@@ -5909,7 +5996,7 @@ x_get_byte_from_buffer					; LE539
 1							; LE549
 		puls	A				;get back original byte
 		bcs	1F				;if carry clear (I.E not RS423 input) E551
-		ldy	sysvar_RS423_MODE		;else Y=RS423 mode (0 treat as keyboard )
+		LDY_B	sysvar_RS423_MODE		;else Y=RS423 mode (0 treat as keyboard )
 		bne	x_exit_with_carry_clear		;if not 0 ignore escapes etc. goto E592
 1							; LE551
 		tsta					;test A (was tay)
@@ -6045,18 +6132,18 @@ mostbl_OSBYTE_LOOK_UP2
 		FDB	mos_OSBYTE_143			;	E613
 		FDB	mos_OSBYTE_144			;	E615
 		FDB	mos_OSBYTE_nowt			;	E617
-		FDB	mos_OSBYTE_nowt			;	E619
-		FDB	mos_OSBYTE_nowt			;	E61B
-		FDB	mos_OSBYTE_nowt			;	E61D
+		FDB	mos_OSBYTE_146			;	E619
+		FDB	mos_OSBYTE_nowt			;	E60F
+		FDB	mos_OSBYTE_148			;	E61D
 		FDB	mos_OSBYTE_nowt			;	E61F
-		FDB	mos_OSBYTE_nowt			;	E621
+		FDB	mos_OSBYTE_150			;	E621
 		FDB	mos_OSBYTE_nowt			;	E623
 		FDB	mos_OSBYTE_nowt			;	E625
 		FDB	mos_OSBYTE_nowt			;	E627
 		FDB	mos_OSBYTE_nowt			;	E629
 		FDB	mos_OSBYTE_nowt			;	E62B
 		FDB	mos_OSBYTE_156			;	E62D		
-		FDB	mos_OSBYTE_nowt			;	E62F
+		FDB	mos_OSBYTE_157			;	E62F
 		FDB	mos_OSBYTE_nowt			;	E631
 		FDB	mos_OSBYTE_nowt			;	E633
 		FDB	mos_OSBYTE_160			;	E635
@@ -6231,33 +6318,36 @@ LE67C		TODO	"TUBE ESCAPE"
 ;	ror	a				;	E686
 ;	bvc	setSerULA				;	E687
 ;; OSBYTE 08/07 set serial baud rates
-mos_OSBYTE_08
-		lda	#$38				;	E689
+mos_OSBYTE_08						; 	E689
+		lda	#'8'				;A=ASCII 8
 ;; OSBYTE 08/07 set serial baud rates
-mos_OSBYTE_07
-		; TODO serial
-		TODO	"mos_OSBYTE_07"
-;	eor	#$3F				;	E68B
-;	sta	zp_mos_OS_wksp2			;	E68D
-;	ldy	sysvar_SERPROC_CTL_CPY		;	E68F
-;	cpx	#$09				;	E692
-;	bcs	LE6AD				;	E694
-;	and	mostbl_SERIAL_BAUD_LOOK_UP,x	;	E696
-;	sta	zp_mos_OS_wksp2+1		;	E699
-;	tya					;	E69B
-;	ora	zp_mos_OS_wksp2			;	E69C
-;	eor	zp_mos_OS_wksp2			;	E69E
-;	ora	zp_mos_OS_wksp2+1		;	E6A0
-;	ora	#$40				;	E6A2
-;	eor	sysvar_RS423CASS_SELECT		;	E6A4
+mos_OSBYTE_07						; LE68B
+		eora	#$3F				;converts ASCII 8 to 7 binary and ASCII 7 to 8 binary
+		sta	zp_mos_OS_wksp2			;store result		
+		lda	sysvar_SERPROC_CTL_CPY		;get serial ULA control register setting
+		m_tay
+		pshs	A
+;;		ldb	zp_mos_OSBW_X--already set in dispatcher
+		cmpb	#$09				;is it 9 or more?
+		bhs	LE6AD				;if so exit
+		lda	zp_mos_OS_wksp2
+		ldx	#mostbl_SERIAL_BAUD_LOOK_UP
+		anda	B,X				;and with byte from look up table
+		sta	zp_mos_OS_wksp2+1		;store it
+		puls	A				;get back old setting
+		ora	zp_mos_OS_wksp2			;and or with Accumulator
+		eora	zp_mos_OS_wksp2			;zero the three bits set true
+		ora	zp_mos_OS_wksp2+1		;set up data read from look up table + bit 6
+		ora	#$40				;
+		eora	sysvar_RS423CASS_SELECT		;write cassette/RS423 flag
 setSerULA						; LE6A7
 		sta	sysvar_SERPROC_CTL_CPY		;	E6A7
 	;TODO chipkit serial
 	IF MACH_BEEB
 		sta	sheila_SERIAL_ULA		;	E6AA
 	ENDIF
-LE6AD		m_tya					;put Y in A to save old contents
-LE6AE		m_tax					;write new setting to X
+LE6AD		
+LE6AE		leax	0,Y				;write new setting to X and Y
 		rts					;and return
 
 *************************************************************************
@@ -6274,14 +6364,16 @@ mos_OSBYTE_09					; LE6B0
 mos_OSBYTE_10
 		lda	sysvar_FLASH_SPACE_PERIOD,y	;get mark period count
 		pshs	A				;push it
-		m_txa					;get new count
-		sta	sysvar_FLASH_SPACE_PERIOD,y	;store it
-		puls	A				;get back original value
-		m_tay					;put it in Y
+		lda	#0				; don't use CLR we need Cy preserved!
+		pshs	A				; store 0 for hi byte of returned Y
+		;;m_txa					;get new count
+		stb	sysvar_FLASH_SPACE_PERIOD,y	;store it
+		puls	Y				;get back original value
+		;;m_tay					;put it in Y
 		lda	sysvar_FLASH_CTDOWN		;get value of flash counter
 		bne	LE6AD				;if not zero E6D1
 
-		STX_B	sysvar_FLASH_CTDOWN		;else restore old value 
+		stb	sysvar_FLASH_CTDOWN		;else restore old value 
 		lda	sysvar_VIDPROC_CTL_COPY		;get current video ULA control register setting
 		pshs	CC				;push flags
 		rora					;rotate bit 0 into carry, carry into bit 7
@@ -6368,10 +6460,10 @@ mos_OSBYTE_129					; LE713
 		bmi	LE721				; if Y=&FF the E721
 		CLI					; else allow interrupts
 		jsr	x_OSBYTE_129			; and go to timed routine
-		bcs	LE71F				; if carry set then E71F
+		bcs	LE71F_tay_c_rts			; if carry set then E71F
 		m_tax					; then X=A
 		clra					; A=0
-LE71F		m_tay_c					; Y=A
+LE71F_tay_c_rts	m_tay_c					; Y=A
 		rts					; and return
 ;; ----------------------------------------------------------------------------
 LE721		lda	zp_mos_OSBW_X			; A=X
@@ -7024,8 +7116,9 @@ mos_OSBYTE_160
 		lda	vduvar_GRA_WINDOW_LEFT+1,x	;	E9C0
 		m_tay
 		lda	vduvar_GRA_WINDOW_LEFT,x	;	E9C3
-		m_tax					;	E9C6
-		rts					;	E9C7
+		jmp	mos_tax
+;		m_tax					;	E9C6
+;		rts					;	E9C7
 ;; ----------------------------------------------------------------------------
 ;; RESET SOFT KEYS
 
@@ -7261,7 +7354,7 @@ LEACB		cmpa	#'@'				;if A<&40
 		anda	#$1F				;else zero bits 5 to 7
 LEAD1rts		rts					;return
 
-STARRUNPLINGBOOT
+strSTARRUNPLINGBOOT
 		FCB	'/!BOOT',$0D
 
 ;; OSBYTE &F7 (247) INTERCEPT BREAK
@@ -8223,7 +8316,7 @@ mos_OSBYTE_131
 ;	FCB	$8B				;	F094
 ;; set input buffer number and flush it
 x_set_input_buffer_number_and_flush_it
-		ldx	sysvar_CURINSTREAM		;	F095
+		LDX_B	sysvar_CURINSTREAM		;	F095
 LF098		jmp	x_Buffer_handling		;	F098
 ;; ----------------------------------------------------------------------------
 ;	FCB	$1B				;	F09B
@@ -8404,7 +8497,7 @@ LF16E		ldy	#oswksp_ROMTYPE_TAB
 		tst	B,Y				; read bit 7 on rom map (no rom has type 254 &FE)
 		bpl	1F				; skip if bit 7 not set (no service entry)
 		stb	zp_mos_curROM			; switch in paged ROM
-		stb	SHEILA_ROMCTL_SWR
+		stb	sheila_ROMCTL_SWR
 		jsr	$8003				; call service routine
 		tsta					; check to see if A is reset
 		beq	2F				; if it is do no more roms
@@ -8413,7 +8506,7 @@ LF16E		ldy	#oswksp_ROMTYPE_TAB
 		bpl	LF16E				; go again?
 2		ldb	,S+				; get back original rom #
 		stb	zp_mos_curROM			; switch in paged ROM
-		stb	SHEILA_ROMCTL_SWR
+		stb	sheila_ROMCTL_SWR
 		tsta					; set Z if A=0
 		rts					; return result still in A, B corrupted (original low byte of X)
 
@@ -8440,7 +8533,7 @@ mos_FSC_VECTOR_TABLE
 		FDB	mos_FSCV_OPT			; *OPT          (F54C)  
 		FDB	mos_FSCV_EOF			; check EOF     (F61D)
 		FDB	mos_FSCV_RUN			; */            (F304)
-		FDB	x_Bad_command_error		; Bad Command   (E30F) if roms and FS don't want it 
+		FDB	brkBadCommand		; Bad Command   (E30F) if roms and FS don't want it 
 		FDB	mos_FSCV_RUN			; *RUN          (F304)
 		FDB	mos_FSCV_CAT			; *CAT          (F32A)
 		FDB	mos_OSBYTE_119			; osbyte 77     (E274)
@@ -8982,7 +9075,7 @@ mos_FSCV_OPT					; LF54D
 		beq	x_message_control		;i.e. if X=1 F561 message control
 		leax	-1,X				;X=X-1
 		beq	x_error_response		;i.e. if X=2 F568 error response
-LF55E		jmp	x_Bad_command_error		;else E310 to issue Bad Command error
+LF55E		jmp	brkBadCommand		;else E310 to issue Bad Command error
 x_message_control
 		lda	#$33				;to set lower two bits of each nybble as mask
 		leay	3,Y				;Y=Y+4
@@ -9367,48 +9460,11 @@ mos_STAR_EXEC
 ;	rts					;	F7EB
 
 
-FILL1
-		FILL	$FF,NOICE_CODE_BASE-FILL1
-			ORG	NOICE_CODE_BASE
-		IF NOICE==0
-			FILL	$FF,NOICE_CODE_LEN
-		ELSE
-		IF MACH_BEEB
-		IF NOICE_MY
-		IF CPU_6809
-			INCLUDEBIN "../noice/noice/mon-noice-my-6809-beeb-ovr.ovr"
-		ELSE
-			INCLUDEBIN "../noice/noice/mon-noice-my-6309-beeb-ovr.ovr"
-		ENDIF
-		ELSE
-		IF CPU_6809
-			INCLUDEBIN "../noice/noice/mon-noice-6809-beeb-ovr.ovr"
-		ELSE
-			INCLUDEBIN "../noice/noice/mon-noice-6309-beeb-ovr.ovr"
-		ENDIF
-		ENDIF
-		ENDIF
-		IF MACH_CHIPKIT
-		IF CPU_6809
-			INCLUDEBIN "../noice/noice/mon-noice-6809-chipkit-ovr.ovr"
-		ELSE
-			INCLUDEBIN "../noice/noice/mon-noice-6309-chipkit-ovr.ovr"
-		ENDIF
-		ENDIF
-FILLNOICE		FILL	$FF,NOICE_CODE_BASE+NOICE_CODE_LEN-FILLNOICE
-		ENDIF
-
-;
-;
-;	Place code here? Change constants and sync noice code!
-;
-;
+FILL2
+FILL2LEN 	EQU	MOSSTRINGS-FILL2
+		FILL	$FF,FILL2LEN
 
 
-; strings are at F500
-
-;;FILL2
-;;		FILL	$FF,REMAPPED_HW_VECTORS-FILL2
 		ORG	REMAPPED_HW_VECTORS
 *************************************************************
 *     R E M A P P E D    H A R D W A R E    V E C T O R S   *
@@ -9422,22 +9478,9 @@ XSWI3V		FDB	mos_handle_swi3			; $FFF2		; on 6809 we use this instead of 6502 BRK
 XSWI2V		FDB	mos_handle_swi2			; $FFF4
 XFIRQV		FDB	vec_nmi				; $FFF6
 XIRQV		FDB	mos_handle_irq			; $FFF8
-	IF NOICE==0
 XSWIV		FDB	mos_handle_swi			; $FFFA
 XNMIV		FDB	mos_handle_nmi			; $FFFC
-	ELSE
-XSWIV		FDB	noice_handle_swi		; $FFFA
-XNMIV		FDB	noice_handle_nmi		; $FFFC
-	ENDIF
 XRESETV		FDB	mos_handle_res			; $FFFE
-
-		IF NOICE
-noice_handle_nmi	JMP	[NOICE_CODE_BASE+0]
-noice_handle_swi	JMP	[NOICE_CODE_BASE+2]
-noice_handle_ch		JMP	[NOICE_CODE_BASE+4]
-noice_handle_res	JMP	NOICE_CODE_BASE+6
-		ENDIF
-
 
 *******************************************************************************
 * 6809 debug and specials
@@ -9456,17 +9499,17 @@ _m_tax_se		; sign extend A into X
 		dec	,S
 		puls	X,PC
 
-	IF MACH_BEEB && NOICE && !NOICE_MY
-debug_init_beeb
-		; force pre-init of ACIA
-		jsr	ACIA_rst_ctl3		; master reset of ACIA
-		lda	#$40			; 19,200/19,200/serial
-		sta	sheila_SERIAL_ULA
-		lda	#$56			; div 64, 8N1, RTS, TX irq disable
-		sta	sheila_ACIA_CTL
-		clr	sheila_ACIA_DATA	; send a zero byte to wake it up!
-		rts
-	ENDIF
+;; 	IF MACH_BEEB && NOICE && !NOICE_MY
+;; debug_init_beeb
+;; 		; force pre-init of ACIA
+;; 		jsr	ACIA_rst_ctl3		; master reset of ACIA
+;; 		lda	#$40			; 19,200/19,200/serial
+;; 		sta	sheila_SERIAL_ULA
+;; 		lda	#$56			; div 64, 8N1, RTS, TX irq disable
+;; 		sta	sheila_ACIA_CTL
+;; 		clr	sheila_ACIA_DATA	; send a zero byte to wake it up!
+;; 		rts
+;; 	ENDIF
 
 		; send characters after call to the UART
 debug_print
@@ -9511,12 +9554,8 @@ debug_print_hex_digit
 		adda	#'A'-'9'-1
 1		jmp	debug_print_ch
 
-
-	IF NOICE
-debug_print_ch	equ	noice_handle_ch			; use noice's built in ch print
-	ELSE
-debug_print_ch	jmp	OSASCI
-	ENDIF	
+debug_print_ch	RTS
+		;jmp	OSASCI
 
 ;;;mostbl_BUFFER_ADDRESS_LO_LOOK_UP_TABLE
 ;;;mostbl_BUFFER_ADDRESS_HI_LOOK_UP_TABLE
@@ -10105,7 +10144,7 @@ rtc_read
 ;x_print_prompt_for_SAVE_on_TAPE:
 ;	lda	sysvar_CFSRFS_SWITCH		;	F934
 ;	beq	LF93C				;	F937
-;	jmp	x_Bad_command_error		;	F939
+;	jmp	brkBadCommand		;	F939
 ;; ----------------------------------------------------------------------------
 ;LF93C:	jsr	LFB8E				;	F93C
 ;	jsr	x_control_ACIA_and_Motor	;	F93F
@@ -10579,7 +10618,22 @@ OSINIT_read	ldx	#BRKV
 		ldy	#zp_mos_ESC_flag
 		clra				; indicate BE OS calls
 		rts
+dummy_vector_RTI
+		rti
+mos_txa
+		m_txa
+		rts
 
+; ----------------------------------------------------------------------------
+; OSBYTE &94	  READ A BYTE FROM JIM;	 
+mos_OSBYTE_148
+	lda	$FD00,x				;	FFAE
+	bra	1B				;	FFB1
+; ----------------------------------------------------------------------------
+; OSBYTE &96	  READ A BYTE FROM SHEILA;  
+mos_OSBYTE_150
+	lda	$FE00,X
+	bra	1B
 
 * Bounce table to cope with fact that indirect jump is 4 bytes on 6809
 OSFIND_bounce	jmp	[FINDV]
@@ -10596,7 +10650,8 @@ OSCLI_bounce	jmp	[CLIV]
 
 
 FILL5
-		FILL	$FF,HARDWARELOC-FILL5
+FILL5LEN	EQU	HARDWARELOC-FILL5
+		FILL	$FF,FILL5LEN
 		ORG	HARDWARELOC
 		FILL	$FF,HARDWARELOC_END-HARDWARELOC+1
 
@@ -10680,7 +10735,7 @@ FILL5
 ;sheila_VIDULA_pal:
 ;	FCB	"Laboratory,Pete"		;	FE21
 ;						;	FE29
-;SHEILA_ROMCTL_SWR:	FCB	"r Miller,Arthur "		;	FE30
+;sheila_ROMCTL_SWR:	FCB	"r Miller,Arthur "		;	FE30
 ;						;	FE38
 ;sheila_SYSVIA_orb:
 ;	FCB	"N"				;	FE40
@@ -10864,8 +10919,8 @@ x_enter_extended_vector
 		;	8	cur SWR#
 		;	7	x_return_addess_from_ROM_indirection (lo)
 		;	6	x_return_addess_from_ROM_indirection (hi)
-		;	5	rom vector handle (lo)
-		;	4	rom vector handle (hi)
+		;	5	rom vector handler (lo)
+		;	4	rom vector handler (hi)
 		;	3	X (lo)
 		;	2	X (hi)
 		;	1	B
@@ -10873,9 +10928,21 @@ x_enter_extended_vector
 
 
 		stb	zp_mos_curROM			; Set OS copy and hardware
-		stb	SHEILA_ROMCTL_SWR		; SWR #
+		stb	sheila_ROMCTL_SWR		; SWR #
 
 		puls	CC,B,X,PC			; jump to ROM routine
+
+		; routine is entered with:
+		;	6	Caller addr (lo)
+		;	5	Caller addr (hi)
+		;	4	Extended vector addr (lo)
+		;	3	Extended vector addr (hi)
+		;	2	cur SWR#
+		;	1	x_return_addess_from_ROM_indirection (lo)
+		;	0	x_return_addess_from_ROM_indirection (hi)
+		; NOTE: the debugger uses this stack signature and switches ROMS back itsel
+		; so if any changes are made here they must be reflected in the ROM		
+
 
 ;; ----------------------------------------------------------------------------
 ;; returnFDBess from ROM indirection; at this point stack comprises original ROM number,return from JSR &FF51, ; return from original call the return from FF51 is garbage so; 
@@ -10902,34 +10969,28 @@ x_return_addess_from_ROM_indirection
 
 		ldb	2,S				; get back saved SWR #
 		stb	zp_mos_curROM			; reset MOS SWR #
-		stb	SHEILA_ROMCTL_SWR		; and hardware
+		stb	sheila_ROMCTL_SWR		; and hardware
 		puls	B,CC				; restore flags and B
 		leas	3,S				; skip unwanted
+
+;; TODO: Make this RTI or RTS depending on vector?
+
 dummy_vector_RTS				; LFFA6
 		rts					;	FFA6
-dummy_vector_RTI
-		rti
-;; ----------------------------------------------------------------------------
-;; OSBYTE &9D	FAST BPUT
-;mos_OSBYTE_157:
-;	txa					;	FFA7
-;	bcs	OSBPUT				;	FFA8
-;; OSBYTE &92	  READ A BYTE FROM FRED
-;mos_OSBYTE_146:
-;	ldy	LFC00,x				;	FFAA
-;	rts					;	FFAD
-;; ----------------------------------------------------------------------------
-;; OSBYTE &94	  READ A BYTE FROM JIM;	 
-;mos_OSBYTE_148:
-;	ldy	LFD00,x				;	FFAE
-;	rts					;	FFB1
-;; ----------------------------------------------------------------------------
-;; OSBYTE &96	  READ A BYTE FROM SHEILA;  
-;mos_OSBYTE_150:
-;	LDY	$FE00,X
-;	RTS
+; ----------------------------------------------------------------------------
+; OSBYTE &9D	FAST BPUT
+mos_OSBYTE_157
+	jsr	mos_txa
+	jmp	OSBPUT					;	FFA8
+; OSBYTE &92	  READ A BYTE FROM FRED
+mos_OSBYTE_146
+	lda	$FC00,x					;	FFAA
+1	jmp	LE71F_tay_c_rts				;	FFAD
 
 
+FILL3
+FILL3LEN	EQU	DOM_DEBUG_ENTRIES - FILL3
+		FILL	$FF, FILL3LEN
 		ORG	DOM_DEBUG_ENTRIES
 _DEBUGPRINTNEWL	jmp	debug_print_newl		; FF8C
 _DEBUGPRINTHEX	jmp	debug_print_hex			; FF8F
@@ -10979,3 +11040,10 @@ _OSWORD		jmp	OSWORD_bounce			;	FFF1
 _OSBYTE		jmp	OSBYTE_bounce			;	FFF4
 _OSCLI		jmp	OSCLI_bounce			;	FFF7
 		FCB	"Ishbel"			; this was the original vectors
+
+		SECTION	"tables_and_strings"
+MOSSTRINGSEND
+MOSSTRINGSLEN	EQU	MOSSTRINGSEND-MOSSTRINGS
+MOSSTRINGSFREE	EQU	REMAPPED_HW_VECTORS - MOSSTRINGSEND
+		FILL	$FF, MOSSTRINGSFREE
+FREE		EQU FILL5LEN + FILL2LEN + FILL3LEN + MOSSTRINGSFREE

@@ -18,26 +18,26 @@ TARGETS_CHIPKIT_PRE=$(addprefix $(CHIPKITOUT)/,$(TARGETS) $(TARGETS_CHIPKIT))
 TARGETS_FLEX_PRE=$(addprefix $(FLEXOUT)/,$(TARGETS_FLEX))
 TARGETS_MATCHBOX_PRE=$(addprefix $(MATCHBOXOUT)/,$(TARGETS_MATCHBOX))
 
-$(CHIPKITOUT)/%.hex: 	%.asm
+$(CHIPKITOUT)/%.hex: 	%.asm	$(DEPS)
 		$(AS) $(ASFLAGS)  --define MACH_CHIPKIT=1 -S -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
-$(BEEBOUT)/%.hex:		%.asm
+$(BEEBOUT)/%.hex:	%.asm	$(DEPS)
 		$(AS) $(ASFLAGS) --define MACH_BEEB=1 -S -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
-$(MATCHBOXOUT)/%.hex:	%.asm
+$(MATCHBOXOUT)/%.hex:	%.asm	$(DEPS)
 		$(AS) $(ASFLAGS) --define MACH_MATCHBOX=1 -S -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
-$(FLEXOUT)/%.hex:	%.asm
+$(FLEXOUT)/%.hex:	%.asm	$(DEPS)
 		$(AS) $(ASFLAGS) --define MACH_FLEX=1 -S -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 
-$(CHIPKITOUT)/%.bin: 	%.asm
+$(CHIPKITOUT)/%.bin: 	%.asm	$(DEPS)
 		$(AS) $(ASFLAGS) --define MACH_CHIPKIT=1 -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
-$(BEEBOUT)/%.bin:		%.asm
+$(BEEBOUT)/%.bin:	%.asm	$(DEPS)	
 		$(AS) $(ASFLAGS) --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
-$(MATCHBOXOUT)/%.bin:	%.asm
+$(MATCHBOXOUT)/%.bin:	%.asm	$(DEPS)
 		$(AS) $(ASFLAGS) --define MACH_MATCHBOX=1 -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 
@@ -45,8 +45,8 @@ $(MATCHBOXOUT)/%.bin:	%.asm
 all:		all_beeb all_chipkit all_matchbox all_flex 
 all_chipkit:	dirs_chipkit $(TARGETS_CHIPKIT_PRE) $(TARGETS_EXTRA) $(TARGETS_EXTRA_CHIPKIT)
 all_beeb:	dirs_beeb $(TARGETS_BEEB_PRE) $(TARGETS_EXTRA) $(TARGETS_EXTRA_BEEB)
-all_matchbox: dirs_matchbox $(TARGETS_MATCHBOX_PRE)
-all_flex: dirs_flex $(TARGETS_FLEX_PRE)
+all_matchbox: 	dirs_matchbox $(TARGETS_MATCHBOX_PRE)
+all_flex: 	dirs_flex $(TARGETS_FLEX_PRE)
 dirs_chipkit:	
 		mkdir -p $(CHIPKITOUT)
 dirs_beeb:	

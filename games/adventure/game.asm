@@ -26,6 +26,8 @@ FRONT_SPR_SZ	equ	(2*16)+(8*16)			; size of spr
 
 SPR_SAVE	equ	$030000				; save area for sprites
 
+SCR_SHADOW	equ	$040000				; draw to this screen then blit to SYS
+
 	; sprite save area block offsets
 o_spr_save_sava	equ	0
 o_spr_save_scra	equ	3
@@ -135,6 +137,17 @@ lpx
 lp2
 		clr	SHEILA_DEBUG
 		jsr	wait_vysnc
+
+		pshs	D,X,Y,U
+		lda	#SCR_SHADOW/$10000
+		ldx	#SCR_SHADOW%$10000
+		ldb	#$FF
+		ldy	#$3000
+		ldu	#$5000
+		jsr	dmac_copy
+		puls	D,X,Y,U
+
+
 		ldb	#$FF
 		stb	SHEILA_DEBUG
 
@@ -306,7 +319,7 @@ draw_map_tile_no_mask
 		sta	sheila_DMAC_MASK_LAST
 2
 
-		lda	#$FF
+		lda	#SCR_SHADOW/$10000
 		sta	sheila_DMAC_ADDR_D
 
 		lda	#$CC				; B
@@ -358,7 +371,7 @@ spr_restore_lp
 		sta	sheila_DMAC_ADDR_B
 		ldd	o_spr_save_sava + 1,X
 		std	sheila_DMAC_ADDR_B + 1
-		lda	#$FF
+		lda	#SCR_SHADOW/$10000
 		sta	sheila_DMAC_ADDR_D
 		ldd	o_spr_save_scra,X
 		std	sheila_DMAC_ADDR_D + 1
@@ -520,7 +533,7 @@ spr_plotAtX16	pshs	D,X,Y,U
 
 spr_save_then_plot
 		; before doing the plot, save to the save area
-		lda	#$FF
+		lda	#SCR_SHADOW/$10000
 		sta	sheila_DMAC_ADDR_C
 		sta	sheila_DMAC_ADDR_D
 		
@@ -608,7 +621,7 @@ XY_to_ADDR	; calculate screen address (in D) Cy set if X was odd
 
 		addd	1,S				; add address from above
 
-		addd	#$3000
+;		addd	#$3000
 
 		puls	CC				; get back X==odd as C
 		leas	2,S				; restore stack
