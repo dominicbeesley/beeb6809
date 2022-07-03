@@ -846,6 +846,10 @@ FOUND_TAIL:
 				$hereix = $sdiix;
 				$sdiix += $sufskip + 1;				
 			}
+
+			$hereix > 0x7f && die "X $hereix";
+
+
 			$sufdef_ixs{$sd} = $hereix;
 
 

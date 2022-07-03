@@ -349,27 +349,27 @@ assParseTbl_END	FCB	$FF	; end of table marker
 
 assSuffSetsTbl
 		* SUFLIST [01] - LD ABDSUXY*EFWQ BT MD
-		FCB	$04,$07,$0D,$12,$15,$1B,$9D
+		FCB	$04,$07,$0D,$13,$16,$19,$9C
 		* SUFLIST [08] - ADC AB*D R CC
 		FCB	$09,$04,$87
 		* SUFLIST [0B] - ABD MD
-		FCB	$04,$07,$8B
+		FCB	$04,$07,$8C
 		* SUFLIST [0E] - SUXY
-		FCB	$14,$16,$1A,$9C
+		FCB	$12,$18,$1B,$9D
 		* SUFLIST [12] - AB*DW
 		FCB	$05,$86
 		* SUFLIST [14] - 23
 		FCB	$02,$03,$81
 		* SUFLIST [17] - ADD ABD*EFW R
-		FCB	$0E,$49
+		FCB	$0F,$49
 		* SUFLIST [19] - ABD*EFW
-		FCB	$05,$06,$8A
+		FCB	$05,$06,$8B
 		* SUFLIST [1C] - CMP ABDSUXY*EFW R
-		FCB	$11,$18,$19,$1E,$0F,$49
+		FCB	$14,$17,$1A,$1E,$0A,$49
 		* SUFLIST [22] - SUB ABD*EFW R
-		FCB	$0C,$49
+		FCB	$0E,$49
 		* SUFLIST [24] - SU
-		FCB	$13,$97
+		FCB	$11,$95
 
 
 
@@ -413,14 +413,14 @@ ASS_REGS_CC_IX	EQU	$09
 		* SUFITEM [0A] - D
 		FCB	$44	; "D"
 		FCB	$96	; FLAGS - 10 #16 SUF-OP
-		FCB	$40	; OP
+		FCB	$02	; OP
 		* SUFITEM [0B] - D
 		FCB	$44	; "D"
-		FCB	$92	; FLAGS - 10 #16
+		FCB	$96	; FLAGS - 10 #16 SUF-OP
+		FCB	$40	; OP
 		* SUFITEM [0C] - D
 		FCB	$44	; "D"
-		FCB	$86	; FLAGS - #16 SUF-OP
-		FCB	$03	; OP
+		FCB	$92	; FLAGS - 10 #16
 		* SUFITEM [0D] - D
 		FCB	$44	; "D"
 		FCB	$86	; FLAGS - #16 SUF-OP
@@ -428,64 +428,64 @@ ASS_REGS_CC_IX	EQU	$09
 		* SUFITEM [0E] - D
 		FCB	$44	; "D"
 		FCB	$86	; FLAGS - #16 SUF-OP
-		FCB	$38	; OP
+		FCB	$03	; OP
 		* SUFITEM [0F] - D
 		FCB	$44	; "D"
-		FCB	$96	; FLAGS - 10 #16 SUF-OP
-		FCB	$02	; OP
+		FCB	$86	; FLAGS - #16 SUF-OP
+		FCB	$38	; OP
 		* SUFITEM [10] - I
 		FCB	$49	; "I"
 		FCB	$80	; FLAGS - 
 		* SUFITEM [11] - S
 		FCB	$53	; "S"
-		FCB	$97	; FLAGS - 11 #16 SUF-OP
-		FCB	$0B	; OP
-		* SUFITEM [12] - S
-		FCB	$53	; "S"
-		FCB	$96	; FLAGS - 10 #16 SUF-OP
-		FCB	$48	; OP
-		* SUFITEM [13] - S
-		FCB	$53	; "S"
 		FCB	$82	; FLAGS - #16
-		* SUFITEM [14] - S
+		* SUFITEM [12] - S
 		FCB	$53	; "S"
 		FCB	$86	; FLAGS - #16 SUF-OP
 		FCB	$02	; OP
+		* SUFITEM [13] - S
+		FCB	$53	; "S"
+		FCB	$96	; FLAGS - 10 #16 SUF-OP
+		FCB	$48	; OP
+		* SUFITEM [14] - S
+		FCB	$53	; "S"
+		FCB	$97	; FLAGS - 11 #16 SUF-OP
+		FCB	$0B	; OP
 		* SUFITEM [15] - U
 		FCB	$55	; "U"
 		FCB	$86	; FLAGS - #16 SUF-OP
-		FCB	$48	; OP
+		FCB	$02	; OP
 		* SUFITEM [16] - U
 		FCB	$55	; "U"
 		FCB	$86	; FLAGS - #16 SUF-OP
-		FCB	$03	; OP
+		FCB	$48	; OP
 		* SUFITEM [17] - U
-		FCB	$55	; "U"
-		FCB	$86	; FLAGS - #16 SUF-OP
-		FCB	$02	; OP
-		* SUFITEM [18] - U
 		FCB	$55	; "U"
 		FCB	$97	; FLAGS - 11 #16 SUF-OP
 		FCB	$02	; OP
+		* SUFITEM [18] - U
+		FCB	$55	; "U"
+		FCB	$86	; FLAGS - #16 SUF-OP
+		FCB	$03	; OP
 		* SUFITEM [19] - X
 		FCB	$58	; "X"
 		FCB	$86	; FLAGS - #16 SUF-OP
-		FCB	$0B	; OP
+		FCB	$08	; OP
 		* SUFITEM [1A] - X
 		FCB	$58	; "X"
-		FCB	$82	; FLAGS - #16
+		FCB	$86	; FLAGS - #16 SUF-OP
+		FCB	$0B	; OP
 		* SUFITEM [1B] - X
 		FCB	$58	; "X"
-		FCB	$86	; FLAGS - #16 SUF-OP
-		FCB	$08	; OP
+		FCB	$82	; FLAGS - #16
 		* SUFITEM [1C] - Y
-		FCB	$59	; "Y"
-		FCB	$86	; FLAGS - #16 SUF-OP
-		FCB	$01	; OP
-		* SUFITEM [1D] - Y
 		FCB	$59	; "Y"
 		FCB	$96	; FLAGS - 10 #16 SUF-OP
 		FCB	$08	; OP
+		* SUFITEM [1D] - Y
+		FCB	$59	; "Y"
+		FCB	$86	; FLAGS - #16 SUF-OP
+		FCB	$01	; OP
 		* SUFITEM [1E] - Y
 		FCB	$59	; "Y"
 		FCB	$96	; FLAGS - 10 #16 SUF-OP
@@ -671,10 +671,10 @@ ASS_MODESET_IMPLIED	equ	$00
 
 assXlateCC
 		fcb	$02	; size
-		fcb	$84	; op org
-		fcb	$1C	; op new
 		fcb	$8A	; op org
 		fcb	$1A	; op new
+		fcb	$84	; op org
+		fcb	$1C	; op new
 ASS_MNE_BITS	equ	$00007FFF	; bits used in mnemonics
 ASS_BITS_PRE	equ	$11	; bits set indicate prefix
 ASS_BITS_PRE_10	equ	$10	; prefix = $10
