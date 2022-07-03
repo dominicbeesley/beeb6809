@@ -15,7 +15,7 @@ DEPS=	../../includes/hardware.inc \
 		VERSION-date.gen.asm \
 		Makefile
 
-HOSTFSDIR=~/hostfs/beebroms/
+HOSTFSDIR=~/hostfs/roms69/
 
 ROMNO=C
 
