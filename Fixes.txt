@@ -2,6 +2,15 @@ Outstanding fixes / improvements for the Chipkit and Chipkit mk2 boards
 =======================================================================
 
 
+BUGS
+====
+copy - when scroll happens reposition cursor
+copy - mode7 makes a mess of _£# on screen and in copied text
+noice brk XXXX reposition text pointer at XXXX OSARGS?
+noice enter AAAA <args> enter noice with PC at A and command set up
+
+
+
 MEMC
 ====
 Add special read/write user mode that allows TFM to read from/write to user map until next LIC or implement with blitter?

@@ -1,17 +1,19 @@
 ASFLAGS=-v -3 
-TARGETS=USBFS.bin \
+TARGETS=	USBFS.bin \
 		loadUSBFSandsyms.noi \
 		loadUSBFS.noi
 
-DEPS=	$(MOSDIR)/includes/hardware.inc \
-	$(MOSDIR)/includes/common.inc \
-	$(MOSDIR)/includes/mosrom.inc \
-	$(MOSDIR)/includes/noice.inc \
-	$(MOSDIR)/includes/oslib.inc \
-	$(CHIPKITOUT)/../../mos/beeb6809-mos/mosrom-noice.sym \
+DEPS=	../../includes/hardware.inc \
+	../../includes/common.inc \
+	../../includes/mosrom.inc \
+	../../includes/noice.inc \
+	../../includes/oslib.inc \
 	./vinc.inc \
 	./vinc.asm \
 	Makefile
+
+
+#	$(CHIPKITOUT)/../../mos/beeb6809-mos/mosrom-noice.sym \
 
 
 ROMNO=2

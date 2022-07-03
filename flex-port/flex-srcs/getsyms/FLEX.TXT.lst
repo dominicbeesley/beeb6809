@@ -1,0 +1,1019 @@
+                                      ; TTL  TSC 6809 FLEX
+                                      ; NAM  FLEX
+                                      ; OPT  PAG
+                              ******************************
+                              *
+                              * FLEX VER 3.01
+                              *
+                              ******************************
+                      
+C07F                  STACK           EQU     $C07F
+C080                  BUFFER          EQU     $C080                           ; line input buffer
+C0A0                  LSTBLK          EQU     $C0A0                           ; last ram offset
+C0FF                  ENDBUF          EQU     $C0FF                           ; end of line buffer
+C700                  CNGTSK          EQU     $C700                           ; change active task
+                                      ; SPC  1
+C838                                  ORG     $C838
+C838                  ERRFCB          RMB     8                               ; error report fcb
+                      
+                              *SYSTEM FILE CONTROL BLOCK
+C840                                  ORG     $C840
+C840  00000000        SYSFCB          FCB     0,0,0,0
+C844  53544152545550  FCBNAM          FCC     "STARTUP"
+C84B  00                              FCB     0
+C84C  545854                          FCC     "TXT"
+                                      ; SPC  1
+CA00                                  ORG     $CA00
+CA00  2004            INIT            BRA     INIT1
+CA02  39              DVECT           RTS                             ;  vector to date prompt
+                              *DVECT JSR GDATE
+CA03  39                              RTS
+CA04  C0A0            LASTM           FDB     LSTBLK                          ; set default end of ram
+                      
+CA06  8639            INIT1           LDA     #$39                            ; close path to get here
+CA08  B7D3FD                          STA     JMPINT
+CA0B  BECC2B                          LDX     MEMEND
+CA0E  308900A1                        LEAX    $A1,X
+CA12  BFCA04                          STX     LASTM                           ; set last usable ram
+CA15  AD9FD3F5                        JSR     [INTACA]                                ; initalize ACIA
+CA19  BED3FB                          LDX     INVEC                           ; set vectors in jump table
+CA1C  BFCD0A                          STX     INCH+1
+CA1F  BFCD0D                          STX     INCH2+1
+CA22  BED3F9                          LDX     OUTVEC
+CA25  BFCD10                          STX     OUTCH+1
+CA28  BFCD13                          STX     OUTCH2+1
+CA2B  BED3F7                          LDX     STAVEC
+CA2E  BFCD4F                          STX     STAT+1
+CA31  8E00A0                          LDX     #$00A0                          ; start of memory + $A0
+CA34  C6B9                            LDB     #$B9
+CA36  A684            INIT01          LDA     ,X                              ; save memory
+CA38  E784                            STB     ,X                              ; test for RAM
+CA3A  12                              NOP
+CA3B  E184                            CMPB    ,X
+CA3D  260B                            BNE     INIT02                          ; not ram?
+CA3F  A784                            STA     ,X                              ; restore memory
+CA41  30890400                        LEAX    $0400,X                         ; move up 1K
+CA45  BCCA04                          CMPX    LASTM                           ; end of user RAM?
+CA48  26EC                            BNE     INIT01                          ; test some more
+CA4A  3089FF5F        INIT02          LEAX    $FF5F,X                         ; move to last good block
+CA4E  BFCC2B                          STX     MEMEND
+CA51  8ECD03                          LDX     #WARMS
+CA54  BFCC16                          STX     ESCRET                          ; set ESCAPE RETURN
+CA57  8ECADA                          LDX     #FLEX9
+CA5A  BDCE81                          JSR     PRINT                           ; print heading
+CA5D  BDCEB5                          JSR     CRLF1
+CA60  8DA0                            BSR     DVECT                           ; get date
+CA62  BDCEB5                          JSR     CRLF1
+CA65  8EC840                          LDX     #SYSFCB                         ; point to fcb
+CA68  8601                            LDA     #$01
+CA6A  A784                            STA     ,X                              ; open for read
+CA6C  BDD406                          JSR     FMCALL
+CA6F  2708                            BEQ     STRTUP                          ; no error?
+CA71  A601                            LDA     $01,X                           ; get error number
+CA73  BDD200                          JSR     LDERR                           ; report it
+CA76  7ECD67                          JMP     WARM                            ; return to flex
+CA79  8EC080          STRTUP          LDX     #BUFFER
+CA7C  BFCC14          STAR02          STX     BUFPTR                          ; set up input buffer
+CA7F  8EC840                          LDX     #SYSFCB
+CA82  BDD406                          JSR     FMCALL                          ; get character from file
+CA85  2705                            BEQ     STAR03                          ; no error?
+CA87  3430                            PSHS    Y,X
+CA89  7ED2D7                          JMP     ERROR3                          ; back to flex
+CA8C  BECC14          STAR03          LDX     BUFPTR
+CA8F  A780                            STA     ,X+                             ; put char. in line buffer
+CA91  810D                            CMPA    #$0D                            ; end of line?
+CA93  26E7                            BNE     STAR02                          ; get next character
+CA95  8EC840                          LDX     #SYSFCB
+CA98  BDD1F4                          JSR     LDCLOS                          ; close file
+CA9B  8EC080                          LDX     #BUFFER
+CA9E  BFCC14                          STX     BUFPTR                          ; reset line buffer
+CAA1  8ECD67                          LDX     #WARM
+CAA4  BFCC43                          STX     CMDRTN                          ; set return address
+CAA7  7ED32E                          JMP     CMND1                           ; do command
+                                      ; SPC  1
+CAAA  8ECAEF          GDATE           LDX     #DATEQ                          ; prompt for date
+CAAD  BDCE81                          JSR     PRINT
+CAB0  BDCE2B                          JSR     FILBUF                          ; get date
+CAB3  8D14                            BSR     EVALNU                          ; evaluate number
+CAB5  25F3                            BCS     GDATE                           ; bad number?
+CAB7  B7CC0E                          STA     MONTH                           ; OK so store it
+CABA  8D0D                            BSR     EVALNU
+CABC  25EC                            BCS     GDATE
+CABE  B7CC0F                          STA     DAY
+CAC1  8D06                            BSR     EVALNU
+CAC3  25E5                            BCS     GDATE
+CAC5  B7CC10                          STA     YEAR
+CAC8  39                              RTS
+CAC9  BDD175          EVALNU          JSR     GETDEC                          ; get decimal number
+CACC  250B                            BCS     EVAL02                          ; any good?
+CACE  B6CC1C                          LDA     OFFSET+1                                ; get lsb of number
+CAD1  5D                              TSTB                            ;  test number of digits
+CAD2  2703                            BEQ     EVAL01                          ; nothing input?
+CAD4  1CFE                            ANDCC   #$FE                            ; clear carry
+CAD6  39                              RTS
+CAD7  1A01            EVAL01          ORCC    #$01                            ; set carry
+CAD9  39              EVAL02          RTS
+                                      ; SPC  1
+CADA  36383039090909093B20464C45582056332E3031 FLEX9           FCC     "6809                           ; FLEX V3.01"
+CAEE  04                              FCB     $04
+CAEF  44415445090909093B20284D4D2C44442C5959293F20 DATEQ           FCC     "DATE                           ; (MM,DD,YY)? "
+CB05  04                              FCB     $04
+                                      ; PAG 
+CC00                                  ORG     $CC00
+                              *TTYSET parameters
+CC00  08              TTYBS           FCB     $08                             ; BACK SPACE
+CC01  18              TTYDEL          FCB     $18                             ; LINE DELETE
+CC02  3A              TTYEOL          FCB     $3A                             ; END OF LINE
+CC03  00              TTYDP           FCB     00                              ; DEPTH
+CC04  00              TTYWD           FCB     00                              ; WIDTH
+CC05  04              TTYNUL          FCB     $04                             ; NULL COUNT
+CC06  00              TTYTAB          FCB     00                              ; TAB CHARACTER
+CC07  00              TTYBE           FCB     00                              ; BACK SPACE ECHO
+CC08  00              TTYEJ           FCB     00                              ; PAGE EJECT
+CC09  00              TTYPS           FCB     00                              ; PAUSE FLAG
+CC0A  1B              TTYESC          FCB     $1B                             ; ESCAPE
+                                      ; SPC  1
+                              *SYSTEM STORAGE
+CC0B  00              SYSDRV          FCB     00
+CC0C  00              WRKDRV          FCB     00
+CC0D  00              DRVTYP          FCB     00
+CC0E  00              MONTH           FCB     00
+CC0F  00              DAY             FCB     00
+CC10  00              YEAR            FCB     00
+CC11  00              LSTTRM          FCB     00
+CC12  0000            USRCMD          FDB     0
+CC14  C080            BUFPTR          FDB     $C080
+CC16  0000            ESCRET          FDB     0
+CC18  00              CURCHR          FCB     00
+CC19  00              LSTCHR          FCB     00
+CC1A  00              CURLIN          FCB     00
+CC1B  0000            OFFSET          FDB     00
+CC1D  00              TRNSFR          FCB     00
+CC1E  0000            ADDRES          FDB     00
+CC20  00              ERRTYP          FCB     00
+CC21  00              IOFLAG          FCB     00
+CC22  00              OUTSW           FCB     00
+CC23  00              INSW            FCB     00
+CC24  0000            FOADDR          FDB     0
+CC26  0000            FIADDR          FDB     0
+CC28  00              CMDFLG          FCB     00
+CC29  00              CURCOL          FCB     00
+CC2A  00                              FCB     00
+CC2B  BFFF            MEMEND          FDB     $BFFF
+CC2D  0000            ERRVEC          FDB     0
+CC2F  01              FIECHO          FCB     $01
+CC30  00                              FCB     00
+CC31  CCF8            CURTSK          FDB     TASK0
+CC33  04              CPUTYP          FCB     04
+CC34  00              MODE            FCB     00
+CC35  00                              FCB     00
+CC36  00                              FCB     00
+CC37  00                              FCB     00
+CC38  00                              FCB     00
+CC39  00                              FCB     00
+CC3A  00                              FCB     00
+CC3B  00                              FCB     00
+CC3C  00                              FCB     00
+CC3D  0000            XLOAD           FDB     0
+CC3F  00000000        XTEMP2          FDB     0,0
+CC43  0000            CMDRTN          FDB     0
+CC45  0000            CMDSTK          FDB     0
+CC47  0000            XTEMP1          FDB     0
+CC49  60              UPCASE          FCB     $60
+CC4A  00              FIRDIG          FCB     0
+CC4B  00              CHRCNT          FCB     0
+CC4C  00              GETFLG          FCB     0
+CC4D  00              DIGCNT          FCB     0
+                                      ; PAG 
+CC4E  2B2B2B          PROMPT          FCC     "+++"
+CC51  04                              FCB     $04
+CC52  3F3F3F          QPROMT          FCC     "???"
+CC55  04                              FCB     $04
+CC56  574841543F      WHAT            FCC     "WHAT?"
+CC5B  04                              FCB     $04
+CC5C  43414E2754090909093B205452414E53464552 CANT            FCC     "CAN'T                          ; TRANSFER"
+CC6F  04                              FCB     $04
+CC70  4E4F54090909093B20464F554E44 NOFIND          FCC     "NOT                            ; FOUND"
+CC7E  04                              FCB     $04
+CC7F  4449534B090909093B204552524F522023 ERRMSG          FCC     "DISK                           ; ERROR #"
+CC90  04                              FCB     $04
+CC91  445249564553090909093B204E4F54205245414459 NOTRDY          FCC     "DRIVES                         ; NOT READY"
+CCA6  04                              FCB     $04
+                                      ; SPC  1
+CCA7  474554          CMDTBL          FCC     "GET"
+CCAA  00                              FCB     00
+CCAB  D20F                            FDB     GET
+CCAD  4D4F4E                          FCC     "MON"
+CCB0  00                              FCB     00
+CCB1  D34B                            FDB     MON
+CCB3  00                              FCB     00
+                                      ; SPC  1
+                              *BINARY TO DECIMAL TABLE
+CCB4  2710            DECTBL          FDB     $2710
+CCB6  03E8                            FDB     $03E8
+CCB8  0064                            FDB     $0064
+CCBA  000A                            FDB     $000A
+                                      ; SPC  1
+                              *LINE PRINTER DRIVERS
+CCC0                                  ORG     $CCC0
+CCC0  39              LPINIT          RTS
+                                      ; SPC  1
+CCD8                                  ORG     $CCD8
+CCD8  39              LPCHK           RTS
+                                      ; SPC  1
+CCE4                                  ORG     $CCE4
+CCE4  39              LPOUT           RTS
+                                      ; SPC  1
+                              *SPOOLING STATUS TABLE
+CCF8                                  ORG     $CCF8
+CCF8  0100            TASK0           FCB     $01,00                          ; TASK 0 STATUS
+CCFA  0000                            FDB     00                              ; TASK 0 STACK TEMP
+CCFC  0000            TASK1           FCB     00,00                           ; TASK 1 STATUS
+CCFE  0000                            FDB     00                              ; TASK 1 STACK TEMP
+                                      ; PAG 
+                              *SYSTEM CALL JUMP TABLE
+CD00  7ECD57          COLDS           JMP     COLD
+CD03  7ECD67          WARMS           JMP     WARM
+CD06  7ECDB1          RENTER          JMP     RENTR
+CD09  7E0000          INCH            JMP     INPUT1
+CD0C  7E0000          INCH2           JMP     INPUT1
+CD0F  7E0000          OUTCH           JMP     OUTP1
+CD12  7E0000          OUTCH2          JMP     OUTP1
+CD15  7ECEFB          GETCHR          JMP     GETCH1
+CD18  7ECF41          PUTCHR          JMP     PUTCH1
+CD1B  7ECE2B          INBUFF          JMP     FILBUF
+CD1E  7ECE81          PSTRNG          JMP     PRINT
+CD21  7ECFED          CLASS           JMP     CLASS1
+CD24  7ECEB5          PCRLF           JMP     CRLF1
+CD27  7ED00E          NXTCH           JMP     NXTCH1
+CD2A  7ECDEA          RSTRIO          JMP     RSTIO1
+CD2D  7ED036          GETFIL          JMP     GFILE
+CD30  7ED1A2          LOAD            JMP     LOAD1
+CD33  7ED0EB          SETEXT          JMP     EXTSET
+CD36  7ED349          ADDBX           JMP     ADDBX1
+CD39  7ECF86          OUTDEC          JMP     ODECM
+CD3C  7ECFD4          OUTHEX          JMP     OUT2H
+CD3F  7ED27F          RPTERR          JMP     ERROR
+CD42  7ED12F          GETHEX          JMP     GHEX
+CD45  7ECFD0          OUTADR          JMP     OUT4HX
+CD48  7ED175          INDEC           JMP     GETDEC
+CD4B  7ED329          DOCMD           JMP     DOCMND
+CD4E  7E0000          STAT            JMP     STATUS
+CD51  7ECE05                          JMP     DUMRTS
+CD54  7ECE05                          JMP     DUMRTS
+                                      ; PAG 
+                              *FLEX COLD START
+CD57  10CEC07F        COLD            LDS     #STACK
+CD5B  7FCC11          COLD01          CLR     LSTTRM
+CD5E  BDD400                          JSR     FMSINT                          ; initalize file manager
+CD61  7FCC28                          CLR     CMDFLG
+CD64  BDD3FD                          JSR     JMPINT                          ; get date and startup
+                                      ; SPC  1
+                              *WARM START
+CD67  10CEC07F        WARM            LDS     #STACK
+CD6B  BDDE18                          JSR     WINIT                           ; warm initalize disk drivers
+CD6E  8ECD03                          LDX     #WARMS
+CD71  BFCC16                          STX     ESCRET                          ; set escape return
+CD74  8EC700                          LDX     #CNGTSK                         ; set up spooling
+CD77  AF9FD3E9                        STX     [SWIVEC]
+CD7B  BED3E7                          LDX     IHANDL
+CD7E  AF9FD3EB                        STX     [IRQVEC]
+CD82  8ECCF8                          LDX     #TASK0                          ; set to foreground mode
+CD85  BFCC31                          STX     CURTSK
+CD88  7FCC34                          CLR     MODE
+CD8B  7FCC4C                          CLR     GETFLG
+CD8E  8D5A                            BSR     RSTIO1                          ; restore I/O
+CD90  B6CC11                          LDA     LSTTRM                          ; end of line?
+CD93  B1CC02                          CMPA    TTYEOL
+CD96  2605                            BNE     WARM01
+CD98  7CCC15                          INC     BUFPTR+1                                ; bump past last char
+CD9B  2014                            BRA     RENTR                           ; try for next command
+                      
+CD9D  7DCC28          WARM01          TST     CMDFLG                          ; docommd active?
+CDA0  10260597                        LBNE    CMDXIT                          ; then exit that way
+CDA4  BDD403                          JSR     FMSCLS                          ; close all files
+CDA7  26B2                            BNE     COLD01                          ; go back to start
+CDA9  8ECC4E                          LDX     #PROMPT                         ; prompt for line
+CDAC  BDCE81                          JSR     PRINT
+CDAF  8D7A                            BSR     FILBUF                          ; accept input
+                                      ; SPC  1
+CDB1  BDD0D4          RENTR           JSR     SKIPSP                          ; skip past leading space
+CDB4  810D                            CMPA    #$0D                            ; empty line?
+CDB6  27E5                            BEQ     WARM01
+CDB8  8EC840          RENTR1          LDX     #SYSFCB                         ; point to system fcb
+CDBB  7CCC0D                          INC     DRVTYP                          ; use system drive
+CDBE  BDD036                          JSR     GFILE                           ; get file name in fcb
+CDC1  2516                            BCS     WHAT1                           ; bad name?
+CDC3  8ECCA7                          LDX     #CMDTBL
+CDC6  8D3E                            BSR     SEARCH                          ; is it local command?
+CDC8  2709                            BEQ     RUN                             ; then do it
+CDCA  BECC12                          LDX     USRCMD
+CDCD  2707                            BEQ     LOOK                            ; no user table?
+CDCF  8D35                            BSR     SEARCH                          ; look in user table
+CDD1  2603                            BNE     LOOK                            ; must be on disk
+CDD3  6E9801          RUN             JMP     [$01,X]                         ; execute command
+CDD6  BDD22E          LOOK            JSR     LOADGO                          ; load it from disk
+CDD9  8ECC56          WHAT1           LDX     #WHAT                           ; point to what message
+CDDC  8615                            LDA     #$15                            ; error #21
+CDDE  B7CC20          PERROR          STA     ERRTYP                          ; save error number
+CDE1  BDCE81          WHAT2           JSR     PRINT                           ; print error message
+CDE4  7FCC11          WHAT3           CLR     LSTTRM                          ; force end of line
+CDE7  7ECD67                          JMP     WARM                            ; back to go
+                                      ; SPC  1
+                              *RESTORE I\O VECTORS
+CDEA  BECD13          RSTIO1          LDX     OUTCH2+1                                ; restore i\o vectors
+CDED  BFCD10                          STX     OUTCH+1
+CDF0  BECD0D                          LDX     INCH2+1
+CDF3  BFCD0A                          STX     INCH+1
+CDF6  7FCC23                          CLR     INSW                            ; force input from term
+CDF9  7FCC22                          CLR     OUTSW                           ; force output to term
+CDFC  7FCC21                          CLR     IOFLAG                          ; make standard i\o
+CDFF  7FCC26                          CLR     FIADDR                          ; turn off file i\o
+CE02  7FCC24                          CLR     FOADDR
+CE05  39              DUMRTS          RTS
+                                      ; SPC  1
+                              *SEARCH COMMAND TABLE
+CE06  108EC844        SEARCH          LDY     #FCBNAM                         ; point to name
+CE0A  A6A0            SRCH1           LDA     ,Y+                             ; get char from name
+CE0C  815F                            CMPA    #$5F                            ; lower case?
+CE0E  2302                            BLS     SRCH2
+CE10  8020                            SUBA    #$20                            ; convert to upper
+CE12  A180            SRCH2           CMPA    ,X+                             ; match char in table?
+CE14  2608                            BNE     SRCH3
+CE16  6D84                            TST     ,X                              ; end of entry in table?
+CE18  26F0                            BNE     SRCH1
+CE1A  6DA4                            TST     ,Y                              ; end of name?
+CE1C  270C                            BEQ     SREND
+CE1E  6D80            SRCH3           TST     ,X+                             ; end of entry?
+CE20  26FC                            BNE     SRCH3                           ; look for end
+CE22  3002                            LEAX    $02,X                           ; skip past address
+CE24  6D84                            TST     ,X                              ; end of table?
+CE26  26DE                            BNE     SEARCH                          ; then look again
+CE28  1CFB                            ANDCC   #$FB                            ; set not found
+CE2A  39              SREND           RTS
+                                      ; SPC  1
+                              *FILL INPUT BUFFER
+CE2B  8EC080          FILBUF          LDX     #BUFFER                         ; point to buffer
+CE2E  BFCC14                          STX     BUFPTR                          ; save pointer
+CE31  BDCEFB          FILL1           JSR     GETCH1                          ; input character
+CE34  B1CC01                          CMPA    TTYDEL                          ; is it line delete?
+CE37  271D                            BEQ     FILLDL
+CE39  B1CC00                          CMPA    TTYBS                           ; is it backspace?
+CE3C  271F                            BEQ     FILLBS
+CE3E  810D                            CMPA    #$0D                            ; end of input?
+CE40  270D                            BEQ     FILLCR
+CE42  810A                            CMPA    #$0A                            ; is it line feed?
+CE44  2732                            BEQ     FILLF
+CE46  811F                            CMPA    #$1F                            ; discard all control codes
+CE48  23E7                            BLS     FILL1
+CE4A  8CC0FF          FILL2           CMPX    #ENDBUF                         ; buffer overflow?
+CE4D  27E2                            BEQ     FILL1                           ; then discard
+CE4F  A780            FILLCR          STA     ,X+                             ; save in buffer
+CE51  810D                            CMPA    #$0D                            ; end of line?
+CE53  26DC                            BNE     FILL1
+CE55  39                              RTS                             ;  bye!
+CE56  8ECC52          FILLDL          LDX     #QPROMT                         ; print question marks
+CE59  8D26                            BSR     PRINT
+CE5B  20CE                            BRA     FILBUF                          ; start over
+CE5D  8CC080          FILLBS          CMPX    #BUFFER                         ; buffer empty?
+CE60  27F4                            BEQ     FILLDL                          ; then can't backup
+CE62  301F                            LEAX    -$01,X                          ; backup once
+CE64  B6CC07                          LDA     TTYBE                           ; check for backspace echo
+CE67  8108                            CMPA    #$08                            ; same as bs?
+CE69  2608                            BNE     BKSPC1                          ; no then send it
+CE6B  8620                            LDA     #$20                            ; delete last on screen
+CE6D  BDCF66                          JSR     PUTCH4
+CE70  B6CC07                          LDA     TTYBE                           ; and backup again
+CE73  BDCF66          BKSPC1          JSR     PUTCH4                          ; send to terminal
+CE76  20B9                            BRA     FILL1                           ; go for more
+CE78  860D            FILLF           LDA     #$0D                            ; new line on crt
+CE7A  BDCF41                          JSR     PUTCH1
+CE7D  8620                            LDA     #$20                            ; but not in buffer
+CE7F  20C9                            BRA     FILL2
+                                      ; SPC  1
+                              *PRINT STRING
+CE81  8D32            PRINT           BSR     CRLF1                           ; do new line
+CE83  A684            PRNT1           LDA     ,X                              ; get character to print
+CE85  8104                            CMPA    #$04                            ; end of string?
+CE87  276F                            BEQ     CRLF4                           ; then exit
+CE89  BDCF41                          JSR     PUTCH1                          ; send to crt
+CE8C  3001                            LEAX    $01,X                           ; point to next
+CE8E  20F3                            BRA     PRNT1                           ; print next
+                                      ; SPC  1
+                              *TEST KEYBOARD FOR ESCAPE
+CE90  BDCD4E          ESCTST          JSR     STAT                            ; character ready?
+CE93  2765                            BEQ     CRLF5                           ; branch if not
+CE95  AD9FD3E5                        JSR     [INCHNE]                                ; input w\o echo
+CE99  B1CC0A                          CMPA    TTYESC                          ; is it escape?
+CE9C  265C                            BNE     CRLF5                           ; branch if not
+CE9E  7FCC1A          ESCTS1          CLR     CURLIN                          ; clear line count
+CEA1  AD9FD3E5        ESCTS2          JSR     [INCHNE]                                ; look for character
+CEA5  B1CC0A                          CMPA    TTYESC                          ; is it escape?
+CEA8  2750                            BEQ     CRLF5                           ; then resume output
+CEAA  810D                            CMPA    #$0D                            ; is it return?
+CEAC  26F3                            BNE     ESCTS2                          ; loop if not
+CEAE  7FCC11                          CLR     LSTTRM                          ; force end of line
+CEB1  6E9FCC16                        JMP     [ESCRET]                                ; and exit
+                                      ; SPC  1
+                              *CARRAGE RETURN LINE FEED
+CEB5  7DCC21          CRLF1           TST     IOFLAG                          ; special i\o?
+CEB8  2627                            BNE     EJECT1                          ; then ignore ttyset
+CEBA  8DD4                            BSR     ESCTST                          ; test for escape
+CEBC  B6CC03                          LDA     TTYDP                           ; get page size
+CEBF  2720                            BEQ     EJECT1                          ; no page format?
+CEC1  B1CC1A                          CMPA    CURLIN                          ; end of page?
+CEC4  2218                            BHI     NEWLIN                          ; no then crlf
+CEC6  7FCC1A                          CLR     CURLIN                          ; set to first line
+CEC9  7DCC09                          TST     TTYPS                           ; pause?
+CECC  2702                            BEQ     CRLF2                           ; branch if not
+CECE  8DCE                            BSR     ESCTS1                          ; wait for escape
+CED0  3404            CRLF2           PSHS    B
+CED2  F6CC08                          LDB     TTYEJ                           ; get eject count
+CED5  2705                            BEQ     CRLF3                           ; no eject?
+CED7  8D08            EJECT           BSR     EJECT1                          ; do 1 crlf
+CED9  5A                              DECB                            ;  all done?
+CEDA  26FB                            BNE     EJECT                           ; branch if not
+CEDC  3504            CRLF3           PULS    B
+CEDE  7CCC1A          NEWLIN          INC     CURLIN                          ; bump line count
+CEE1  860D            EJECT1          LDA     #$0D                            ; return
+CEE3  8D5C                            BSR     PUTCH1                          ; print it
+CEE5  860A                            LDA     #$0A                            ; line feed
+CEE7  8D58                            BSR     PUTCH1                          ; print it
+CEE9  3404                            PSHS    B
+CEEB  F6CC05                          LDB     TTYNUL                          ; get null count
+CEEE  2706                            BEQ     NONULL                          ; any nulls?
+CEF0  4F              NULLS           CLRA
+CEF1  8D4E                            BSR     PUTCH1                          ; print null
+CEF3  5A                              DECB
+CEF4  26FA                            BNE     NULLS                           ; loop if more
+CEF6  3504            NONULL          PULS    B
+CEF8  1CFE            CRLF4           ANDCC   #$FE
+CEFA  39              CRLF5           RTS
+                                      ; SPC  1
+                              *INPUT ONE CHARACTER
+CEFB  7DCC23          GETCH1          TST     INSW                            ; test input flag
+CEFE  261A                            BNE     GETCH3                          ; use standard input
+CF00  7DCC26                          TST     FIADDR                          ; file input?
+CF03  2710                            BEQ     GETCH2                          ; use vectored input
+CF05  8D1A                            BSR     INPFIL                          ; input from file
+CF07  7DCC2F                          TST     FIECHO                          ; echo enabled?
+CF0A  2711                            BEQ     GETCH4                          ; branch if not
+CF0C  7DCC24                          TST     FOADDR                          ; output to file?
+CF0F  270C                            BEQ     GETCH4                          ; dont echo if not
+CF11  8D53                            BSR     PUTCH4                          ; echo to output
+CF13  2008                            BRA     GETCH4
+CF15  BDCD09          GETCH2          JSR     INCH                            ; vectored input
+CF18  2003                            BRA     GETCH4
+CF1A  BDCD0C          GETCH3          JSR     INCH2                           ; standard input
+CF1D  7FCC1A          GETCH4          CLR     CURLIN                          ; clear line count
+CF20  39                              RTS
+                                      ; SPC  1
+CF21  BFCC47          INPFIL          STX     XTEMP1                          ; save x
+CF24  BECC26                          LDX     FIADDR                          ; input fcb address
+CF27  2006                            BRA     INFIL1
+CF29  BFCC47          OUTFL1          STX     XTEMP1                          ; save x
+CF2C  BECC24                          LDX     FOADDR                          ; output fcb address
+CF2F  BDD406          INFIL1          JSR     FMCALL                          ; call file manager
+CF32  2604                            BNE     OCLOSE                          ; close on error
+CF34  BECC47                          LDX     XTEMP1                          ; restore x
+CF37  39                              RTS
+CF38  7FCC24          OCLOSE          CLR     FOADDR                          ; clear output fcb
+CF3B  BDD27F                          JSR     ERROR                           ; report falure
+CF3E  7ECD03                          JMP     WARMS                           ; close files on return
+                                      ; SPC  1
+                              *OUTPUT ONE CHARACTER
+CF41  7DCC21          PUTCH1          TST     IOFLAG                          ; special i\o?
+CF44  2620                            BNE     PUTCH4                          ; then dont honor ttyset
+CF46  811F                            CMPA    #$1F                            ; is it ctrl character
+CF48  2205                            BHI     PUTCH2
+CF4A  7FCC29                          CLR     CURCOL                          ; clear column count
+CF4D  2017                            BRA     PUTCH4                          ; output character
+CF4F  7CCC29          PUTCH2          INC     CURCOL                          ; bump column count
+CF52  3402                            PSHS    A                               ; save character
+CF54  B6CC04                          LDA     TTYWD                           ; get line width
+CF57  270B                            BEQ     PUTCH3                          ; no legnth defined?
+CF59  B1CC29                          CMPA    CURCOL                          ; are we at last col.
+CF5C  2406                            BCC     PUTCH3                          ; branch if not
+CF5E  BDCEB5                          JSR     CRLF1                           ; send new line
+CF61  7CCC29                          INC     CURCOL                          ; bump column count
+CF64  3502            PUTCH3          PULS    A                               ; recover character
+CF66  3402            PUTCH4          PSHS    A                               ; save it
+CF68  7DCC22                          TST     OUTSW                           ; use standard output?
+CF6B  2613                            BNE     PUTCH6                          ; branch if so
+CF6D  7DCC24                          TST     FOADDR                          ; file out active?
+CF70  2704                            BEQ     PUTCH5                          ; branch if not
+CF72  8DB5                            BSR     OUTFL1                          ; out to file
+CF74  200D                            BRA     PUTCH7                          ; exit
+CF76  7DCC26          PUTCH5          TST     FIADDR                          ; file input active?
+CF79  2608                            BNE     PUTCH7                          ; exit if so
+CF7B  BDCD0F                          JSR     OUTCH                           ; use vectored output
+CF7E  2003                            BRA     PUTCH7                          ; exit
+CF80  BDCD12          PUTCH6          JSR     OUTCH2                          ; standard output
+CF83  3502            PUTCH7          PULS    A
+CF85  39                              RTS                             ;  exit
+                                      ; SPC  1
+                              *OUTPUT DECIMAL NUMBER
+CF86  7FCC4A          ODECM           CLR     FIRDIG                          ; clear first digit flag
+CF89  F7CC1D                          STB     TRNSFR                          ; save leading zero flag
+CF8C  8604                            LDA     #$04                            ; set digit count
+CF8E  B7CC4D                          STA     DIGCNT
+CF91  EC84                            LDD     ,X                              ; get number to print
+CF93  8ECCB4                          LDX     #DECTBL                         ; point to conversion table
+CF96  8D0B            ODECM1          BSR     ODECM2                          ; convert one digit
+CF98  3002                            LEAX    $02,X                           ; point to next entry
+CF9A  7ACC4D                          DEC     DIGCNT                          ; last digit?
+CF9D  26F7                            BNE     ODECM1                          ; branch if not
+CF9F  1F98                            TFR     B,A                             ; move remainder to a
+CFA1  203D                            BRA     OUTHR                           ; print it and exit
+                                      ; SPC  1
+CFA3  7FCC4B          ODECM2          CLR     CHRCNT                          ; initalize to zero
+CFA6  10A384          ODECM3          CMPD    ,X                              ; is number less than
+CFA9  2507                            BCS     ODECM4                          ; number in table
+CFAB  A384                            SUBD    ,X                              ; subtract once
+CFAD  7CCC4B                          INC     CHRCNT                          ; increment count
+CFB0  20F4                            BRA     ODECM3                          ; test again
+CFB2  3402            ODECM4          PSHS    A                               ; save number msb
+CFB4  B6CC4B                          LDA     CHRCNT                          ; get digit
+CFB7  2610                            BNE     ODECM5                          ; output if not zero
+CFB9  7DCC4A                          TST     FIRDIG                          ; has any digit been printed?
+CFBC  260B                            BNE     ODECM5                          ; print if so
+CFBE  7DCC1D                          TST     TRNSFR                          ; test print zeros flag
+CFC1  270B                            BEQ     DECRTN                          ; if clear skip zeros
+CFC3  8620                            LDA     #$20                            ; output a space
+CFC5  8D23                            BSR     OUTIT
+CFC7  2005                            BRA     DECRTN
+CFC9  7CCC4A          ODECM5          INC     FIRDIG                          ; mark digit printed
+CFCC  8D12                            BSR     OUTHR                           ; output it
+CFCE  3582            DECRTN          PULS    PC,A
+                                      ; SPC  1
+                              *OUTPUT 4 HEX DIGITS
+CFD0  8D02            OUT4HX          BSR     OUT2H                           ; output 2 hex
+CFD2  3001                            LEAX    $01,X                           ; point to next
+CFD4  A684            OUT2H           LDA     ,X                              ; get hex digit
+CFD6  8D04                            BSR     OUTHL                           ; print left half
+CFD8  A684                            LDA     ,X                              ; get digit
+CFDA  2004                            BRA     OUTHR                           ; print right half and return
+                                      ; SPC  1
+CFDC  44              OUTHL           LSRA                            ;  move left 4 places
+CFDD  44                              LSRA
+CFDE  44                              LSRA
+CFDF  44                              LSRA
+CFE0  840F            OUTHR           ANDA    #$0F                            ; mask off 4 lsb
+CFE2  8B30                            ADDA    #$30                            ; add ascii bias
+CFE4  8139                            CMPA    #$39                            ; is it greater than 9?
+CFE6  2302                            BLS     OUTIT                           ; print if not
+CFE8  8B07                            ADDA    #$07                            ; offset to ascii "A"
+CFEA  7ECF41          OUTIT           JMP     PUTCH1                          ; print it
+                                      ; SPC  1
+                              *CLASSIFY CHARACTER TYPE
+CFED  8130            CLASS1          CMPA    #$30                            ; check for number
+CFEF  2514                            BCS     CLASS2
+CFF1  8139                            CMPA    #$39
+CFF3  2316                            BLS     CLASS3
+CFF5  8141                            CMPA    #$41                            ; check for upper case
+CFF7  250C                            BCS     CLASS2
+CFF9  815A                            CMPA    #$5A
+CFFB  230E                            BLS     CLASS3
+CFFD  8161                            CMPA    #$61                            ; check for lower case
+CFFF  2504                            BCS     CLASS2
+D001  817A                            CMPA    #$7A
+D003  2306                            BLS     CLASS3
+D005  1A01            CLASS2          ORCC    #$01                            ; mark as not alpha-numeric
+D007  B7CC11                          STA     LSTTRM                          ; set last terminator
+D00A  39                              RTS
+D00B  1CFE            CLASS3          ANDCC   #$FE                            ; mark as alpha-numeric
+D00D  39                              RTS
+                                      ; SPC  1
+                              *GET NEXT BUFFER CHARACTER
+D00E  3410            NXTCH1          PSHS    X                               ; save x
+D010  BECC14                          LDX     BUFPTR                          ; point to next character
+D013  B6CC18                          LDA     CURCHR                          ; move current to last
+D016  B7CC19                          STA     LSTCHR
+D019  A680            NXTCH2          LDA     ,X+                             ; get next
+D01B  B7CC18                          STA     CURCHR                          ; make current
+D01E  810D                            CMPA    #$0D                            ; is it eol?
+D020  2710                            BEQ     NXTCH3
+D022  B1CC02                          CMPA    TTYEOL                          ; is it ttyset eol?
+D025  270B                            BEQ     NXTCH3
+D027  BFCC14                          STX     BUFPTR                          ; save pointer
+D02A  8120                            CMPA    #$20                            ; is it space?
+D02C  2604                            BNE     NXTCH3
+D02E  A184                            CMPA    ,X                              ; is next a space?
+D030  27E7                            BEQ     NXTCH2                          ; skip spaces
+D032  8DB9            NXTCH3          BSR     CLASS1                          ; classify character
+D034  3590                            PULS    PC,X                            ; exit
+                                      ; SPC  1
+                              *GET FILE NAME
+D036  8615            GFILE           LDA     #$15                            ; preset error number
+D038  A701                            STA     $01,X                           ; put in fcb
+D03A  86FF                            LDA     #$FF                            ; force bad drive number
+D03C  A703                            STA     $03,X                           ; save in fcb
+D03E  6F04                            CLR     $04,X                           ; clear name
+D040  6F0C                            CLR     $0C,X                           ; clear extention
+D042  BDD0D4                          JSR     SKIPSP                          ; skip leading spaces
+D045  8608                            LDA     #$08                            ; set name size
+D047  B7CC4B                          STA     CHRCNT
+D04A  8D34                            BSR     PARSE                           ; parse number
+D04C  252E                            BCS     GFILE3                          ; bad name?
+D04E  260F                            BNE     GFILE1                          ; end of name in buffer?
+D050  8D2E                            BSR     PARSE                           ; parse name
+D052  2528                            BCS     GFILE3                          ; bad name?
+D054  2609                            BNE     GFILE1                          ; end of name in buffer
+D056  BCCC3F                          CMPX    XTEMP2                          ; any thing in name?
+D059  276C                            BEQ     BADNAM                          ; no then error
+D05B  8D23                            BSR     PARSE                           ; parse extention
+D05D  2368                            BLS     BADNAM                          ; extention bad?
+D05F  BECC3F          GFILE1          LDX     XTEMP2                          ; point to fcb
+D062  6D04                            TST     $04,X                           ; name in place
+D064  2761                            BEQ     BADNAM
+D066  6D03                            TST     $03,X                           ; valid drive number?
+D068  2A0F                            BPL     GFILE2
+D06A  7DCC0D                          TST     DRVTYP                          ; use sys or work?
+D06D  2705                            BEQ     WRKSET                          ; if zero use work drive
+D06F  B6CC0B                          LDA     SYSDRV                          ; get system drive number
+D072  2003                            BRA     DRVSET
+D074  B6CC0C          WRKSET          LDA     WRKDRV                          ; get work drive number
+D077  A703            DRVSET          STA     $03,X                           ; store in fcb
+D079  7FCC0D          GFILE2          CLR     DRVTYP                          ; force use of work drive
+D07C  BECC3F          GFILE3          LDX     XTEMP2                          ; recover x
+D07F  39                              RTS                             ;  exit
+                                      ; SPC  1
+D080  8D8C            PARSE           BSR     NXTCH1                          ; get next character
+D082  2543                            BCS     BADNAM                          ; not alpha-numeric?
+D084  8139                            CMPA    #$39                            ; is it a number?
+D086  2215                            BHI     PARSEA                          ; parse name if not
+D088  BECC3F                          LDX     XTEMP2                          ; point to fcb
+D08B  6D03                            TST     $03,X                           ; drive already set?
+D08D  2A38                            BPL     BADNAM                          ; error if so
+D08F  8403                            ANDA    #$03                            ; mask to valid drive number
+D091  A703                            STA     $03,X                           ; set drive number
+D093  BDD00E                          JSR     NXTCH1                          ; get next character
+D096  242F                            BCC     BADNAM                          ; should be "."
+D098  812E            PARSE1          CMPA    #$2E                            ; is it "."?
+D09A  1CFE                            ANDCC   #$FE
+D09C  39                              RTS
+                                      ; SPC  1
+D09D  F6CC4B          PARSEA          LDB     CHRCNT                          ; get character count
+D0A0  2B25                            BMI     BADNAM                          ; oops!
+D0A2  3404                            PSHS    B                               ; save count
+D0A4  C005                            SUBB    #$05                            ; set up for extention
+D0A6  F7CC4B                          STB     CHRCNT
+D0A9  3504                            PULS    B                               ; recover count
+D0AB  B1CC49          PARS1           CMPA    UPCASE                          ; is char. lower case?
+D0AE  2502                            BCS     PARS2                           ; branch if not lower case
+D0B0  8020                            SUBA    #$20                            ; map lower to upper
+D0B2  A704            PARS2           STA     $04,X                           ; save in fcb
+D0B4  3001                            LEAX    $01,X                           ; point to next
+D0B6  5A                              DECB                            ;  dec character count
+D0B7  BDD00E                          JSR     NXTCH1                          ; get next char
+D0BA  2408                            BCC     PARS3                           ; is it alpha-numeric?
+D0BC  812D                            CMPA    #$2D                            ; is it "-"?
+D0BE  2704                            BEQ     PARS3
+D0C0  815F                            CMPA    #$5F                            ; is it "_"?
+D0C2  2606                            BNE     CLRNAM                          ; clear rest of name if not
+D0C4  5D              PARS3           TSTB                            ;  last character?
+D0C5  26E4                            BNE     PARS1                           ; loop if not
+D0C7  1A01            BADNAM          ORCC    #$01                            ; set error flag
+D0C9  39                              RTS
+D0CA  5D              CLRNAM          TSTB
+D0CB  27CB                            BEQ     PARSE1                          ; end of name?
+D0CD  6F04                            CLR     $04,X                           ; clear it
+D0CF  3001                            LEAX    $01,X                           ; point to next
+D0D1  5A                              DECB                            ;  dec count
+D0D2  20F6                            BRA     CLRNAM                          ; loop
+                                      ; SPC  1
+D0D4  BFCC3F          SKIPSP          STX     XTEMP2                          ; save x
+D0D7  BECC14                          LDX     BUFPTR                          ; point to line buffer
+D0DA  A684            SKIP1           LDA     ,X                              ; get next character
+D0DC  8120                            CMPA    #$20                            ; is it a space?
+D0DE  2604                            BNE     SKIP2                           ; exit if not
+D0E0  3001                            LEAX    $01,X                           ; point to next
+D0E2  20F6                            BRA     SKIP1                           ; keep checking
+D0E4  BFCC14          SKIP2           STX     BUFPTR                          ; save new buffer pointer
+D0E7  BECC3F                          LDX     XTEMP2                          ; restore x
+D0EA  39                              RTS                             ;  exit
+                                      ; SPC  1
+                              *SET EXTENTION
+D0EB  3430            EXTSET          PSHS    Y,X                             ; save registers
+D0ED  E60C                            LDB     $0C,X                           ; test current extention
+D0EF  2618                            BNE     EXSET2                          ; allready set?
+D0F1  108ED10B                        LDY     #EXTTBL                         ; point to extention table
+D0F5  810B                            CMPA    #$0B                            ; out of range?
+D0F7  2210                            BHI     EXSET2
+D0F9  C603                            LDB     #$03                            ; bytes per extention
+D0FB  3D                              MUL
+D0FC  31A5                            LEAY    B,Y                             ; point to string
+D0FE  C603                            LDB     #$03                            ; bytes to move
+D100  A6A0            EXSET1          LDA     ,Y+                             ; get character
+D102  A70C                            STA     $0C,X                           ; save in fcb
+D104  3001                            LEAX    $01,X                           ; point to next
+D106  5A                              DECB                            ;  dec byte count
+D107  26F7                            BNE     EXSET1                          ; move another if not done
+D109  35B0            EXSET2          PULS    PC,Y,X                          ; exit
+                                      ; SPC  1
+D10B  42494E545854434D4442415353595342414B534352 EXTTBL          FCC     "BINTXTCMDBASSYSBAKSCR"
+D120  4441544241434449525052544F5554                 FCC     "DATBACDIRPRTOUT"
+                                      ; SPC  1
+                              *GET HEX NUMBER
+D12F  BDD21E          GHEX            JSR     CLROFF                          ; clear result
+D132  BDD00E          GHEX1           JSR     NXTCH1                          ; get next char.
+D135  2522                            BCS     RESULT                          ; done?
+D137  8D26                            BSR     ISHEX                           ; check for hex
+D139  2518                            BCS     GTERM                           ; find next terminator
+D13B  3404                            PSHS    B                               ; save count
+D13D  C604                            LDB     #$04                            ; get shift count
+D13F  78CC1C          GHEX2           ASL     OFFSET+1                                ; shift result left
+D142  79CC1B                          ROL     OFFSET
+D145  5A                              DECB                            ;  dec shift count
+D146  26F7                            BNE     GHEX2                           ; done shifting?
+D148  3504                            PULS    B                               ; restore digit count
+D14A  BBCC1C                          ADDA    OFFSET+1                                ; add char to result
+D14D  B7CC1C                          STA     OFFSET+1
+D150  5C                              INCB                            ;  bump count
+D151  20DF                            BRA     GHEX1                           ; loop for more
+                                      ; SPC  1
+D153  BDD00E          GTERM           JSR     NXTCH1                          ; loop for next term.
+D156  24FB                            BCC     GTERM
+D158  39                              RTS                             ;  exit
+                                      ; SPC  1
+D159  BECC1B          RESULT          LDX     OFFSET                          ; get result
+D15C  1CFE                            ANDCC   #$FE                            ; clear errors
+D15E  39                              RTS
+                                      ; SPC  1
+D15F  8047            ISHEX           SUBA    #$47                            ; check for >F
+D161  2A0F                            BPL     NOTHEX
+D163  8B06                            ADDA    #$06
+D165  2A04                            BPL     ISHEX1                          ; is <F and >9
+D167  8B07                            ADDA    #$07                            ; correct for ascii gap
+D169  2A07                            BPL     NOTHEX                          ; error not hex
+D16B  8B0A            ISHEX1          ADDA    #$0A                            ; add for final result
+D16D  2B03                            BMI     NOTHEX                          ; error not hex
+D16F  1CFE                            ANDCC   #$FE
+D171  39                              RTS
+D172  1A01            NOTHEX          ORCC    #$01                            ; set error flag
+D174  39                              RTS
+                                      ; SPC  1
+                              *GET DECIMAL NUMBER
+D175  BDD21E          GETDEC          JSR     CLROFF                          ; clear result
+D178  BDD00E          GDEC1           JSR     NXTCH1                          ; get next char.
+D17B  25DC                            BCS     RESULT                          ; oops not numeric
+D17D  8139                            CMPA    #$39                            ; is it a number
+D17F  22D2                            BHI     GTERM                           ; oops not numeric
+D181  840F                            ANDA    #$0F                            ; mask to 4 lsb
+D183  3404                            PSHS    B                               ; save count
+D185  3402                            PSHS    A                               ; save current number
+D187  FCCC1B                          LDD     OFFSET                          ; get result
+D18A  58                              ASLB                            ;  multiply X10
+D18B  49                              ROLA
+D18C  58                              ASLB
+D18D  49                              ROLA
+D18E  58                              ASLB
+D18F  49                              ROLA
+D190  F3CC1B                          ADDD    OFFSET
+D193  F3CC1B                          ADDD    OFFSET
+D196  EBE0                            ADDB    ,S+                             ; add current to result
+D198  8900                            ADCA    #00                             ; propagate carry
+D19A  FDCC1B                          STD     OFFSET                          ; save as result
+D19D  3504                            PULS    B                               ; restore count
+D19F  5C                              INCB
+D1A0  20D6                            BRA     GDEC1                           ; loop for more
+                                      ; SPC  1
+                              *LOAD FILE
+D1A2  7FCC1D          LOAD1           CLR     TRNSFR                          ; clear address flag
+D1A5  8D3D            LOAD1A          BSR     LDBYTE                          ; get byte from file
+D1A7  8102                            CMPA    #$02                            ; is it start of record?
+D1A9  2715                            BEQ     LOAD2
+D1AB  8116                            CMPA    #$16                            ; is it transfer record?
+D1AD  26F6                            BNE     LOAD1A                          ; LOOP IF NOT
+D1AF  8D33                            BSR     LDBYTE                          ; get address MSB
+D1B1  B7CC1E                          STA     ADDRES                          ; save it
+D1B4  8D2E                            BSR     LDBYTE                          ; get address LSB
+D1B6  B7CC1F                          STA     ADDRES+1                                ; save it
+D1B9  8601                            LDA     #$01                            ; set transfer flag
+D1BB  B7CC1D                          STA     TRNSFR
+D1BE  20E5                            BRA     LOAD1A                          ; load some more
+D1C0  8D22            LOAD2           BSR     LDBYTE                          ; get load address MSB
+D1C2  1F89                            TFR     A,B                             ; save it
+D1C4  8D1E                            BSR     LDBYTE                          ; get load address LSB
+D1C6  1E89                            EXG     A,B                             ; correct order
+D1C8  F3CC1B                          ADDD    OFFSET                          ; add in load offset
+D1CB  FDCC3D                          STD     XLOAD                           ; save load address
+D1CE  8D14                            BSR     LDBYTE                          ; get byte count
+D1D0  1F89                            TFR     A,B                             ; save it
+D1D2  4D                              TSTA                            ;  count=0?
+D1D3  27D0                            BEQ     LOAD1A                          ; then get next record
+D1D5  8D0D            LOAD3           BSR     LDBYTE                          ; get data byte
+D1D7  BECC3D                          LDX     XLOAD                           ; get pointer
+D1DA  A780                            STA     ,X+                             ; save byte in ram
+D1DC  BFCC3D                          STX     XLOAD                           ; store pointer
+D1DF  5A                              DECB                            ;  dec byte count
+D1E0  26F3                            BNE     LOAD3                           ; record done?
+D1E2  20C1                            BRA     LOAD1A                          ; loop for more records
+                                      ; SPC  1
+D1E4  8EC840          LDBYTE          LDX     #SYSFCB                         ; point to fcb
+D1E7  BDD406                          JSR     FMCALL                          ; call file manager
+D1EA  2711                            BEQ     ERLD1                           ; no error?
+D1EC  A601                            LDA     $01,X                           ; get error number
+D1EE  8108                            CMPA    #$08                            ; is it end of file?
+D1F0  260E                            BNE     LDERR                           ; then its fatal
+D1F2  3262                            LEAS    $02,S                           ; clean up stack
+D1F4  8604            LDCLOS          LDA     #$04                            ; close file
+D1F6  A784                            STA     ,X                              ; put in fcb
+D1F8  BDD406                          JSR     FMCALL                          ; call fms
+D1FB  260D                            BNE     LERXIT                          ; another error?
+D1FD  1CFE            ERLD1           ANDCC   #$FE                            ; clear error
+D1FF  39                              RTS                             ;  exit
+                                      ; SPC  1
+D200  B7CC20          LDERR           STA     ERRTYP                          ; save error number
+D203  8104                            CMPA    #$04                            ; is it file not found
+D205  2603                            BNE     LERXIT                          ; report error
+D207  1A01                            ORCC    #$01                            ; set error flag
+D209  39                              RTS                             ;  exit
+D20A  8D73            LERXIT          BSR     ERROR                           ; report error
+D20C  7ECDE4                          JMP     WHAT3                           ; return to main loop
+                                      ; SPC  1
+                              *GET BINARY FILE
+D20F  8600            GET             LDA     #00                             ; binary file type
+D211  8D35                            BSR     OPENRD                          ; open for read
+D213  250F                            BCS     GETERR                          ; open error?
+D215  8D07                            BSR     CLROFF                          ; clear load offset
+D217  7CCC4C                          INC     GETFLG                          ; mark use of loader
+D21A  8D86                            BSR     LOAD1                           ; load file
+D21C  20F1                            BRA     GET                             ; get next file
+                                      ; SPC  1
+D21E  4F              CLROFF          CLRA                            ;  clear load offset
+D21F  5F                              CLRB
+D220  FDCC1B                          STD     OFFSET
+D223  39                              RTS
+                                      ; SPC  1
+D224  F6CC4C          GETERR          LDB     GETFLG                          ; is it first use of get
+D227  1027FBAE                        LBEQ    WHAT1                           ; then print what
+D22B  7ECD03                          JMP     WARMS                           ; else goto flex
+                                      ; SPC  1
+D22E  8602            LOADGO          LDA     #$02                            ; set command file
+D230  8D22                            BSR     OPNRD1                          ; open file
+D232  8DEA                            BSR     CLROFF                          ; clear offset
+D234  BDD1A2                          JSR     LOAD1                           ; load file
+D237  F6CC1D                          LDB     TRNSFR                          ; transfer address valid?
+D23A  2704                            BEQ     ADRERR                          ; branch if not
+D23C  6E9FCC1E                        JMP     [ADDRES]                                ; go to it
+D240  8ECC5C          ADRERR          LDX     #CANT                           ; cant transfer
+D243  8681                            LDA     #$81
+D245  7ECDDE                          JMP     PERROR                          ; print error message
+                                      ; SPC  1
+D248  3402            OPENRD          PSHS    A                               ; save a
+D24A  8EC840                          LDX     #SYSFCB                         ; point to sys fcb
+D24D  BDD036                          JSR     GFILE                           ; get file name
+D250  3502                            PULS    A                               ; recover ext type
+D252  251A                            BCS     ERSPEC                          ; bad name?
+D254  8EC840          OPNRD1          LDX     #SYSFCB
+D257  BDD0EB                          JSR     EXTSET                          ; set extention
+D25A  8EC840                          LDX     #SYSFCB
+D25D  8601                            LDA     #$01                            ; open for read
+D25F  A784                            STA     ,X
+D261  BDD1E4                          JSR     LDBYTE                          ; call fms
+D264  102500BB                        LBCS    ERROR9                          ; error?
+D268  86FF                            LDA     #$FF                            ; set to binary type
+D26A  A7883B                          STA     $3B,X                           ; put in fcb
+D26D  39                              RTS
+                                      ; SPC  1
+D26E  B6CC11          ERSPEC          LDA     LSTTRM                          ; check last terminator
+D271  810D                            CMPA    #$0D                            ; is it return
+D273  2707                            BEQ     ERSPC2                          ; then exit
+D275  B1CC02                          CMPA    TTYEOL                          ; is it tty eol
+D278  1026FB5D                        LBNE    WHAT1                           ; abort rest of line if not
+D27C  1A01            ERSPC2          ORCC    #$01                            ; set error flag
+D27E  39                              RTS
+                                      ; SPC  1
+                              *REPORT ERROR
+D27F  3430            ERROR           PSHS    Y,X
+D281  A601                            LDA     $01,X                           ; get error number
+D283  B7CC20                          STA     ERRTYP                          ; save it
+D286  2763                            BEQ     ERROR4                          ; no error?
+D288  BDCDEA                          JSR     RSTIO1                          ; restore i\o vectors
+D28B  10BECC2D                        LDY     ERRVEC                          ; alternate error file?
+D28F  2608                            BNE     ERROR1                          ; use alternate
+D291  8110                            CMPA    #$10                            ; error=not ready?
+D293  2758                            BEQ     ERROR5                          ; then print it
+D295  108ED361                        LDY     #ERRORS                         ; point to error file
+D299  8EC840          ERROR1          LDX     #SYSFCB
+D29C  6D02                            TST     $02,X                           ; file open?
+D29E  2709                            BEQ     ERROR2                          ; if open then close it
+D2A0  8604                            LDA     #$04                            ; close file
+D2A2  A784                            STA     ,X
+D2A4  BDD406                          JSR     FMCALL                          ; call for close
+D2A7  262E                            BNE     ERROR3                          ; fatal error?
+D2A9  8EC838          ERROR2          LDX     #ERRFCB                         ; point to fake fcb
+D2AC  C60B                            LDB     #$0B                            ; move count
+D2AE  8D6E                            BSR     ERROR8                          ; move name into fcb
+D2B0  8EC840                          LDX     #SYSFCB
+D2B3  B6CC0B                          LDA     SYSDRV                          ; force system drive
+D2B6  A703                            STA     $03,X
+D2B8  8601                            LDA     #$01                            ; open for read
+D2BA  A784                            STA     ,X
+D2BC  BDD406                          JSR     FMCALL                          ; call fms
+D2BF  2616                            BNE     ERROR3                          ; fatal error
+D2C1  B6CC20                          LDA     ERRTYP                          ; get error number
+D2C4  4A                              DECA                            ;  start at 0
+D2C5  47                              ASRA                            ;  divide X4
+D2C6  47                              ASRA
+D2C7  4C                              INCA                            ;  records start at 1
+D2C8  6F8820                          CLR     $20,X                           ; clear msb of record
+D2CB  A78821                          STA     $21,X                           ; set lsb
+D2CE  8615                            LDA     #$15                            ; random read
+D2D0  A784                            STA     ,X
+D2D2  BDD406                          JSR     FMCALL                          ; get record from file
+D2D5  271E                            BEQ     ERROR6                          ; no errors on read?
+D2D7  8ECC7F          ERROR3          LDX     #ERRMSG                         ; point to error message
+D2DA  BDCE81                          JSR     PRINT                           ; print it
+D2DD  BECC3F                          LDX     XTEMP2
+D2E0  B6CC20                          LDA     ERRTYP                          ; get error number
+D2E3  A701                            STA     $01,X
+D2E5  6F84                            CLR     ,X
+D2E7  5F                              CLRB                            ;  turn off leading zeros
+D2E8  BDCF86                          JSR     ODECM                           ; print decimal number
+D2EB  35B0            ERROR4          PULS    PC,Y,X                          ; exit
+D2ED  8ECC91          ERROR5          LDX     #NOTRDY                         ; point to not ready message
+D2F0  BDCE81                          JSR     PRINT                           ; print it
+D2F3  20F6                            BRA     ERROR4
+                                      ; SPC  1
+D2F5  BDCEB5          ERROR6          JSR     CRLF1                           ; new line
+D2F8  8EC840                          LDX     #SYSFCB
+D2FB  B6CC20                          LDA     ERRTYP                          ; get error number
+D2FE  4A                              DECA                            ;  start at 0
+D2FF  8403                            ANDA    #$03                            ; mask for errors per record
+D301  C63F                            LDB     #$3F                            ; bytes per error msg
+D303  3D                              MUL                             ;  index into sector
+D304  CB04                            ADDB    #$04                            ; correct for start of sector
+D306  E78822                          STB     $22,X                           ; set read byte index
+D309  BDD406          ERROR7          JSR     FMCALL                          ; read byte from file
+D30C  26C9                            BNE     ERROR3                          ; fatal error
+D30E  BDCF41                          JSR     PUTCH1                          ; print it
+D311  810D                            CMPA    #$0D                            ; is it end of message?
+D313  26F4                            BNE     ERROR7                          ; then read more
+D315  8604                            LDA     #$04                            ; close file
+D317  A784                            STA     ,X
+D319  BDD406                          JSR     FMCALL                          ; call fms
+D31C  20CD                            BRA     ERROR4                          ; exit
+                                      ; SPC  1
+D31E  3430            ERROR8          PSHS    Y,X
+D320  7ED100                          JMP     EXSET1                          ; do block move
+                                      ; SPC  1
+D323  8ECC70          ERROR9          LDX     #NOFIND                         ; point to not found
+D326  7ECDE1                          JMP     WHAT2                           ; print it and exit
+                                      ; SPC  1
+                              *CALL DOS AS A SUBROUTINE
+D329  3506            DOCMND          PULS    B,A                             ; get return address
+D32B  FDCC43                          STD     CMDRTN                          ; save it
+D32E  10FFCC45        CMND1           STS     CMDSTK                          ; save stack
+D332  7FCC20                          CLR     ERRTYP
+D335  7CCC28                          INC     CMDFLG                          ; mark docmd active
+D338  7ECDB8                          JMP     RENTR1                          ; goto flex
+D33B  7FCC28          CMDXIT          CLR     CMDFLG                          ; clear docmd flag
+D33E  10FECC45                        LDS     CMDSTK                          ; recover stack
+D342  F6CC20                          LDB     ERRTYP                          ; get error if any
+D345  6E9FCC43                        JMP     [CMDRTN]                                ; exit
+                                      ; SPC  1
+                              *ADD B TO X
+D349  3A              ADDBX1          ABX                             ;  what can i say
+D34A  39                              RTS
+                                      ; SPC  1
+                              *EXIT TO MONITOR
+D34B  7DCCFC          MON             TST     TASK1                           ; spooling active?
+D34E  2604                            BNE     MON1                            ; then cant goto mon
+D350  6E9FD3F3                        JMP     [MONTOR]
+D354  8EC840          MON1            LDX     #SYSFCB
+D357  861B                            LDA     #$1B                            ; set error number
+D359  A701                            STA     $01,X                           ; put in fcb
+D35B  BDD27F                          JSR     ERROR                           ; print error
+D35E  7ECD67                          JMP     WARM                            ; back to flex
+                                      ; SPC  1
+                              *FILE NAME OF ERROR FILE
+D361  4552524F5253    ERRORS          FCC     "ERRORS"
+D367  00                              FCB     00
+D368  00                              FCB     00
+D369  535953                          FCC     "SYS"
+                                      ; SPC  1
+0000                  INPUT1          EQU     0
+0000                  OUTP1           EQU     0
+0000                  STATUS          EQU     0
+                                      ; SPC  1
+                              *INDIRECT JUMP TABLE
+D3E5                                  ORG     $D3E5
+D3E5                  INCHNE          RMB     2
+D3E7                  IHANDL          RMB     02
+D3E9                  SWIVEC          RMB     02
+D3EB                  IRQVEC          RMB     08
+D3F3                  MONTOR          RMB     02
+D3F5                  INTACA          RMB     02
+D3F7                  STAVEC          RMB     02
+D3F9                  OUTVEC          RMB     02
+D3FB                  INVEC           RMB     02
+                                      ; SPC  1
+D3FD  7ECA00          JMPINT          JMP     INIT                            ; goto initalize routine
+                                      ; SPC  1
+D400                  FMSINT          EQU     $D400
+D403                  FMSCLS          EQU     $D403
+D406                  FMCALL          EQU     $D406
+DE18                  WINIT           EQU     $DE18
+                                      ; SPC  2

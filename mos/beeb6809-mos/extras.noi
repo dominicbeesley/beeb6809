@@ -1,0 +1,22 @@
+W -
+
+W vduvar_TEMP_draw_W		%S16
+W vduvar_TEMP_draw_H		%S16
+W vduvar_TEMP_draw_XY		%S16
+W vduvar_TEMP_draw_Y		%S16
+
+
+W zp_vdu_wksp_draw_flags	%X08
+W zp_vdu_wksp_draw_loop_ctr	%S16
+W zp_vdu_wksp_draw_stop		%X08
+W zp_vdu_wksp_draw_slope	%X08
+W zp_vdu_wksp_draw_start	%X08
+W zp_vdu_wksp_draw_sav		%X08
+
+w vduvar_GRA_WKSP_0_ENDMAJ	%S16
+w vduvar_GRA_WKSP_2_JMP		%X16
+w vduvar_GRA_WKSP_4_DOTORNOT	%X08
+w vduvar_GRA_WKSP_5_ERRACC	%S16
+w vduvar_GRA_WKSP_7_DELTA_MINOR	%S16
+w vduvar_GRA_WKSP_9_DELTA_MAJOR	%S16
+

@@ -31,16 +31,23 @@ DEPS=			$(BASEDIR)/includes/hardware.inc \
 			zp.inc \
 			tokens.inc \
 			layout.inc \
-			debug_print.asm \
 			tokenstable.asm \
 			6809-assembler.gen.asm \
 			6309-assembler.gen.asm \
 			6809BAS.asm			
 
 ROMNO=E
+HOSTFSDIR=~/hostfs/beebroms/
 
 include		../../Makefile.defs
 
+
+.PHONY:	hostfs
+
+hostfs: $(filter %.bin, $(addprefix $(HOSTFSDIR)/, $(TARGETS)))
+
+$(HOSTFSDIR)/%.bin: $(BEEBOUT)/%.bin
+	cp $< $@
 
 6809-assembler.gen.asm:	 6x09-ass-readdefs.pl 6x09-assembler.defs.txt
 		perl 6x09-ass-readdefs.pl
@@ -82,20 +89,53 @@ $(CHIPKITOUT)/loadbasic6309andsyms.noi: $(CHIPKITOUT)/6309BAS.bin
 	cat $(CHIPKITOUT)/loadbasic.noi $(CHIPKITOUT)/6309BAS.sym $(BEEBOUT)/../../mos/beeb6809-mos/mosrom.sym >$(CHIPKITOUT)/loadbasic6309andsyms.noi
 	echo -e "WAITFORSTOP 1\nR PC mos_handle_res\n" >>$(BEEBOUT)/loadbasic6309andsyms.noi
 
-$(BEEBOUT)/6309BAS.bin: 6809BAS.asm
-		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6309 --define CPU_6309 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
-		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
-$(CHIPKITOUT)/6309BAS.bin: 6809BAS.asm
+$(BEEBOUT)/6309BAS.bin: 6809BAS.asm $(DEPS)
 		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6309 --define CPU_6309 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 
+		echo $$(( 0x$$(sed -n -e 's/DEF *__FREESPACE *\(.*\)/\1/p' <$(basename $@).sym) )) $$(date) >> $(notdir $(basename $@))_free.txt
 
-#6809BAS.bin:	6809BAS.asm $(DEPS)
-#		$(AS) -o $@ -l $(basename $@).lst $<
-#		perl $(BASEDIR)/scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
-#		./makeloadnoi.sh $(ROMNO)
-#		cat loadbasic.noi $(basename $@).sym >loadbasicandsyms.noi $(ROMNO)
-#		cat loadbasic-chipkit.noi $(basename $@).sym >loadbasicandsyms-chipkit.noi
+$(CHIPKITOUT)/6309BAS.bin: 6809BAS.asm $(DEPS)
+		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6309 --define CPU_6309 --define MACH_CHIPKIT=1 -o $@ -l $(basename $@).lst $<
+		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+
+
+
+$(BEEBOUT)/6809BAS.bin: 6809BAS.asm $(DEPS)
+		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6809 --define CPU_6809 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
+		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+
+		echo $$(( 0x$$(sed -n -e 's/DEF *__FREESPACE *\(.*\)/\1/p' <$(basename $@).sym) )) $$(date) >> $(notdir $(basename $@))_free.txt
+
+$(CHIPKITOUT)/6809BAS.bin: 6809BAS.asm $(DEPS)
+		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6809 --define CPU_6809 --define MACH_CHIPKIT=1 -o $@ -l $(basename $@).lst $<
+		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+
+
+
+
+$(BEEBOUT)/6809BAS-6502ass.bin: 6809BAS-6502ass.asm $(DEPS)
+		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6809 --define CPU_6809 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
+		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+
+		echo $$(( 0x$$(sed -n -e 's/DEF *__FREESPACE *\(.*\)/\1/p' <$(basename $@).sym) )) $$(date) >> $(notdir $(basename $@))_free.txt
+
+$(CHIPKITOUT)/6809BAS-6502ass.bin: 6809BAS-6502ass.asm $(DEPS)
+		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6809 --define CPU_6809 --define MACH_CHIPKIT=1 -o $@ -l $(basename $@).lst $<
+		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+
+
+$(MATCHBOX)/6809BAS-6502ass.bin: 6809BAS-6502ass.asm $(DEPS)
+		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6809 --define CPU_6809 --define MACH_MATCHBOX=1 -o $@ -l $(basename $@).lst $<
+		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+
+
+$(MATCHBOX)/6809BAS.bin: 6809BAS.asm $(DEPS)
+		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6809 --define CPU_6809 --define MACH_MATCHBOX=1 -o $@ -l $(basename $@).lst $<
+		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+
+
+
 
 $(FLEXOUT)/FLEXBAS.BIN:	6809BAS.asm $(DEPS)
 		$(AS) -S --define FLEX=1 -o $(basename $@).hex -l $(basename $@).lst $<

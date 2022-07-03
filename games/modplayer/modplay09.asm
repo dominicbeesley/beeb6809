@@ -1,4 +1,4 @@
-; (c) 2018 Modplay09.asm - a tracker module player for the 6x09 processor and 
+; (c) 2019 Modplay09.asm - a tracker module player for the 6x09 processor and 
 ; the Dossytronics blitter board 
 ;
 ; Plays full protrackers so long as the samples are <65536 bytes and the 
@@ -9,13 +9,15 @@
 ;===============================================================================
 BUILD_TIMER_VSYNC	EQU	0			; when 1 uses EVENT 4 vsync, else uses user 
 							; via timer1 which allowes tempo adjustment
-
-
+SCREEN_BASE		EQU $7C00
+SCREEN_LOGO		EQU SCREEN_BASE + (25-8)*40
+SCREEN_LOGO_END		EQU SCREEN_BASE + 2048
 
 		include "../../includes/hardware.inc"
 		include "../../includes/oslib.inc"
 		include "../../includes/common.inc"
 		include "../../includes/mosrom.inc"
+		include "./common.inc"
 
 		include "modplay.inc"
 
@@ -45,7 +47,12 @@ zp_disp_per	rmb	2
 zp_disp_oct	rmb	1
 zp_disp_cha_ctr rmb	1
 
-		org $2000
+
+		code
+		org $1000
+		section "data"
+		fcb	"dom"
+		code
 modplay_start
 		; scan command line for module name
 		lda	#OSARGS_cmdtail
@@ -57,20 +64,133 @@ modplay_debug
 		ldx	zp_mos_txtptr
 		stx	zp_si_ptr
 
-1		; change to mode 7
+1
+		; change to mode 7
 		lda	#22
 		OSCALL	OSWRCH
 		lda	#7
 		OSCALL	OSWRCH
 
-		ldx	zp_si_ptr			; command line address
+		ldx	zp_si_ptr
+		clr	my_jim_dev
+		
+cmd_again	lda	,X+
+		cmpa	#' '
+		beq	cmd_again
+		cmpa	#'-'
+		bne	cmd_notdev
+		jsr	ParseHex
+		bcs	brkBad
+brkBad		DO_BRK	1, "Bad parameters: MODPLAY [-D0|-D1|<dev>] filename"
+cmd_notdev	leax	-1,X
+		stx	filename
+1		lda	,X+
+		cmpa	#' '
+		bhi	1B
+		cmpx	filename
+		beq	brkBad
+		lda	#13
+		sta	-1,X				; terminate filename
+
+		lda	zp_mos_jimdevsave
+		sta	old_jim_dev
+
+		lda	my_jim_dev
+		beq	probeall
+
+		jsr	jimProbe
+		beq	probeok
+		bne	probenotok
+
+probeall	lda	#JIM_DEVNO_BLITTER
+		jsr	jimProbe
+		beq	probeok
+		lda	#JIM_DEVNO_HOG1MPAULA
+		jsr	jimProbe
+		beq	probeok
+
+probenotok
+		jsr	jimRestore
+		DO_BRK	2, "Device not found"
+
+
+probeok
+
+		ldx	filename			; command line address
 		lda	#MODULE_BASE/256		; base of module load area
 		ldb	#LOAD_BLOCK_SIZE		; # of pages to laod at once
+		
 		lbsr	mod_load
-
+		jsr	snd_devsel
+		jsr	cls
 		jsr	play_init
 		jsr	play_loop
 		DO_BRK	5, "How did this happen!"
+
+jimProbe
+		pshs	A
+		PRINT	"probing "
+		lda	,S
+		jsr	PrHexA
+		puls	A
+		sta	zp_mos_jimdevsave
+		sta	my_jim_dev
+		sta	fred_JIM_DEVNO
+		eora	#$FF
+		eora	fred_JIM_DEVNO
+		pshs	CC
+		bne	jimProbefail
+		PRINTL	" OK"
+		puls	CC,PC
+jimProbefail	PRINTL	" NO"
+		puls	CC,PC
+
+jimRestore
+		; restore JIM
+		lda	old_jim_dev
+		sta	zp_mos_jimdevsave
+		sta	fred_JIM_DEVNO
+		rts
+
+
+ParseHex
+ParseHexLp	lda	,X+
+		jsr	ToUpper
+		cmpa	#' '+1
+		blo	ParseHexDone
+		cmpa	#'0'
+		blo	ParseHexErr
+		cmpa	#'9'+1
+		bhs	ParseHexAlpha
+		suba	#'0'
+ParseHexShAd	asl	my_jim_dev
+		asl	my_jim_dev
+		asl	my_jim_dev
+		asl	my_jim_dev			; multiply existing number by 16
+		adda	my_jim_dev
+		sta	my_jim_dev			; add current digit
+		bra	ParseHexLp
+ParseHexAlpha	cmpa	#'A'
+		blo	ParseHexErr
+		cmpa	#'F'+1
+		bhs	ParseHexErr
+		suba	#'A'-10				; note carry clear 'A'-'F' => 10-15
+		jmp	ParseHexShAd
+ParseHexErr	SEC
+		rts
+ParseHexDone	leax	-1,X
+		CLC
+		rts
+
+ToUpper		cmpa	#'a'
+		blo	1F
+		cmpa	#'z'
+		bhi	1F
+		anda	#$DF
+1		rts
+
+
+
 
 	IF BUILD_TIMER_VSYNC
 handle_EVENTV	pshs	D,X,Y,U
@@ -97,6 +217,7 @@ irq2v_sk_no_t1	jmp	[old_IRQ2V]
 ; tracker loop
 ;-------------------------------------------------------------
 play_loop
+
 		; wait for the player to execute
 		SEI
 		lda	g_flags
@@ -108,7 +229,18 @@ play_loop
 1		bita	g_flags
 		beq	1B
 
+		lda	display_state
+		cmpa	#DISP_HELP
+		beq	skip_disp
+
 		jsr	track_disp
+
+		lda	display_state
+		cmpa	#DISP_DEBUG
+		bne	skip_disp
+
+		jsr	debug_display
+skip_disp
 
 		; keyboard
 
@@ -118,8 +250,10 @@ play_loop
 		jsr	OSBYTE
 		bcs	nokeys
 		tfr	X,D
+		tfr	B,A
+		jsr	ToUpper
 		ldx	#keyfntab
-klkuploop	cmpb	,X+
+klkuploop	cmpa	,X+
 		bne	1F
 		jsr	[,X]
 		bra	donekey
@@ -136,14 +270,22 @@ nokeys
 		lda	#OSBYTE_126_ESCAPE_ACK		; ack escape
 		jsr	OSBYTE
 
+		jsr	jimRestore
+
 		DO_BRK	27, "ESCAPE", 0
 donekey
 
 		bra	play_loop
 
+snd_devsel	pshs	CC,D
+		ldd	#jim_page_DMAC
+		std	fred_JIM_PAGE_HI
+		puls	CC,D,PC
+
+
 silence		ldb	#3
-1		stb	sheila_DMAC_SND_SEL
-		clr	sheila_DMAC_SND_STATUS
+1		stb	jim_DMAC_SND_SEL
+		clr	jim_DMAC_SND_STATUS
 		decb
 		bpl	1B
 		rts
@@ -257,7 +399,7 @@ play_event
 		lda	#FLAGS_key_pause
 		bita	g_flags
 		beq	1F
-		lbra	debug_display			; key_pause (don't play)
+		lbra	play_event_done			; key_pause (don't play)
 
 1
 
@@ -306,12 +448,12 @@ sk_no_next_patt
 		stx	zp_cha_var_ptr
 		clr	zp_cha_ctr
 channel_loop	ldb	zp_cha_ctr
-		stb	sheila_DMAC_SND_SEL
+		stb	jim_DMAC_SND_SEL
 
 		; save peak and reset
-		lda	sheila_DMAC_SND_PEAK
+		lda	jim_DMAC_SND_PEAK
 		sta	cha_var_peak,X
-		clr	sheila_DMAC_SND_PEAK		; reset
+		clr	jim_DMAC_SND_PEAK		; reset
 
 
 		ldy	zp_note_ptr
@@ -405,23 +547,24 @@ sk_period	tst	cha_var_s_restart,X
 		beq	sk_nosample			; no sample info set
 
 		; stop current sample
-		clr	sheila_DMAC_SND_STATUS
+		clr	jim_DMAC_SND_STATUS
 
 		jsr	set_p_period
 		dec	cha_var_s_restart,X
 
 
 		ldd	cha_var_s_len,X
-		std	sheila_DMAC_SND_LEN
+		std	jim_DMAC_SND_LEN
+		beq	sk_nosample
 		
 		ldd	cha_var_s_roff,X
-		std	sheila_DMAC_SND_REPOFF
+		std	jim_DMAC_SND_REPOFF
 		
 		lda	cha_var_s_addr_b,X
 		anda	#$0F				; blank out finetune
-		sta	sheila_DMAC_SND_ADDR
+		sta	jim_DMAC_SND_ADDR
 		ldd	cha_var_s_addr_b+1,X
-		std	sheila_DMAC_SND_ADDR + 1
+		std	jim_DMAC_SND_ADDR + 1
 		lda	cha_var_s_repfl,X
 		rola					; get repeat flag into bit 0
 		rola
@@ -437,36 +580,36 @@ sk_period	tst	cha_var_s_restart,X
 		cmpa	#9
 		bne	_sknosampleoffset
 
-		lda	sheila_DMAC_SND_LEN
+		lda	jim_DMAC_SND_LEN
 		suba	cha_var_parm,X
 		bcs	sk_nosample			; past end don't play!
-		sta	sheila_DMAC_SND_LEN
+		sta	jim_DMAC_SND_LEN
 
 		; adjust repeat offset
 		tst	zp_tmp
 		bne	_sksampleoffset_norepl
 
-		lda	sheila_DMAC_SND_REPOFF		; hi byte of repeat offset
+		lda	jim_DMAC_SND_REPOFF		; hi byte of repeat offset
 		suba	cha_var_parm,X			; note Y and Cy already set above
-		sta	sheila_DMAC_SND_REPOFF
+		sta	jim_DMAC_SND_REPOFF
 		bcc	_sksampleoffset_norepl		; didn't make repeat offset go -ve
 
 							; if we're here the note sample offset has overflowed the repeat offset
 		clr	zp_tmp				; clear repeat flag
 
 _sksampleoffset_norepl
-		lda	sheila_DMAC_SND_ADDR+1
+		lda	jim_DMAC_SND_ADDR+1
 		adda	cha_var_parm,X
-		sta	sheila_DMAC_SND_ADDR+1		
+		sta	jim_DMAC_SND_ADDR+1		
 		bcc	1F
-		inc	sheila_DMAC_SND_ADDR+0
+		inc	jim_DMAC_SND_ADDR+0
 1
 
 _sknosampleoffset
 		lda	zp_tmp				; get back repeat flag
 
 		ora	#$80
-		sta	sheila_DMAC_SND_STATUS
+		sta	jim_DMAC_SND_STATUS
 sk_nosample	jsr	check_more_effects
 		jsr	set_p_vol
 		leay	4,Y
@@ -494,7 +637,27 @@ check_more_effects
 		cmpa	#$F
 		beq	more_effects_set_speed
 
+		cmpa	#$E
+		beq	command_E
+
 		rts
+
+command_E	tfr	B,A
+		anda	#$F0
+		cmpa	#$A0
+		bne	1F
+;command_EA_volup:
+		tfr	B,A
+		anda	#$0F
+		jmp	addA2vol		
+1		cmpa	#$B0
+		bne	1F
+;command_EB_voldn:
+		tfr	B,A
+		jmp	subA2vol
+1		rts
+
+
 
 more_effects_set_vol
 		cmpb	#$40
@@ -607,6 +770,7 @@ effects_volume_slide
 		anda	#$F0
 		bne	effects_volume_slide_up
 		tfr	B,A		
+subA2vol
 		anda	#$0F
 		beq	2F
 		suba	cha_var_vol,X
@@ -620,6 +784,7 @@ effects_volume_slide_up
 		lsra
 		lsra
 		lsra
+addA2vol
 		adda	cha_var_vol,X
 		cmpa	#63
 		blo	1B
@@ -692,7 +857,7 @@ play_skip_no_read_row
 		stb	zp_cha_ctr
 cha_loop
 		ldb	zp_cha_ctr
-		stb	sheila_DMAC_SND_SEL
+		stb	jim_DMAC_SND_SEL
 		jsr	check_effects
 
 		jsr	set_p_vol
@@ -712,7 +877,14 @@ sk_cha_loop_done
 		cmpb	#3
 		blo	1F
 		clr	g_arp_tick
-1		
+
+1
+play_event_done
+		lda	#FLAGS_EXEC
+		ora	g_flags
+		sta	g_flags
+
+		rts
 
 
 
@@ -744,6 +916,17 @@ cl2		lda	,X+
 		lda	#$94
 		jsr	FastPrA				; blue graphics
 		ldb	-1,X				; get peak back from vars
+		jsr	show_vu_B
+		dec	zp_disp_tmp
+		beq	sk_dispdone
+		leau	(80-(16 + cha_vars_size*2)),U
+		bra	cvclp
+sk_dispdone
+
+
+		rts
+
+show_vu_B
 		lsrb
 		lsrb
 		lsrb					; / 8
@@ -765,21 +948,7 @@ vu_lp2		jsr	FastPrA
 		decb	
 		bne	vu_lp2
 sk_vu_2
-
-
-		dec	zp_disp_tmp
-		beq	sk_dispdone
-		leau	(80-(16 + cha_vars_size*2)),U
-		bra	cvclp
-sk_dispdone
-
-		lda	#FLAGS_EXEC
-		ora	g_flags
-		sta	g_flags
-
 		rts
-
-
 
 
 ;--------------------------------------------------
@@ -787,7 +956,7 @@ sk_dispdone
 ;--------------------------------------------------
 
 track_disp
-		ldu	#$7C00
+		ldu	#SCREEN_BASE
 		ldb	#15
 		stb	zp_disp_lin_ctr			; line counter
 		ldb	g_row_pos
@@ -911,7 +1080,7 @@ set_p_period
 set_p_period_D
 		cmpd	#113
 		blo	3F
-ok		std	sheila_DMAC_SND_PERIOD
+ok		std	jim_DMAC_SND_PERIOD
 3		rts
 ;
 do_arpeg
@@ -931,7 +1100,7 @@ arpatB		leau	semitones,PCR
 		jsr	mul16
 
 		ldd	zp_tmp
-		std	sheila_DMAC_SND_PERIOD
+		std	jim_DMAC_SND_PERIOD
 		rts
 
 arp1		
@@ -952,7 +1121,7 @@ set_p_vol
 		lda	cha_var_vol,X
 		asla
 		asla
-1		sta	sheila_DMAC_SND_VOL
+1		sta	jim_DMAC_SND_VOL
 		rts
 mute		clra
 		bra	1B
@@ -1043,28 +1212,69 @@ lookup_song
 ;	A = 0
 ;	Z
 start_pattern
-		clr	sheila_DMAC_DMA_SEL		
+		ldb	my_jim_dev
+		cmpb	#JIM_DEVNO_BLITTER
+		beq	start_pattern_blitter
+
+		;load via jim
 		tfr	A,B
 		clra
 		aslb					; don't need a shift here as A < 128
 		aslb
 		rola
-		addd	#HDR_PATT_DATA_OFFS/256
-		std	sheila_DMAC_DMA_SRC_ADDR	; page # of pattern
+
+		addd	#MODULE_CPAGE+(HDR_PATT_DATA_OFFS/256)
+		std	fred_JIM_PAGE_HI
+
+		ldx	#cur_patt_data
+		ldb	#PATTERN_LEN/256		; assumes pattern is 
+		pshs	B
+		clrb
+		ldy	#JIM+HDR_PATT_DATA_OFFS%256
+		bra	2F
+1		ldy	#JIM
+2		lda	,Y+
+		sta	,X+
+		decb
+		bne	2B
+		dec	,S
+		beq	3F
+		inc	fred_JIM_PAGE_LO
+		bne	1B
+		inc	fred_JIM_PAGE_HI
+		bne	1B
+3		leas	1,S
+		bra	start_pattern_cpy_done
+
+
+
+start_pattern_blitter
+		clr	jim_DMAC_DMA_SEL		
+		tfr	A,B
+
+		clra
+		aslb					; don't need a shift here as A < 128
+		aslb
+		rola
+		addd	#(HDR_PATT_DATA_OFFS/256)+MODULE_CPAGE
+		std	jim_DMAC_DMA_SRC_ADDR	; page # of pattern
 		ldb	#HDR_PATT_DATA_OFFS%256
-		stb	sheila_DMAC_DMA_SRC_ADDR+2	; lo address
+		stb	jim_DMAC_DMA_SRC_ADDR+2	; lo address
 
 		ldb	#$FF
-		stb	sheila_DMAC_DMA_DEST_ADDR+0	; SYS
+		stb	jim_DMAC_DMA_DEST_ADDR+0	; SYS
 		ldd	#cur_patt_data
-		std	sheila_DMAC_DMA_DEST_ADDR+1	; address of current pattern buffer
+		std	jim_DMAC_DMA_DEST_ADDR+1	; address of current pattern buffer
 
 		ldd	#PATTERN_LEN-1
-		std	sheila_DMAC_DMA_COUNT
+		std	jim_DMAC_DMA_COUNT
 
 		lda	#DMACTL_ACT + DMACTL_HALT + DMACTL_STEP_SRC_UP + DMACTL_STEP_DEST_UP
-		sta	sheila_DMAC_DMA_CTL
+		sta	jim_DMAC_DMA_CTL
 
+start_pattern_cpy_done
+
+		jsr	snd_devsel
 
 		lda	#16
 		ldb	g_row_pos
@@ -1072,39 +1282,8 @@ start_pattern
 		addd	#cur_patt_data
 		std	zp_note_ptr
 		rts
-;
-;
-;PRTXT:		stx	zp_si_ptr
-;		sty	zp_si_ptr + 1
-;		ldy	#0
-;@l:		lda	(zp_si_ptr),Y
-;		beq	@r
-;		jsr	OSASCI
-;		iny
-;		bne	@l
-;@r:		rts
-;
-;PRIM:		pla
-;		sta	zp_si_ptr
-;		pla
-;		sta	zp_si_ptr + 1
-;		ldy	#1
-;@l:		lda	(zp_si_ptr),Y
-;		beq	@r
-;		jsr	OSASCI
-;		iny
-;		bne	@l
-;		brk
-;		.byte 2, "String over", 0
-;@r:		iny
-;		tya
-;		adc	zp_si_ptr
-;		sta	zp_si_ptr
-;		lda	#0
-;		adc	zp_si_ptr + 1
-;		sta	zp_si_ptr + 1
-;		jmp	(zp_si_ptr)              ; Jump back to code after string
-;
+
+
 FastPrHexA	pshs	A
 		LSRA
 		LSRA
@@ -1170,6 +1349,63 @@ key_slower	inc	g_speed
 1		rts
 
 
+key_debug	lda	display_state
+		eora	#DISP_DEBUG
+		anda	#DISP_DEBUG
+		sta	display_state
+		bra	cls
+
+
+key_help	lda	display_state
+		eora	#DISP_HELP
+		anda	#DISP_HELP
+		sta	display_state
+		beq	cls
+
+		;display help
+		ldy	#$400				;# bytes to copy
+		ldu	#SCREEN_BASE
+		ldx	#str_help
+1		lda	,X+
+		sta	,U+
+		leay	-1,Y
+		bne	1B
+		rts
+cls		
+		lda	#12
+		jsr	OSWRCH
+		lda	display_state 
+		bne	cls_exit
+		; display logo
+
+		ldu	#SCREEN_LOGO
+		ldx	#str_logo
+		ldy	#$140				;# bytes to copy
+1		lda	,X+
+		sta	,U+
+		leay	-1,Y
+		bne	1B
+
+
+		ldb	#2
+		ldu	#SCREEN_LOGO-80
+		
+3		lda	#141-128
+		jsr	FastPrA
+		lda	#134-128
+		jsr	FastPrA
+		ldx	#song_name
+4		lda	,X+
+		jsr	FastPrA
+		cmpx	#song_name+20
+		bne	4B
+		leau	(40-22),U
+		decb
+		bne	3B
+
+cls_exit	rts
+
+
 ;
 ;		; mul16 using 8 bit unsigned muls
 ;		; zp_tmp <= zp_num1 * zp_num2
@@ -1233,39 +1469,39 @@ mul16
 ; runs the blit
 blit_copy
 		lda	#$CC				; copy B to D, ignore A, C	FUNCGEN
-		sta	sheila_DMAC_FUNCGEN
-		ldy	#sheila_DMAC_ADDR_B
+		sta	jim_DMAC_FUNCGEN
+		ldy	#jim_DMAC_ADDR_B
 		jsr	_blit_rd_bloc_be24
-		ldy	#sheila_DMAC_ADDR_D
+		ldy	#jim_DMAC_ADDR_D
 		jsr	_blit_rd_bloc_be24
 		ldb	#0
-		stb	sheila_DMAC_HEIGHT
+		stb	jim_DMAC_HEIGHT
 		; stride B / D to $100
-		stb	sheila_DMAC_STRIDE_B + 1	; lo
-		stb	sheila_DMAC_STRIDE_D + 1	; lo
+		stb	jim_DMAC_STRIDE_B + 1	; lo
+		stb	jim_DMAC_STRIDE_D + 1	; lo
 		incb
-		stb	sheila_DMAC_STRIDE_B		; hi
-		stb	sheila_DMAC_STRIDE_D		; hi
+		stb	jim_DMAC_STRIDE_B		; hi
+		stb	jim_DMAC_STRIDE_D		; hi
 
 
 		jsr	_blit_rd_bloc			; how many pages?
 		beq	blit_copy_sk1
 		; do full pages
 		deca
-		sta	sheila_DMAC_HEIGHT
+		sta	jim_DMAC_HEIGHT
 		lda	#$FF
-		sta	sheila_DMAC_WIDTH
+		sta	jim_DMAC_WIDTH
 		jsr	blit_copy_ex
 blit_copy_sk1	jsr	_blit_rd_bloc
 		beq	blit_copy_sk2			; the are no part pages to copy
 		deca
-		sta	sheila_DMAC_WIDTH
+		sta	jim_DMAC_WIDTH
 		lda	#$0				; 256 width
-		sta	sheila_DMAC_HEIGHT		; pages
+		sta	jim_DMAC_HEIGHT		; pages
 blit_copy_ex	lda	#$0A				; execD, execB	BLTCON
-		sta	sheila_DMAC_BLITCON		
+		sta	jim_DMAC_BLITCON		
 		lda	#$80				
-		sta	sheila_DMAC_BLITCON		; exec, lin, mode 0
+		sta	jim_DMAC_BLITCON		; exec, lin, mode 0
 blit_copy_sk2	rts
 
 _blit_rd_bloc
@@ -1338,6 +1574,11 @@ keyfntab	fcb	'1'
 		fdb	key_faster
 		fcb	'S'
 		fdb	key_slower
+		fcb	'H'
+		fdb	key_help
+		fcb	'D'
+		fdb	key_debug
+
 keyfntabend	
 ;			    214,202,190,180,170,160,151,143,135,127,120,113
 pertab		fdb	220,208,196,185,175,165,156,147,139,131,124,117,111
@@ -1353,6 +1594,17 @@ vibtab		fcb    $00, $18, $31, $4A, $61, $78, $8D, $A1,
 finetunetab	fdb	32768, 32532, 32298, 32066, 31835, 31606, 31379, 31153, 34716, 34467, 34219, 33973, 33728, 33486, 33245, 33005
 ; revers
 ;;finetunetab:	.word	32768, 33005, 33245, 33486, 33728, 33973, 34219, 34467, 30929, 31153, 31379, 31606, 31835, 32066, 32298, 32532
+
+DISP_NORMAL	EQU 0
+DISP_HELP	EQU 2
+DISP_DEBUG	EQU 1
+
+display_state	fcb	DISP_NORMAL	; 0 = normal, 1 = debug, 2 = help
+
+str_help
+		includebin "helptext.mo7.txt"
+str_logo	EQU str_help + (25-8) * 40
+str_logo_end	EQU str_help + 2048
 
 
 
@@ -1390,8 +1642,13 @@ cha_2_vars	rzb	cha_vars_size
 cha_3_vars	rzb	cha_vars_size
 
 sam_data	rzb	32*s_saminfo_sizeof
+song_name	rzb	MOD_TITLE_LEN
+old_jim_dev	rzb	1
+my_jim_dev	rzb	1
 song_data	rzb	SONG_DATA_LEN
+filename	rzb	2
 cur_patt_data	rzb	PATTERN_LEN
+
 
 
 

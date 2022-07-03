@@ -9,7 +9,7 @@ NOICE_CODE_BASE		EQU	$F100	; a hole to be left here for the noice debugger
 
 	IF NOICE_CODE_LEN
 	ELSE
-NOICE_CODE_LEN		EQU	$03A0	; TODO: get this from the NOICE code?
+NOICE_CODE_LEN		EQU	$03B0	; TODO: get this from the NOICE code?
 	ENDIF
 
 ;; - this now must be defined when building

@@ -1,0 +1,46 @@
+xsize.o: xsize.c ../config.h xsize.h \
+ /usr/lib/gcc/x86_64-pc-cygwin/9.3.0/include/stddef.h limits.h \
+ /usr/lib/gcc/x86_64-pc-cygwin/9.3.0/include/limits.h \
+ /usr/lib/gcc/x86_64-pc-cygwin/9.3.0/include/syslimits.h \
+ /usr/include/limits.h /usr/include/features.h /usr/include/sys/cdefs.h \
+ /usr/include/machine/_default_types.h /usr/include/sys/features.h \
+ /usr/include/_newlib_version.h /usr/include/bits/wordsize.h stdint.h \
+ /usr/lib/gcc/x86_64-pc-cygwin/9.3.0/include/stdint.h \
+ /usr/include/stdint.h /usr/include/sys/_intsup.h \
+ /usr/include/sys/_stdint.h
+
+../config.h:
+
+xsize.h:
+
+/usr/lib/gcc/x86_64-pc-cygwin/9.3.0/include/stddef.h:
+
+limits.h:
+
+/usr/lib/gcc/x86_64-pc-cygwin/9.3.0/include/limits.h:
+
+/usr/lib/gcc/x86_64-pc-cygwin/9.3.0/include/syslimits.h:
+
+/usr/include/limits.h:
+
+/usr/include/features.h:
+
+/usr/include/sys/cdefs.h:
+
+/usr/include/machine/_default_types.h:
+
+/usr/include/sys/features.h:
+
+/usr/include/_newlib_version.h:
+
+/usr/include/bits/wordsize.h:
+
+stdint.h:
+
+/usr/lib/gcc/x86_64-pc-cygwin/9.3.0/include/stdint.h:
+
+/usr/include/stdint.h:
+
+/usr/include/sys/_intsup.h:
+
+/usr/include/sys/_stdint.h:

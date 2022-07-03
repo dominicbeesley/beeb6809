@@ -10,7 +10,7 @@ ASS_VAR_SUFFIX	EQU	1				; suffix item index
 ASS_VAR_MODESET EQU	2				; mode set for this op class
 ASS_VAR_OPLEN	EQU	3				; opcode len (minus prefix byte)
 
-ASS_VAR_PTR_SAV EQU	5				; store U temporarily
+ASS_VAR_PTR_SAV EQU	5				; store Y temporarily
 ASS_VAR_OP	EQU	7				; "base" opcode number from parse table, followed by upto 4 more post bytes
 
 ASS_VAR_SPACE	EQU	12
@@ -22,8 +22,6 @@ ASS_VAR_SPACE	EQU	12
 		include "6809-assembler.gen.asm"
 	ENDIF
 
-assJmpScanEndOfStmt
-		JUMP	assScanEndOfStmt
 
 assEndStmtChCt	EQU	4
 assEndStmtCh	FCB	":",$0D,"\\;"
@@ -39,7 +37,7 @@ assScanContinue
 		LDB	#assEndStmtChCt
 		LDX	#assEndStmtCh
 1		CMPA	,X+
-		BEQ	assJmpScanEndOfStmt
+		LBEQ	assScanEndOfStmt
 		DECB
 		BNE	1B
 
@@ -49,7 +47,7 @@ assScanContinue
 		STB	ZP_ASS_LIST_OPLEN		;  counter of # of chars in accumulator
 
 		; special check for op code starting "LB"
-		LDD	,Y
+		LDD	,U
 	IF CPU_6309
 		ANDD	#$DFDF				; to uppercase
 	ELSE
@@ -60,9 +58,10 @@ assScanContinue
 		BNE	assScanOpLoop
 		LDA	#ASS_BITS_EXTRA0
 		STA	ASS_VAR_FLAGS,S			; set flag
+		LEAU	1,U
 assScanOpLoop
-		; parse loop, keep adding chars until there's a match or 5 chars added
-		LDA	,Y+
+		; parse loop, keep adding chars until there's a match or 3 chars added (|P_ASS_LIST_OPLEN)
+		LDA	,U+
 		BMI	assScanTokFound			; special handling for tokens OR,EOR,AND
 		CMPA	#' '
 		BEQ	assScanOpSkSpace
@@ -79,7 +78,7 @@ assScanOpLoop2	ASLA					; L8A17
 		BNE	assScanOpLoop2
 		BRA	assScanParseTbl
 
-assScanLabel	LEAY	1,Y				; L89D4
+assScanLabel	LEAU	1,U				; L89D4
 		CALL	findVarOrAllocEmpty
 		BEQ	assJmpBrkSyntax2
 		BCS	assJmpBrkSyntax2
@@ -88,7 +87,7 @@ assScanLabel	LEAY	1,Y				; L89D4
 		STA	ZP_VARTYPE
 		CALL	storeEvaledExpressioninStackedVarPTr
 ;;		CALL	copyTXTOFF2toTXTOFF
-		STY	ZP_ASS_LBLEND		
+		STU	ZP_ASS_LBLEND		
 
 		BRA	assScanContinue
 
@@ -96,7 +95,11 @@ assScanLabel	LEAY	1,Y				; L89D4
 assScanTokFound
 		; this assumes that the token is at the start of the scan and just sets up the
 		; accumulator as such
+	IF CPU_6309
 		LDB	#4
+	ELSE
+		LDB	#3
+	ENDIF
 		LEAX	assTok2Acc_tbl,PCR
 1		CMPA	,X
 		BEQ	1F
@@ -131,7 +134,7 @@ assScanParseTbl_next
 		
 assScanParse_nomatch
 		DEC	ZP_ASS_LIST_OPLEN
-		LBPL	assScanOpLoop
+		BNE	assScanOpLoop
 
 assJmpBrkSyntax2
 		JUMP	brkSyntax
@@ -184,7 +187,18 @@ assClassFound
 		INC	ASS_VAR_OPLEN,S			; got at least 1 byte to store
 	IF ASSEMBLER_6309
 		CMPB	#assClass_D_ix			; class D is AIM etc require an immediate before looking for modes
-		LBEQ	assClass_D_parse
+		BNE	1F
+		; class D parse
+		CALL	skipSpacesCheckHashAtY		
+		BNE	assJmpBrkSyntax2
+		; got an immediate
+		CALL	evalForceINT
+		LDA	ZP_INT_WA+3
+		CALL	assPostByte			; immed byte
+		CALL	skipSpacesCheckCommaAtY
+		BNE	assJmpBrkSyntax2
+
+1
 	ENDIF
 		; Get modeset and store it
 		LDB	ASS_CLSTBL_OF_MODES,X
@@ -217,7 +231,7 @@ assClass_SuffSetSingle
 
 assModesParse
 		LDB	ASS_VAR_MODESET,S		; get modes set
-		LBEQ	assScanEndOfStmt		; node modes set, implicit, we're done
+		BEQ	jmpAssScanEndOfStmt		; node modes set, implicit, we're done
 		LBPL	assModesParseMem
 
 		ANDB	#$07
@@ -232,13 +246,14 @@ assClass_suffixMatched
 		LDA	#ASS_BITS_BOTH
 		BITA	ASS_VAR_FLAGS,S
 		BNE	assModesParse		
+jmpAssScanEndOfStmt
 		JUMP	assScanEndOfStmt
 
 assParseTrySuffix
 		; try and match suffix against source text
 		; if a match return CY=1, A=flags, B=opcode delta, else X,B preserved
 
-		PSHS	B,X,Y
+		PSHS	B,X,U
 		ANDB	#$3F				; ignore tail / end bits
 		STB	7+ASS_VAR_SUFFIX,S
 
@@ -265,23 +280,23 @@ assSuffItemFound
 		; we are now pointing at suffix def
 		CALL	assMatchXY
 		BCS	assSuffItemMatch
-		; reset Y
-		PULS	B,X,Y,PC
+		; reset U
+		PULS	B,X,U,PC
 
-assMatchXY	; match strings at X, Y (X is >$80 terminated) return Cy=1 for match or Cy=0 and >$80 in A
-		; match to source
+assMatchXY	; match strings at X, U (X is >$80 terminated) return Cy=1 for match or Cy=0 and >$80 in A
+		; match to source, note needs to match partial strings i.e. S or SP
 1		LDA	,X+
 		BMI	2F	
-		EORA	,Y+				; get source char
+		EORA	,U+				; get source char
 		ANDA	#$DF				; ifgnore case
 		BEQ	1B
-3		LDA	,X+
+3		LDA	,X+				; skip rest of string up to terminator
 		BPL	3B
 4		CLC	
 		RTS
 2		; check to see if at end of register i.e. <A >Z
 		PSHS	A
-		LDA	,Y
+		LDA	,U
 		CALL	checkIsValidVariableNameChar
 		PULS	A
 		BCS	4B				; return no match
@@ -290,7 +305,7 @@ assMatchXY	; match strings at X, Y (X is >$80 terminated) return Cy=1 for match 
 
 
 assSuffItemMatch		
-		LEAS	5,S				; discard saved Y,B,X
+		LEAS	5,S				; discard saved U,B,X
 
 		BITA	#FLAGS_SUF_OP
 		BEQ	3F
@@ -320,8 +335,8 @@ assSuffItemMatch
 		BNE	1F
 		LDX	#assXlateCC
 2		; scan table, look for op map
-		LDB	,X+
-4		CMPA	,X+
+		LDB	,X+				; size of table
+4		CMPA	,X+				; compare opcode to xlate table entry
 		BEQ	5F
 		LEAX	1,X
 		DECB	
@@ -447,7 +462,7 @@ assModesParseMem_NotImmed
 		LBEQ	assModeZeroIX
 
 		; now check for R,IX form
-		STY	ZP_TXTPTR2			; save Y incase we back out
+		STU	ZP_TXTPTR2			; save U incase we back out
 		LDX	#assModesTblAccIX
 		ANDA	#$DF				; to upper
 		STA	ZP_INT_WA
@@ -506,13 +521,13 @@ assModeParseIXRegAfterComma
 		; if B is 0 on entry also test for PC/PCR
 		CMPA	#'P'
 		BNE	assDontCheckPC
-		LDA	,Y+
+		LDA	,U+
 		CMPA	#'C'
 		BNE	brkIndex
-		LDA	,Y
+		LDA	,U
 		CMPA	#'R'
 		BNE	assNotPCR
-		LEAY	1,Y
+		LEAU	1,U
 		; PCR, subtract P% from INT_WA		
 		; calculate length of instruction in ZP_INT_WA+0,1
 		CLR	ZP_INT_WA
@@ -550,8 +565,8 @@ assModeParseIXRegFound
 		RTS
 
 assModexParseNotRegIX
-		LDY	ZP_TXTPTR2
-		LEAY	-1,Y
+		LDU	ZP_TXTPTR2
+		LEAU	-1,U
 
 		CALL	evalForceINT
 		CALL	skipSpacesCheckCommaAtYStepBack
@@ -584,12 +599,12 @@ assModexDp	LDB	#ASS_MEMPB_DP
 
 assIXAutoDec	INCB
 		INCB
-		LDA	,Y+
+		LDA	,U+
 		CMPA	#'-'
 		BNE	2F
 		INCB
 		BRA	1F
-2		LEAY	-1,Y
+2		LEAU	-1,U
 1		CALL	assModeParseIXRegAfterComma
 		BRA	assModeParseAutoIncDecDone
 
@@ -603,16 +618,17 @@ assModeParseOffsIX
 		CALL	skipSpacesY
 		CMPA	#'-'
 		BEQ	assIXAutoDec
-		LEAY	-1,Y
+		LEAU	-1,U
 		CALL	assModeParseIXRegAfterComma
 		BPL	assModeParseOffsIX_NotAutoInc	; if +ve B then is PC/PCR
 		; check for -,--,+,++
 		CALL	skipSpacesY
 		CMPA	#'+'
 		BNE	assModeParseOffsIX_NotAutoInc
-		LDA	,Y+
+		LDA	,U
 		CMPA	#'+'
 		BNE	assModeParseAutoIncDecDone
+		LEAU	1,U
 		INCB
 assModeParseAutoIncDecDone
 2		CALL	IntWAZero
@@ -626,7 +642,7 @@ assModeParseAutoIncDecDone
 1		JUMP	assPostByteIXCheckIndThenValidate
 
 assModeParseOffsIX_NotAutoInc
-		LEAY	-1,Y
+		LEAU	-1,U
 		; check for force 16 bit offset
 		LDA	#ASS_MEMPB_SZ16
 		BITA	ASS_VAR_MODEP,S
@@ -713,39 +729,25 @@ assModesRegReg	CALL	skipSpacesYStepBack
 
 assModesRegRegScan
 		CLRB
-		PSHS	Y
+		PSHS	U
 		LDX	#tblRegRegCodes
 1		CALL	assMatchXY
 		BCS	1F
-		LDY	,S
+		LDU	,S
 		INCB
 		BRA	1B
 1		CMPA	#$FF
 		BEQ	assJmpBrkSyntax3
-		LEAS	2,S				; discard stacked Y
+		LEAS	2,S				; discard stacked U
 		RTS
 
 
 
 
-	IF ASSEMBLER_6309
-assClass_D_parse
-		SWI
-	ENDIF
-
-	IF ASSEMBLER_6309
-assModesBitBit
-		SWI
-	ENDIF
-
-	IF ASSEMBLER_6309
-assModesTFM
-		SWI
-	ENDIF
 
 assModesPxxxW
 	IF ASSEMBLER_6309
-		LDA	,Y
+		LDA	,U
 		ANDA	#$DF
 		CMPA	#'W'
 		BNE	1F
@@ -783,6 +785,15 @@ assBitLp	DECB
 		LDA	,S+				; get postbyte
 		LBEQ	assJmpBrkSyntax3
 		JUMP	assPostByteThenScanEndOfStmt
+
+	IF ASSEMBLER_6309
+
+assModesBitBit
+assModesTFM
+		DO_BRK_B
+		FCB	$FF, "NotImp",0
+	ENDIF
+
 
 
 assDecIntWa2
@@ -834,7 +845,7 @@ assPostByteThenScanEndOfStmt
 		JUMP	assScanEndOfStmt
 
 assModesImmed	CALL	skipSpacesCheckHashAtY
-		BNE	assJmpBrkSyntax5
+		LBNE	assJmpBrkSyntax5
 		JUMP	assModeImmed
 assOutOfRange
 		LDB	ZP_OPT
@@ -864,14 +875,14 @@ assScanEndOfStmt
 	ENDIF
 
 
-		STU	ASS_VAR_PTR_SAV,S		; L8A5E
-		LDU	VAR_P_PERCENT + 2
-		STU	ZP_GEN_PTR
+		STY	ASS_VAR_PTR_SAV,S		; L8A5E
+		LDY	VAR_P_PERCENT + 2
+		STY	ZP_GEN_PTR
 		LDA	#4
 		BITA	ZP_OPT
 		BEQ	assSkNotOpt4			; check for OPT 4+
-		LDU	VAR_O_PERCENT + 2		; opt 4+ get O% into storage pointer
-assSkNotOpt4	STU	ZP_ASS_OPSAVED
+		LDY	VAR_O_PERCENT + 2		; opt 4+ get O% into storage pointer
+assSkNotOpt4	STY	ZP_ASS_OPSAVED
 		LEAX	ASS_VAR_OP,S			; source for the copy
 		LDB	ASS_VAR_OPLEN,S			; get opcode length (without any prefix)
 		BPL	1F
@@ -888,7 +899,7 @@ assSkNotOpt4	STU	ZP_ASS_OPSAVED
 assStoreLoop						; L8A83
 		LDA	,X+
 1
-		STA	,U+
+		STA	,Y+
 
 		INC	VAR_P_PERCENT + 3
 		BNE	1F
@@ -903,7 +914,7 @@ assSkNotOpt4_2	DECB
 		BNE	assStoreLoop
 
 assSkNowtToStore					; L8AA5
-		LDU	ASS_VAR_PTR_SAV,S
+		LDY	ASS_VAR_PTR_SAV,S
 		LEAS	ASS_VAR_SPACE,S
 		RTS
 
@@ -925,7 +936,7 @@ assDirNotOPT
 		CMPA	#1
 		BNE	assDirNotEQU
 		; we have EQUx
-		LDA	,Y+
+		LDA	,U+
 		ANDA	#$DF				; uppercase
 		CMPA	#'S'
 		BEQ	assDirEQUS
@@ -949,16 +960,16 @@ assCopyBBytesToOpBufAndEnd
 
 		; copies B bytes from X to end of OpBuf
 assCopyBBytesToOpBuf
-		PSHS	U
-		LEAU	4+ASS_VAR_OP,S			; point U at op buffer
+		PSHS	Y
+		LEAY	4+ASS_VAR_OP,S			; point Y at op buffer
 		LDA	4+ASS_VAR_OPLEN,S
-		LEAU	A,U				; add length of existing op bytes
+		LEAY	A,Y				; add length of existing op bytes
 1		LDA	,X+
-		STA	,U+
+		STA	,Y+
 		INC	4+ASS_VAR_OPLEN,S
 		DECB
 		BNE	1B
-		PULS	U,PC
+		PULS	Y,PC
 
 assDirEQUS	
 		LDA	ZP_OPT

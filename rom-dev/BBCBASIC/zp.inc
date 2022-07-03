@@ -34,7 +34,9 @@ ZP_SAVE_BUF		EQU $37		;; note this overlaps
 ZP_GEN_PTR		EQU $37
 ZP_ASS_LIST_OPLEN	EQU $38
 ZP_ASS_OPLEN		EQU $39		;; length of opcode + postbytes
-ZP_NAMELENORVT		EQU $39
+
+ZP_NAMELENORVT		EQU $37		;; NOTE this is different to 6502 where it is ZP_GEN_PTR+2
+
 ZP_ASS_OPSAVED		EQU $3A		;; start of last saved instruction (used in print)
 ZP_FPB			EQU $3B
 ZP_INT_WA_B		EQU $39		;; note overlaps ZP_NAMELENORVT and ZP_FP_WA_B sign, exponent

@@ -15,11 +15,17 @@ DEPS=	../../includes/hardware.inc \
 		VERSION-date.gen.asm \
 		Makefile
 
+HOSTFSDIR=~/hostfs/beebroms/
+
 ROMNO=C
 
 include		../../Makefile.defs 
 
-.PHONY:		VERSION-date.gen.asm
+.PHONY:		VERSION-date.gen.asm hostfs
+
+hostfs:	$(addprefix $(BEEBOUT)/, $(TARGETS_BEEB))
+	cp $(BEEBOUT)/HOSTFS.BIN $(HOSTFSDIR)/R.HOSTFS
+	cp $(BEEBOUT)/HOSTFS-myelin.BIN $(HOSTFSDIR)/R.HOSTFSM
 
 
 VERSION-date.gen.asm: HOSTFS-core.asm HOSTFS.asm

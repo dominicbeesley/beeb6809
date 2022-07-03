@@ -259,36 +259,17 @@ RES10		STY	,X++		; SET VECTOR
 	ENDIF
 *
 *  Initialize user registers
+
+		LDB	#TASK_REG_SZ
+		LDX	#TASK_REGS
+1		CLR	,X+
+		DECB
+		BNE	1B
+
 		LDD	#INITSTACK
 		STA	REG_SP+1		; INIT USER'S STACK POINTER MSB
 		STB	REG_SP			; LSB
-*
-		LDD	#0
-		STD	REG_PC
-		STA	REG_A
-		STA	REG_B
-	IF CPU_6309
-		STA	REG_E
-		STA	REG_F
-	ENDIF
-		STA	REG_DP
-	IF CPU_6309
-		STA	REG_MD
-	ENDIF
-		STD	REG_X
-		STD	REG_Y
-		STD	REG_U
-	IF CPU_6309
-		STD	REG_V
-	ENDIF
-		STA	REG_STATE		; initial state is "RESET"
-*
-*  Initialize memory paging variables and hardware (if any)
-		STA	REG_PAGE		; initial page is zero
-	IF DO_ROMLATCH
-		STA	MAPIMG
-		STA	MAPREG			; set hardware map
-	ENDIF
+
 		LDA	#CC_E+CC_I+CC_F			 ; state "all regs pushed", no ints
 		STA	REG_CC
 *
@@ -340,6 +321,11 @@ BEEP_76489CLK	EQU	4000000
 GETCHAR
 		PSHS	X
 		LDX	#0			; LONG TIMEOUT
+	IF MACH_WBONE
+		LDA	LEDS
+		ORA	#LED_WT_RX
+		STA	LEDS
+	ENDIF
 GC10		LEAX	-1,X
 		BEQ	GC90			; EXIT IF TIMEOUT
 	IF MACH_BEEB
@@ -355,7 +341,12 @@ GC10		LEAX	-1,X
 		LDA	S16550_LSR		; READ DEVICE STATUS
 		ANDA	#SER_BIT_RXRDY
 	ENDIF
+	IF MACH_WBONE
+	 	TST	sheila_SERIAL2_STATUS
+	 	BMI	GC10
+	ELSE
 		BEQ	GC10			; NOT READY YET.
+	ENDIF
 *
 *  Data received:  return CY=0. data in A
 		CLRA				; CY=0
@@ -369,12 +360,42 @@ GC10		LEAX	-1,X
 	IF MACH_CHIPKIT
 		LDA	S16550_RXR		; READ DATA
 	ENDIF
+	IF MACH_WBONE
+		LDA	LEDS
+		ANDA	#~LED_WT_RX
+		STA	LEDS
+		LDA	sheila_SERIAL2_DATA
+	ENDIF
 		PULS	X,PC
 
 *
 *  Timeout:  return CY=1
-GC90		ORCC	#CC_C			; CY=1
+GC90		
+	IF MACH_WBONE
+		LDA	LEDS
+		ANDA	#~LED_WT_RX
+		ORA	#LED_TO_RX
+		STA	LEDS
+
+		JSR	PIPDLY
+
+		ANDA	#~LED_TO_RX
+		STA	LEDS
+
+	ENDIF
+		ORCC	#CC_C			; CY=1
 		PULS	X,PC
+
+	IF MACH_WBONE
+PIPDLY
+		PSHS	X
+		LDX	#1000
+1		LEAX	-1,X
+		BNE	1B
+		PULS	X,PC
+	ENDIF
+
+
 *
 *===========================================================================
 *  Output character in A
@@ -383,6 +404,11 @@ GC90		ORCC	#CC_C			; CY=1
 *
 PUTCHAR
 		PSHS	A
+	IF MACH_WBONE
+		LDA	LEDS
+		ORA	#LED_WT_TX
+		STA	LEDS
+	ENDIF
 PC10	
 	IF MACH_BEEB
 	IF NOICE_MY
@@ -397,7 +423,13 @@ PC10
 		LDA	S16550_LSR     ; CHECK TX STATUS
 		ANDA	#SER_BIT_TXRDY ; RX READY ?
 	ENDIF
-		BEQ	PC10
+	IF MACH_WBONE
+		LDA	sheila_SERIAL2_STATUS
+		ANDA	#SER_STAT_nTXE
+		BNE	PC10
+	ELSE
+		BEQ	PC10	
+	ENDIF
 		PULS	A
 	IF MACH_BEEB
 	IF NOICE_MY
@@ -408,6 +440,14 @@ PC10
 	ENDIF
 	IF MACH_CHIPKIT
 		STA	S16550_TXR     ; TRANSMIT CHAR.
+	ENDIF
+	IF MACH_WBONE
+		STA	sheila_SERIAL2_DATA
+		PSHS	A
+		LDA	LEDS
+		ANDA	#~LED_WT_TX
+		STA	LEDS
+		PULS	A
 	ENDIF
 		RTS
 
@@ -431,16 +471,19 @@ TSTG
 B0		SWI				; 10: BREAKPOINT INSTRUCTION
 B1		
 	IF CPU_6309
-		FCC	'6309'
+		FCC	"6309"
 	ELSE
-		FCC	'6809'
+		FCC	"6809"
 	ENDIF
-		FCC	' monitor V1.1-'	; DESCRIPTION, ZERO
+		FCC	" monitor V1.1-"	; DESCRIPTION, ZERO
 	IF MACH_CHIPKIT
-		FCC	'-chipkit'
+		FCC	"-chipkit"
 	ENDIF
 	IF MACH_BEEB
-		FCC	'-BBC'
+		FCC	"-BBC"
+	ENDIF
+	IF MACH_WBONE
+		FCC	"-WBONE"
 	ENDIF
 		FCB	0 
 TSTG_SIZE	EQU	*-TSTG		; SIZE OF STRING
@@ -494,6 +537,9 @@ INT_ENTRY_GO
 
 	IF CPU_6309
 
+		JSR	CHECK_6309
+		BNE	NOT_6309_1
+
 *  If native mode, E and F are on stack
 *  If 6809 mode, E and F are in registers, unchanged from interrupt til here
 	; clear BIT 1 of REG_MD before test and set if in 6309 mode
@@ -523,6 +569,7 @@ IE_11		BITMD	#$80
 		ORA	#$80
 IE_12		STA	REG_MD
 
+NOT_6309_1
 	ENDIF
 
 		PULS	A
@@ -547,6 +594,15 @@ NOTBP		TFR	X,D		; TRANSFER PC TO D
 		STA	REG_PC+1	; MSB
 		STB	REG_PC		; LSB
 		JMP	ENTER_MON	; REG_PC POINTS AT POST-INTERRUPT OPCODE
+
+	IF CPU_6309
+	; check if this is really a 6309
+CHECK_6309	tfr	0,D
+		tstb
+		rts
+	ENDIF
+
+
 *
 *===========================================================================
 *  Main loop  wait for command frame from master
@@ -594,7 +650,19 @@ MA80		JSR	GETCHAR			; GET THE CHECKSUM
 *  (Sum should be 0)
 		JSR	CHECKSUM
 		ADDA	,S+			; ADD SAVED CHECKSUM TO COMPUTED
+	IF MACH_WBONE
+		BEQ	1F
+		LDA	LEDS
+		ORA	#LED_CKSUM
+		STA	LEDS
+		JSR	PIPDLY
+		ANDA	#~LED_CKSUM
+		STA	LEDS
+		BRA	MAIN
+1
+	ELSE
 		BNE	MAIN			; JIF BAD CHECKSUM
+	ENDIF
 *
 *  Process the message.
 		LDX	#COMBUF
@@ -971,6 +1039,8 @@ RUN_TARGET
 		TFR	D,S			; TO S
 
 	IF CPU_6309
+		JSR	CHECK_6309
+		BNE	NOT_6309_2
 *
 *  Restore MD, as it affects stack building and RTI
 *  Only bits 1 and 0 can be written, and only using LDMD #
@@ -987,6 +1057,7 @@ RUN_TARGET
 		LDA	REG_V+1
 		LDB	REG_V
 		TFR	D,V
+NOT_6309_2
 	ENDIF
 *
 *  Restore registers
@@ -1010,7 +1081,9 @@ RUN_TARGET
 		LDA	REG_DP
 		PSHS	A
 	IF CPU_6309
-*
+		JSR	CHECK_6309
+		BNE	NOT_6309_3
+*	
 *  Restore W from memory (not used between here and RTI)
 		LDE	REG_E
 		LDF	REG_F
@@ -1019,6 +1092,7 @@ RUN_TARGET
 		BEQ	RT_10			; jump if 6809 mode
 		PSHSW			       ; else push W on stack for RTI
 RT_10
+NOT_6309_3
 	ENDIF
 *
 		LDA	REG_B
@@ -1129,7 +1203,6 @@ SET_BYTE_DEBUG_LEN EQU SET_BYTE_DEBUG_END-NOICE_DEBUG_CODE_BOUNCE
 *
 SET_BYTES
 
-	IF NOICE_DEBUG_MEMMAP
 		LDU	#COMBUF+1		; POINTER TO RETURN BUFFER
 		LDA	#0
 		STA	,U+			; SET RETURN COUNT AS ZERO
@@ -1137,6 +1210,7 @@ SET_BYTES
 		LSRB				; LEN/4 = NUMBER OF BYTES TO SET
 		BEQ	SB99			; JIF NO BYTES (COMBUF+1 = 0)
 
+	IF NOICE_DEBUG_MEMMAP
 		PSHS	B,X,Y,U
 		LDB	#SET_BYTE_DEBUG_LEN
 		LDX	#SET_BYTE_DEBUG_LOAD
@@ -1339,13 +1413,16 @@ FIRQ_ENT	STA	REG_A	; SAVE A REG
 *
 * Push registers as if CC.E had been set
 *  If 6809 mode, stack needs CC A B DP XH XL YH YL UH UL PCH PCL
-*  If 6309 mode, stack needs CC A B E  F  DP XH XL YH YL UH  UL	 PCH PCL
+*  If 6309 mode, stack needs CC A B E  F  DP XH XL YH YL UH  UL  PCH PCL
 *
 		CLR	E_FLAG
 		LDA	REG_MD
 		ANDA	#$FD		; BIT1 must be clear, else all regs would have been pushed
 		STA	REG_MD
 		PSHS	U,Y,X,DP	; push regs next below PC
+
+		JSR	CHECK_6309
+		BNE	FE1
 
 		STW	REG_F		; MD_TEST will not preserve regW
 		JSR	MD_TEST

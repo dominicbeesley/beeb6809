@@ -9,24 +9,55 @@ sheila_ROMCTL_SWR	EQU	$FE30
 sheila_ROMCTL_MOS	EQU	$FE31
 sheila_MEM_DEBUG_SAVE	EQU	$FE32
 
+
 ROMCTL_BITS_FLEX	EQU	$10
 
 	IF MACH_BEEB
+;TODO: naming - harmonize with 6502
+sheila_MEM_CTL			EQU $FE31
+
 BITS_MEM_CTL_SWMOS		EQU $01
-BITS_MEM_CTL_JIMEN		EQU $02
 BITS_MEM_CTL_SWMOS_DEBUG	EQU $04
 BITS_MEM_CTL_SWMOS_DEBUG_EN	EQU $08
 BITS_MEM_CTL_FLEX		EQU $10
 BITS_MEM_CTL_SWMOS_DEBUG_5C	EQU $40
 BITS_MEM_CTL_SWMOS_DEBUG_ACT	EQU $80
 
-FRED_JIM_PAGE_HI	EQU	$FCFE
-FRED_JIM_PAGE_LO	EQU	$FCFF
-	
-SHEILA_NULA_CTLAUX	EQU	$FE22
-SHEILA_NULA_PALAUX	EQU	$FE23
 
-SHEILA_DEBUG		EQU	$FEFF
+sheila_MEM_TURBO2		EQU $FE36
+BITS_MEM_TURBO2_THROTTLE	EQU $80
+
+sheila_MEM_LOMEMTURBO		EQU $FE37
+
+
+fred_JIM_DEVNO		EQU	$FCFF
+fred_JIM_PAGE_HI	EQU	$FCFD
+fred_JIM_PAGE_LO	EQU	$FCFE
+	
+sheila_NULA_CTLAUX	EQU	$FE22
+sheila_NULA_PALAUX	EQU	$FE23
+
+sheila_DEBUG		EQU	$FEFF
+
+
+
+
+sheila_BLTCFG0		EQU	$FE3E
+sheila_BLTCFG1		EQU	$FE3F
+BLTCFG0_T65		EQU	$01
+BLTCFG0_CPU_6502A_2M	EQU	$00
+BLTCFG0_CPU_65C02_4M	EQU	$02
+BLTCFG0_CPU_65C02_8M	EQU	$04
+BLTCFG0_CPU_6x09_2M	EQU	$08
+BLTCFG0_CPU_6309_4M	EQU	$0A
+BLTCFG0_CPU_Z80_8M	EQU	$0C
+BLTCFG0_CPU_68008	EQU	$0E
+BLTCFG0_SWROMX		EQU	$10
+BLTCFG0_BUGBTN		EQU	$80
+
+BLTCFG1_MEMI		EQU	$01
+BLTCFG1_BUGOUT		EQU	$02
+
 
 	ENDIF
 
@@ -180,7 +211,6 @@ VIA_IFR_BIT_CA1				EQU $02
 VIA_IFR_BIT_CA2				EQU $01
 
 
-	IF MACH_BEEB
 ***********************************************************************
 * BBC B/B+ WD177x                                                     *
 ***********************************************************************
@@ -190,7 +220,6 @@ sheila_1770_wdc_cmd	equ	$FE84
 sheila_1770_wdc_trk	equ	$FE85
 sheila_1770_wdc_sec	equ	$FE86
 sheila_1770_wdc_dat	equ	$FE87
-	ENDIF
 
 ***********************************************************************
 * TUBE                                                                *
@@ -252,7 +281,7 @@ ACIA_TDRE		EQU	$02
 ; then with top bit set the active flag, bit mode and cell flags are set
 ; BLTCON/ACT byte flags
 
-BLITCON_ACT_ACT			EQU	$80		; always set when setting 
+BLITCON_ACT_ACT			EQU	$80		; always set when setting act constants/execing
 BLITCON_ACT_CELL		EQU	$40		; cell addressing used i.e. move one byte left adds 8 to address
 							; moving one line down either adds 1 byte or STRIDE depending on whether 
 							; line crosses an 8 line boundary
@@ -260,13 +289,14 @@ BLITCON_ACT_MODE_1BBP		EQU	$00		; 1 bit per pixel mapping 2 colours
 BLITCON_ACT_MODE_2BBP		EQU	$10		; 2 bit per pixel mapping 4 colours
 BLITCON_ACT_MODE_4BBP		EQU	$20		; 4 bit per pixel mapping 16 colours
 BLITCON_ACT_MODE_8BBP		EQU	$30		; 8 bit per pixel mapping 256 colours
+BLITCON_ACT_LINE		EQU	$08		; draw a line
+BLITCON_ACT_COLLISION		EQU	$04		; gets reset for any non-zero D data (even in EXEC_D is clear) 
 
 
 BLITCON_LINE_MAJOR_UPnRIGHT	EQU	$10		; line draw major axis is up
 BLITCON_LINE_MINOR_CCW		EQU	$20		; minor axis is CCW to MAJOR i.e. left when maj up, up when maj right
 							; otherwise 			  right when maj up, down when maj right
 
-BLITCON_ACT_LINE		EQU	$08		; draw a line
 
 BLITCON_EXEC_A			EQU	$01
 BLITCON_EXEC_B			EQU	$02
@@ -289,85 +319,133 @@ DMACTL_STEP_SRC_RESV		EQU	$03		; reserved do not use
 
 DMACTL2_IF			EQU	$80		; interrupt occurred
 DMACTL2_IE			EQU	$02		; interrupt enable, interrupt after transfer
+DMACTL2_SZ_BYTE			EQU	$00
+DMACTL2_SZ_WORD			EQU	$04
+DMACTL2_SZ_WORDSWAPDEST		EQU	$08
+DMACTL2_SZ_WORDSWAPSRC		EQU	$0C
 DMACTL2_PAUSE			EQU	$01
 
-sheila_DMAC_BLITCON_offs	EQU	0
-sheila_DMAC_FUNCGEN_offs	EQU	$1
-sheila_DMAC_WIDTH_offs		EQU	$2
-sheila_DMAC_HEIGHT_offs		EQU	$3
-sheila_DMAC_SHIFT_offs		EQU	$4
-sheila_DMAC_MASK_FIRST_offs	EQU	$5
-sheila_DMAC_MASK_LAST_offs	EQU	$6
-sheila_DMAC_DATA_A_offs		EQU	$7
-sheila_DMAC_ADDR_A_offs		EQU	$8
-sheila_DMAC_DATA_B_offs		EQU	$B
-sheila_DMAC_ADDR_B_offs		EQU	$C
-sheila_DMAC_ADDR_C_offs		EQU	$F
-sheila_DMAC_ADDR_D_offs		EQU	$12
-sheila_DMAC_ADDR_E_offs		EQU	$15
-sheila_DMAC_STRIDE_A_offs	EQU	$18
-sheila_DMAC_STRIDE_B_offs	EQU	$1A
-sheila_DMAC_STRIDE_C_offs	EQU	$1C
-sheila_DMAC_STRIDE_D_offs	EQU	$1E
-
-sheila_DMAC_SND_DATA_offs	EQU	$20
-sheila_DMAC_SND_ADDR_offs	EQU	$21
-sheila_DMAC_SND_PERIOD_offs	EQU	$24
-sheila_DMAC_SND_LEN_offs	EQU	$26
-sheila_DMAC_SND_STATUS_offs	EQU	$28
-sheila_DMAC_SND_VOL_offs	EQU	$29
-sheila_DMAC_SND_REPOFF_offs	EQU	$2A
-sheila_DMAC_SND_PEAK_offs	EQU	$2C
+; Sound Status / control bits
+SND_CTL_ACT			EQU	$80
+SND_CTL_REPEAT			EQU	$01
 
 
-sheila_DMAC_SND_MA_VOL_offs	EQU	$2E
-sheila_DMAC_SND_SEL_offs	EQU	$2F
+DMAC_BLITCON_offs		EQU	0
+DMAC_FUNCGEN_offs		EQU	$1
+DMAC_WIDTH_offs			EQU	$2
+DMAC_HEIGHT_offs		EQU	$3
+DMAC_SHIFT_offs			EQU	$4
+DMAC_MASK_FIRST_offs		EQU	$5
+DMAC_MASK_LAST_offs		EQU	$6
+DMAC_DATA_A_offs		EQU	$7
+DMAC_ADDR_A_offs		EQU	$8
+DMAC_DATA_B_offs		EQU	$B
+DMAC_ADDR_B_offs		EQU	$C
+DMAC_ADDR_C_offs		EQU	$F
+DMAC_ADDR_D_offs		EQU	$12
+DMAC_ADDR_E_offs		EQU	$15
+DMAC_STRIDE_A_offs		EQU	$18
+DMAC_STRIDE_B_offs		EQU	$1A
+DMAC_STRIDE_C_offs		EQU	$1C
+DMAC_STRIDE_D_offs		EQU	$1E
 
-sheila_DMAC_DMA_CTL_offs	EQU	$30
-sheila_DMAC_DMA_SRC_ADDR_offs	EQU	$31
-sheila_DMAC_DMA_DEST_ADDR_offs	EQU	$34
-sheila_DMAC_DMA_COUNT_offs	EQU	$37
-sheila_DMAC_DMA_DATA_offs	EQU	$39
-sheila_DMAC_DMA_SEL_offs	EQU	$3F
+DMAC_SND_DATA_offs		EQU	$20
+DMAC_SND_ADDR_offs		EQU	$21
+DMAC_SND_PERIOD_offs		EQU	$24
+DMAC_SND_LEN_offs		EQU	$26
+DMAC_SND_STATUS_offs		EQU	$28
+DMAC_SND_VOL_offs		EQU	$29
+DMAC_SND_REPOFF_offs		EQU	$2A
+DMAC_SND_PEAK_offs		EQU	$2C
 
-sheila_DMAC			EQU	$FC60
-sheila_DMAC_BLITCON		EQU	sheila_DMAC + sheila_DMAC_BLITCON_offs
-sheila_DMAC_FUNCGEN		EQU	sheila_DMAC + sheila_DMAC_FUNCGEN_offs
-sheila_DMAC_WIDTH		EQU	sheila_DMAC + sheila_DMAC_WIDTH_offs
-sheila_DMAC_HEIGHT		EQU	sheila_DMAC + sheila_DMAC_HEIGHT_offs
-sheila_DMAC_SHIFT		EQU	sheila_DMAC + sheila_DMAC_SHIFT_offs
-sheila_DMAC_MASK_FIRST		EQU	sheila_DMAC + sheila_DMAC_MASK_FIRST_offs
-sheila_DMAC_MASK_LAST		EQU	sheila_DMAC + sheila_DMAC_MASK_LAST_offs
-sheila_DMAC_DATA_A		EQU	sheila_DMAC + sheila_DMAC_DATA_A_offs
-sheila_DMAC_ADDR_A		EQU	sheila_DMAC + sheila_DMAC_ADDR_A_offs
-sheila_DMAC_DATA_B		EQU	sheila_DMAC + sheila_DMAC_DATA_B_offs
-sheila_DMAC_ADDR_B		EQU	sheila_DMAC + sheila_DMAC_ADDR_B_offs
-sheila_DMAC_ADDR_C		EQU	sheila_DMAC + sheila_DMAC_ADDR_C_offs
-sheila_DMAC_ADDR_D		EQU	sheila_DMAC + sheila_DMAC_ADDR_D_offs
-sheila_DMAC_ADDR_E		EQU	sheila_DMAC + sheila_DMAC_ADDR_E_offs
-sheila_DMAC_STRIDE_A		EQU	sheila_DMAC + sheila_DMAC_STRIDE_A_offs
-sheila_DMAC_STRIDE_B		EQU	sheila_DMAC + sheila_DMAC_STRIDE_B_offs
-sheila_DMAC_STRIDE_C		EQU	sheila_DMAC + sheila_DMAC_STRIDE_C_offs
-sheila_DMAC_STRIDE_D		EQU	sheila_DMAC + sheila_DMAC_STRIDE_D_offs
+DMAC_SND_MA_VOL_offs		EQU	$2E
+DMAC_SND_SEL_offs		EQU	$2F
 
-sheila_DMAC_SND_DATA		EQU	sheila_DMAC + sheila_DMAC_SND_DATA_offs
-sheila_DMAC_SND_ADDR		EQU	sheila_DMAC + sheila_DMAC_SND_ADDR_offs
-sheila_DMAC_SND_PERIOD		EQU	sheila_DMAC + sheila_DMAC_SND_PERIOD_offs
-sheila_DMAC_SND_LEN		EQU	sheila_DMAC + sheila_DMAC_SND_LEN_offs
-sheila_DMAC_SND_STATUS		EQU	sheila_DMAC + sheila_DMAC_SND_STATUS_offs
-sheila_DMAC_SND_VOL		EQU	sheila_DMAC + sheila_DMAC_SND_VOL_offs
-sheila_DMAC_SND_REPOFF		EQU	sheila_DMAC + sheila_DMAC_SND_REPOFF_offs
-sheila_DMAC_SND_PEAK		EQU 	sheila_DMAC + sheila_DMAC_SND_PEAK_offs
+DMAC_DMA_CTL_offs		EQU	$30
+DMAC_DMA_SRC_ADDR_offs		EQU	$31
+DMAC_DMA_DEST_ADDR_offs		EQU	$34
+DMAC_DMA_COUNT_offs		EQU	$37
+DMAC_DMA_DATA_offs		EQU	$39
+DMAC_DMA_CTL2_offs		EQU	$3A
+DMAC_DMA_PAUSE_offs		EQU	$3B
+DMAC_DMA_SEL_offs		EQU	$3F
+
+jim_page_DMAC			EQU	$FEFC		; hardware jim page
+jim_DMAC			EQU	$FD60		; jim location in SYS map
+
+jim_page_VERSION		EQU	$FC00
+
+jim_offs_VERSION_API_level	EQU	$80
+jim_offs_VERSION_Board_level	EQU	$81
+jim_offs_VERSION_API_sublevel	EQU	$82
+jim_offs_VERSION_cfg_bits	EQU	$84
+jim_offs_VERSION_cap_bits	EQU	$88
+
+; Mk.2/1 option switches - note in API level >1 the sense of these is reversed!
+BLT_MK2_CFG0_T65		EQU	$01
+BLT_MK2_CFG0_CPU_6502A_2M	EQU	$00
+BLT_MK2_CFG0_CPU_65C02_4M	EQU	$02
+BLT_MK2_CFG0_CPU_65C02_8M	EQU	$04
+BLT_MK2_CFG0_CPU_6x09_2M	EQU	$08
+BLT_MK2_CFG0_CPU_6309_4M	EQU	$0A
+BLT_MK2_CFG0_CPU_Z80_8M		EQU	$0C
+BLT_MK2_CFG0_CPU_68008		EQU	$0E
+BLT_MK2_CFG0_SWROMX		EQU	$10
+BLT_MK2_CFG0_BUGBTN		EQU	$80
+
+BLT_MK2_CFG1_MEMI		EQU	$01
+BLT_MK2_CFG1_BUGOUT		EQU	$02
+
+; Mk.3 switches from PORTF/G
+BLT_MK3_CFG0_T65		EQU	$08
+BLT_MK3_CFG0_SWROMX		EQU	$10
+BLT_MK3_CFG0_MEMI		EQU	$40
 
 
-sheila_DMAC_SND_SEL		EQU	sheila_DMAC + sheila_DMAC_SND_SEL_offs
-sheila_DMAC_SND_MA_VOL		EQU	sheila_DMAC + sheila_DMAC_SND_MA_VOL_offs
 
-sheila_DMAC_DMA_CTL		EQU	sheila_DMAC + sheila_DMAC_DMA_CTL_offs
-sheila_DMAC_DMA_SRC_ADDR	EQU	sheila_DMAC + sheila_DMAC_DMA_SRC_ADDR_offs
-sheila_DMAC_DMA_DEST_ADDR	EQU	sheila_DMAC + sheila_DMAC_DMA_DEST_ADDR_offs
-sheila_DMAC_DMA_COUNT		EQU	sheila_DMAC + sheila_DMAC_DMA_COUNT_offs
-sheila_DMAC_DMA_DATA		EQU	sheila_DMAC + sheila_DMAC_DMA_DATA_offs
-sheila_DMAC_DMA_SEL		EQU	sheila_DMAC + sheila_DMAC_DMA_SEL_offs
+jim_DMAC_BLITCON		EQU	jim_DMAC + DMAC_BLITCON_offs
+jim_DMAC_FUNCGEN		EQU	jim_DMAC + DMAC_FUNCGEN_offs
+jim_DMAC_WIDTH			EQU	jim_DMAC + DMAC_WIDTH_offs
+jim_DMAC_HEIGHT			EQU	jim_DMAC + DMAC_HEIGHT_offs
+jim_DMAC_SHIFT			EQU	jim_DMAC + DMAC_SHIFT_offs
+jim_DMAC_MASK_FIRST		EQU	jim_DMAC + DMAC_MASK_FIRST_offs
+jim_DMAC_MASK_LAST		EQU	jim_DMAC + DMAC_MASK_LAST_offs
+jim_DMAC_DATA_A			EQU	jim_DMAC + DMAC_DATA_A_offs
+jim_DMAC_ADDR_A			EQU	jim_DMAC + DMAC_ADDR_A_offs
+jim_DMAC_DATA_B			EQU	jim_DMAC + DMAC_DATA_B_offs
+jim_DMAC_ADDR_B			EQU	jim_DMAC + DMAC_ADDR_B_offs
+jim_DMAC_ADDR_C			EQU	jim_DMAC + DMAC_ADDR_C_offs
+jim_DMAC_ADDR_D			EQU	jim_DMAC + DMAC_ADDR_D_offs
+jim_DMAC_ADDR_E			EQU	jim_DMAC + DMAC_ADDR_E_offs
+jim_DMAC_STRIDE_A		EQU	jim_DMAC + DMAC_STRIDE_A_offs
+jim_DMAC_STRIDE_B		EQU	jim_DMAC + DMAC_STRIDE_B_offs
+jim_DMAC_STRIDE_C		EQU	jim_DMAC + DMAC_STRIDE_C_offs
+jim_DMAC_STRIDE_D		EQU	jim_DMAC + DMAC_STRIDE_D_offs
+
+jim_DMAC_SND_DATA		EQU	jim_DMAC + DMAC_SND_DATA_offs
+jim_DMAC_SND_ADDR		EQU	jim_DMAC + DMAC_SND_ADDR_offs
+jim_DMAC_SND_PERIOD		EQU	jim_DMAC + DMAC_SND_PERIOD_offs
+jim_DMAC_SND_LEN		EQU	jim_DMAC + DMAC_SND_LEN_offs
+jim_DMAC_SND_STATUS		EQU	jim_DMAC + DMAC_SND_STATUS_offs
+jim_DMAC_SND_VOL		EQU	jim_DMAC + DMAC_SND_VOL_offs
+jim_DMAC_SND_REPOFF		EQU	jim_DMAC + DMAC_SND_REPOFF_offs
+jim_DMAC_SND_PEAK		EQU 	jim_DMAC + DMAC_SND_PEAK_offs
+
+
+jim_DMAC_SND_SEL		EQU	jim_DMAC + DMAC_SND_SEL_offs
+jim_DMAC_SND_MA_VOL		EQU	jim_DMAC + DMAC_SND_MA_VOL_offs
+
+jim_DMAC_DMA_CTL		EQU	jim_DMAC + DMAC_DMA_CTL_offs
+jim_DMAC_DMA_SRC_ADDR		EQU	jim_DMAC + DMAC_DMA_SRC_ADDR_offs
+jim_DMAC_DMA_DEST_ADDR		EQU	jim_DMAC + DMAC_DMA_DEST_ADDR_offs
+jim_DMAC_DMA_COUNT		EQU	jim_DMAC + DMAC_DMA_COUNT_offs
+jim_DMAC_DMA_DATA		EQU	jim_DMAC + DMAC_DMA_DATA_offs
+jim_DMAC_DMA_CTL2		EQU	jim_DMAC + DMAC_DMA_CTL2_offs
+jim_DMAC_DMA_PAUSE		EQU	jim_DMAC + DMAC_DMA_PAUSE_offs
+jim_DMAC_DMA_SEL		EQU	jim_DMAC + DMAC_DMA_SEL_offs
+
+JIM_DEVNO_HOG1MPAULA		EQU	$D0
+JIM_DEVNO_BLITTER		EQU	$D1
+
 
 	ENDIF

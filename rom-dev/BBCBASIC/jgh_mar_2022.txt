@@ -1,0 +1,266 @@
+
+stardot.org.uk
+for users of Acorn computers and emulators
+
+Skip to content
+
+Search…
+Quick linksFAQUser avatar dominicbeesleyPrivate messagesNotifications2
+Board index
+User Control Panel
+Overview
+Profile
+Board preferences
+Private messages
+Usergroups
+Friends & Foes
+Privacy Data
+Delete My Account
+Compose message
+Manage PM drafts
+Inbox
+Outbox (1)
+Sent messages
+Rules, folders & settings
+Friends
+ss023459
+View messages: Inbox
+Folder is 98% full (394 out of 400 messages stored)
+
+Return to “Inbox”Previous PM in historyNext PM in history
+User avatarjgharston
+Posts: 4685
+Joined: Thu Sep 24, 2009 12:22 pm
+Location: Whitby/Sheffield
+Contact: Contact jgharston
+Re: 6809 BASIC ROM header
+Sent: Tue Mar 29, 2022 11:22 pm
+From: jgharston
+Recipient: dominicbeesley 
+
+dominicbeesley wrote: ↑Tue Mar 29, 2022 2:15 am
+Thanks that sounds like it could work though I suspect there might be problems down the line with running out of space but it should be possible to optimise the 6809 code quite a lot. I didn't really think about coding for space.
+Yes, looking through the code I saw lots of places it could be optimised. With the increased number of registers, very generally, 6809 code is about 20% more compact than 6502 code that does the same task. (And, contrary to the marketing blurb, I've found 6812 code to be /larger/ than 6809 code - I ran out of space for the 6812 Tube Client hand-translating and optimising it from the 6809 client.)
+Is the 6809 board a red one or a blue one? If its the original red one I'm not sure I'd recommend it.
+Ah, now you've got me! It's in a box, in another box, somewhere. ;)
+CODE: SELECT ALL
+
+$ bbcbasic
+PDP11 BBC BASIC IV Version 0.36
+(C) Copyright J.G.Harston 1989,2005-2020
+>_
+TopPrevious PM Next PMMove to folder: 
+Inbox
+ 
+EXPAND VIEWMESSAGE HISTORY:
+Re: 6809 BASIC ROM header
+ Sent: Wed Apr 20, 2022 1:05 am
+by dominicbeesley
+
+I will probably not be ready by then! And good luck with the election!
+Re: 6809 BASIC ROM header
+ Sent: Tue Apr 19, 2022 6:47 pm
+by jgharston
+
+Give me (counts...) 18 days to get past the election. I may have the energy to think by then. :D
+Re: 6809 BASIC ROM header
+ Sent: Tue Apr 19, 2022 4:40 pm
+by dominicbeesley
+
+I'm afraid I've still not looked at the 6x09 basic stuff yet but I have been busily back-porting most of the changes from my Mk.3 board back to the Mk.2 board and doing a huge refactoring exercise to share the majority of the vhdl between the two boards. I don't want to break off doing this until I've got it fully tested and put to bed or I'll forget where I'm at. I thought it would take a couple of evenings or afternoons but it's taking a little longer...92 commits to git so far over the past couple of weeks and still got a pile of stuff to sort out...
+
+After that I need to make a couple of tweaks to the support ROM and the vhdl registers so that the support ROM can better work out which board version is plugged in, test for memory at boot up. It's all a bit hard-codey at the moment! Once I've done that I'm going to have a look at harmonising the endianness stuff between my API and the 6809 tube API and I'll sort BASIC out then.
+
+Are you interested in a Mk.2 board, I've checked through my parts bins and I should have enough parts to make up a couple of boards - the limiting factor is the FPGA modules which look like they will be unobtainable for the foreseeable
+
+D
+Re: 6809 BASIC ROM header
+ Sent: Sat Apr 02, 2022 10:20 pm
+by jgharston
+
+dominicbeesley wrote: ↑Sat Apr 02, 2022 6:47 pm
+Where are you standing? Are you still in Walkley?
+No, I'm in Whitby. Aiming to hold my seat on Whitby Town Council as a "no description". We try hard to keep politics off the Town Council.
+
+Also, doing a favour to the party and standing in the County Council as a paper candidate for the Liberal Democrats. The mad rush has been Scarborough constantly demanding my leaflet writing skills and dragging me over there to write leaflets by committee.
+Re: 6809 BASIC ROM header
+ Sent: Sat Apr 02, 2022 6:47 pm
+by dominicbeesley
+
+Where are you standing? Are you still in Walkley?
+Re: 6809 BASIC ROM header
+ Sent: Sat Apr 02, 2022 5:35 pm
+by jgharston
+
+I've just gone home from getting the last of my election signitures. Now a nervous wait until Monday when I can take them to the Town Hall. :)
+Re: 6809 BASIC ROM header
+ Sent: Tue Mar 29, 2022 11:29 pm
+by dominicbeesley
+
+Yes, the only optimising, I did was in a few select places for speed. There's quite a few places where I've tried to be "clever" about converting bytes into word registers that could probably be shorter, especially if they were subroutines instead of long-ish macros. My main aim was to get it working first and try and get the assemblers going.
+
+I'm pretty sure the board was an early red one. I've started on retro-fitting the newer firmware to the older board but it will probably take me a week before it's working....nothing like starting yet another project.
+
+I will try and get a look at your latest changes to BASIC tomorrow but there's a lot of distractions at the moment.
+
+D
+Re: 6809 BASIC ROM header
+ Sent: Tue Mar 29, 2022 11:22 pm
+by jgharston
+
+dominicbeesley wrote: ↑Tue Mar 29, 2022 2:15 am
+Thanks that sounds like it could work though I suspect there might be problems down the line with running out of space but it should be possible to optimise the 6809 code quite a lot. I didn't really think about coding for space.
+Yes, looking through the code I saw lots of places it could be optimised. With the increased number of registers, very generally, 6809 code is about 20% more compact than 6502 code that does the same task. (And, contrary to the marketing blurb, I've found 6812 code to be /larger/ than 6809 code - I ran out of space for the 6812 Tube Client hand-translating and optimising it from the 6809 client.)
+Is the 6809 board a red one or a blue one? If its the original red one I'm not sure I'd recommend it.
+Ah, now you've got me! It's in a box, in another box, somewhere. ;)
+Re: 6809 BASIC ROM header
+ Sent: Tue Mar 29, 2022 2:15 am
+by dominicbeesley
+
+Thanks that sounds like it could work though I suspect there might be problems down the line with running out of space but it should be possible to optimise the 6809 code quite a lot. I didn't really think about coding for space.
+
+Is the 6809 board a red one or a blue one? If its the original red one I'm not sure I'd recommend it. It used the lattice March XO fpga and one I had got the firmware to a certain point the Lattice tools refused to work. It might be better to upgrade to a newer mark 2 or 3 board which work a lot better though I've not back ported my most recent stuff to the mk2. The mk.3 is best but I can't make any more until Intel pull their finger out and make some more chips. I should have all the parts to make up a mk.2 board though! Let me know if you're interested and I'll try and get one built up
+
+D
+Re: 6809 BASIC ROM header
+ Sent: Mon Mar 28, 2022 11:20 pm
+by jgharston
+
+While on the train home today I went through some ideas. Following some scribbling and testing, this seems to work:
+CODE: SELECT ALL
+
+Combined 6502/6809 ROM entry point
+==================================
+
+With a BBC ROM that needs to work on both the classic 6502 BBC systems and
+the 6809Beeb the entry points need to be callable in both 6502 code and 6809
+code. Examining each CPU's opcodes and sequence of bytes can be constructed
+that will execute on both CPUs, branching off to the appropriate CPU-specific
+code.
+
+The code squeezed into 8003-8005 needs to branch into the main code, and
+separate out the 6809 and the 6502. The 6809 BRA instruction opcode is $20,
+this is the 6502 JSR opcode. So, on both CPUs this will change the program
+counter to another location, from where we can pick up and split off into
+different code.
+
+The following bytes:
+
+    addr    byte  6502     6890
+    8003     20   JSR      BRA
+    8004     xx   8000+xx  8005+xx
+    8005     80  
+
+will result in the 6502 jumping to 8000+xx, and the 6809 jumping to 8005+xx.
+To keep within the range of the 6809 BRA instruction, the destination must be
+before 8084, being 8005+7F. This is enough space to tidy up and branch off to
+the seperate main routines:
+
+    addr    byte  6502     6890
+    8000+xx  BA   TSX
+    8001+xx  E8   INX              ; Drop the return address
+    8002+xx  E8   INX              ; converting JSR to JMP
+    8003+xx  D0   BNE              ; Flags are now NE, so
+    8004+xx  03   8008+xx          ; branch past 6809 code
+    8005+xx  7E            JMP     ; Jump to 6809 code
+    8006+xx  zz            zzzz
+    8007+xx  zz
+    8008+xx  9A   TXS              ; Update 6502 stack
+    8009+xx  A6   LDX              ; Restore X from ROMNUM
+    800A+xx  F4   &F4
+    800B+xx  ...                   ; Rest of 6502 code
+    ...
+    zzzz     ...                   ; Rest of 6809 code
+
+
+Coding for 6809 assembler:
+L8000:     JMP LANGSTART            ; Language entry
+L8003:     BRA SERV6502+5           ; Service entry
+           FCB $80
+L8006:     FCB $E3                  ; Serv+Lang+Tube+6809
+           FCB COPYRIGHT-L8000      ; Offset to copyright string
+           FCB VERBYTE              ; Version byte
+           FCB "ROM TITLE",0
+           FCB "x.yx (dd mmm yyyy)" ; Version string
+COPYRIGHT: FCB 0,"(C) My Name",0
+           FCB LOADADDR % 256       ; Second processor transfer address
+           FCB LOADADDR / 256       ; Note stored in little-endian byte order!
+           FCB 0                    ; 32-bit address
+           FCB 0
+
+SERV6502:  FCB $BA,$E8,$E8          ; TSX, INX, INX
+           FCB $D0,$03              ; BNE past SERV6809
+           JMP SERV6809             ; Bounce to 6809 service handler
+           FCB $9A,$A6,$F4          ; TXS, LDX &F4 
+           ; continue with 6502 service code
+
+#assert SERV6502-L8003<$7D ERROR SERV65 too far from entry point
+I've implemented this in an updated 6809-specific ROM header module:
+https://mdfs.net/Software/BBCBasic/6809/ROMHdr09.asm
+
+This works fine here on 6809Tube running the BASIC, and on BeebEm as a sideways ROM. I need to get around to finding a spare beeb to cannibalise to put your 6809 board in.
+Re: 6809 BASIC ROM header
+ Sent: Sun Mar 27, 2022 10:16 am
+by dominicbeesley
+
+Thanks. I'll try and get this all on to git later. I'd not worry too much about the service code being cpu agnostic. Though it would be interesting to work out a set of codes that work for both cpus without corrupting any of the registers..or the other option would be to tweak the rom api on the beeb6809. At present I have slightly different builds anyway
+
+Your life sounds hectic!
+Re: 6809 BASIC ROM header
+ Sent: Sun Mar 27, 2022 1:36 am
+by jgharston
+
+Similar to your earlier comment in the main thread, my 6809 BASIC development directory is a MESS! :D This should be the opportunity for me to get around to tidying it up. Part of my problem I mentioned in the previous message was that I was editing one source file, and inadvertantly building from a different one. #-o
+Re: 6809 BASIC ROM header
+ Sent: Sun Mar 27, 2022 1:33 am
+by jgharston
+
+I had a chance to do some coding today. I've had my hands full - trying to help my Mum move to a retirement home, *and* trying to organise a by-election, *and* trying to organise candidates and literature for a set of normal elections, *and* organising getting a friend's book printed. Phew!
+
+Anyway, it turns out in transcribing the 6502 code into DEFBs I'd omitted a LDA #0. This now works perfectly:
+https://mdfs.net/Software/BBCBasic/6809/HeaderROM.asm
+Image
+
+The 6502 code is: ROMHdr7.s or ROMHdr7.bas
+
+It still leaves the issue of the service code existing on a 6809 host. Looking at the 6502 and 6809 opcodes I think I can work out a series of bytes that is enterable on both CPUs. I did some similar juggling with the Z80 BASIC ROM.
+Re: 6809 BASIC ROM header
+ Sent: Wed Mar 23, 2022 2:52 pm
+by dominicbeesley
+
+I had a quick go at merging that in but there seems to be problems. Trying it in B-em (I can't do SWRAM on my real Beeb today because it's playing up) I just get either:
+- "Not 6809 code" if 6502 basic is in a higher slot
+- Bad Command if I try *BASIC when 6809 is in a high slot
+- lots of what look like CHR$7F if I press BREAK
+
+Looking at a disassembly of the 6502 blob I can't see where it captures OSCLI. Have you got the source for the 6502 stuff please and maybe I'll understand what it is meant to be doing?!
+Re: 6809 BASIC ROM header
+ Sent: Wed Mar 23, 2022 12:34 pm
+by dominicbeesley
+
+Thanks. I'll take a look later today if I get the chance. Is the code going to interfere with 6809 mos service calls?
+
+My email is dominic@authorityfile.co.uk
+
+D
+6809 BASIC ROM header
+ Sent: Wed Mar 23, 2022 12:33 am
+by jgharston
+
+I can't find where I've put your email address, so I'm posting through here.
+
+I've translated the generic Tube language ROM header into 6809 DB directives and tweeked the BASIC.asm
+source to include it here:
+https://mdfs.net/Software/BBCBasic/6809 ... 220322.zip
+
+It's the same code from the Z80 BASIC ROM and PDP11 BASIC ROM. If the CoPro matches the CPU the BASIC expects to run on, it claims the *BASIC command and disables the 6502 languages; if the CoPro does not match it disables its own language setting.
+
+One issue is that it intends to run on a 6502 Host system - the service code is 6502 code. I can't remember if you 6809MOS service handler does anything more than just checking the Service bit in the ROM type byte, or if it checks the service handler starts with a 6809 JMP or anything. I've been comparing the 6502 and 6809 opcode maps, and I'm optimistic I can pick a selection of opcodes to have the Service Entry callable by by 6502 and 6809, as I worked out with the Z80 ROM.
+
+My 6809 development diretories need drastically tidying up. It the moment I've shifted everything into 'tosort' and just got the 6809 BASIC there now. ;)
+Top
+
+Board indexAll times are UTC+01:00Delete cookiesMembersThe team PoliciesContact us
+Powered by phpBB® Forum Software © phpBB Limited
+
+Privacy | Terms

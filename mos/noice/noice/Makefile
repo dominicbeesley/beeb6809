@@ -11,6 +11,7 @@ TARGETS_EXTRA=	mon-noice-6309-chipkit.bin \
 		mon-noice-my-6809-beeb.bin \
 		mon-noice-my-6809-beeb-ovr.ovr \
 		mon-noice-6309-beeb-flex-ovr.ovr \
+		mon-noice-6809-beeb-flex-ovr.ovr \
 		mon-noice-6309-beeb-debug.ovr
 CLEAN_EXTRA=	mon-noice-6309-chipkit.bin \
 		mon-noice-6309-chipkit-ovr.ovr \
@@ -34,6 +35,8 @@ CLEAN_EXTRA=	mon-noice-6309-chipkit.bin \
 		mon-noice-my-6809-beeb-ovr.lst \
 		mon-noice-6309-beeb-flex-ovr.ovr \
 		mon-noice-6309-beeb-flex-ovr.lst \
+		mon-noice-6809-beeb-flex-ovr.ovr \
+		mon-noice-6809-beeb-flex-ovr.lst \
 		mon-noice-6309-beeb-debug.ovr \
 		mon-noice-6309-beeb-debug.lst
 include		../../../Makefile.defs
@@ -65,6 +68,9 @@ mon-noice-6809-beeb-ovr.ovr:	mon-noice-6x09.asm $(DEPS)
 
 mon-noice-6309-beeb-flex-ovr.ovr:	mon-noice-6x09.asm $(DEPS)
 			$(AS) -v -3 --define DO_ROMLATCH=0 --define NOICE_RAM_START=0xE000 --define CPU_6309=1 --define MACH_BEEB=1 --define STANDALONE=0 -o $@ -l $(basename $@).lst $<
+
+mon-noice-6809-beeb-flex-ovr.ovr:	mon-noice-6x09.asm $(DEPS)
+			$(AS) -v --define DO_ROMLATCH=0 --define NOICE_RAM_START=0xE000 --define CPU_6809=1 --define MACH_BEEB=1 --define STANDALONE=0 -o $@ -l $(basename $@).lst $<
 
 mon-noice-6309-beeb-debug.ovr: mon-noice-6x09.asm $(DEPS)
 	$(AS) -v -3 \

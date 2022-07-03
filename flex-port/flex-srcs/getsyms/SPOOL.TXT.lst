@@ -1,0 +1,164 @@
+                                      ; NAM  SPOOL MODULE
+                                      ; OPT  PAG
+                              *************************************************
+                              *
+                              *  PRINTER SPOOLING MODULE TSC FLEX 3.01
+                              *
+                              *************************************************
+                      
+                      
+                                      ; SPC  1
+C700                                  ORG     $C700
+                              *ENTRY JUMP TABLE
+C700  7EC721          CNGTSK          JMP     >SCHED                          ; SWI ENTRY POINT
+C703  7EC703          LOOP            JMP     >LOOP
+C706  7EC747                          JMP     >STARSP                         ; SPOOL ENTRY
+C709  7EC785                          JMP     >TSTSET                         ; TEST AND SET FLAG
+C70C  7EC795                          JMP     >CLRFLG                         ; CLEAR FLAG
+C70F  7EC71F                          JMP     >IENTRY                         ; IRQ ENTRY
+                                      ; SPC  1
+                              *PROGRAM VARIABLES
+C712  0C              FEED            FCB     $0C                             ; FORM FEED
+C713  00000000                        FCB     0,0,0,0
+C717  C810                            FDB     QBEGIN
+C719  C810            QPOINT          FDB     QBEGIN
+C71B  00              QCOUNT          FCB     $00
+C71C  00              CRFLAG          FCB     $00
+C71D  00              CANCEL          FCB     $00                             ; CANCEL PRINTING FLAG
+C71E  00              STOP            FCB     $00                             ; STOP PRINTING FLAG
+                                      ; SPC  1
+                              *TASK SCHEDULER
+                              *ENTRY VIA SWI3 OR IRQ
+C71F  3B              IENTRY          RTI                             ;  NO LONGER USED
+C720  12                              NOP
+C721  1A10            SCHED           ORCC    #$10                            ; MASK IRQ
+C723  BECC31                          LDX     >CURTSK                         ; GET CURRENT TASK POINTER
+C726  10EF02                          STS     $02,X                           ; SAVE STACK
+C729  7DCC34                          TST     >MODE
+C72C  2611                            BNE     FORGND
+C72E  8ECCFC                          LDX     #$CCFC                          ; POINT TO BACKGROUND TASK
+C731  7CCC34                          INC     >MODE
+C734  6D84                            TST     ,X                              ; TASK NOT ACTIVE?
+C736  2707                            BEQ     FORGND
+C738  BFCC31          TSKRTN          STX     >CURTSK
+C73B  10EE02                          LDS     $02,X                           ; RESTORE STACK
+C73E  3B                              RTI
+C73F  8ECCF8          FORGND          LDX     #$CCF8                          ; POINT TO FOREGROUND TASK
+C742  7FCC34                          CLR     >MODE                           ; SET TO FORGND.MODE
+C745  20F1                            BRA     TSKRTN
+                                      ; PAG 
+                              ********************************************
+                              *
+                              * PRINT SPOOL BACKGROUND TASK
+                              * SET UP BY PRINT.CMD
+                              *
+                              ********************************************
+                      
+                      
+C747  1A10            STARSP          ORCC    #$10                            ; MASK IRQ
+C749  7DC71B                          TST     >QCOUNT                         ; EMPTY?
+C74C  2729                            BEQ     SPSTOP
+C74E  BEC719                          LDX     >QPOINT
+C751  A684                            LDA     ,X                              ; GET DRIVE #
+C753  3402                            PSHS    A
+C755  EC01                            LDD     $01,X                           ; GET TRACK SECTOR
+C757  8ECAC0                          LDX     #SPLFCB
+C75A  ED8840                          STD     $40,X                           ; SET TRACK SECTOR
+C75D  3502                            PULS    A
+C75F  A703                            STA     $03,X                           ; SET DRIVE #
+C761  6F84                            CLR     ,X                              ; SET READ BYTE
+C763  8601                            LDA     #$01                            ; FAKE OPEN FOR READ
+C765  A702                            STA     $02,X
+C767  6F8822                          CLR     $22,X
+C76A  6F883B                          CLR     $3B,X                           ; SPACE EXPAND ON
+C76D  7DC71E          STOPIT          TST     >STOP                           ; STOP REQUEST?
+C770  2729                            BEQ     NEXTCH
+C772  113F                            SWI3                            ;  LET OTHER TASK RUN
+C774  12                              NOP
+C775  20F6                            BRA     STOPIT
+                                      ; SPC  1
+C777  1CEF            SPSTOP          ANDCC   #$EF                            ; CLEAR IRQ MASK
+C779  AD9FD3ED        TURNOF          JSR     [TIMOFF]
+C77D  7FCCFC                          CLR     >$CCFC                          ; TURN OFF BACKGND TASK
+C780  113F                            SWI3                            ;  CHANGE TASK
+C782  12                              NOP
+C783  20F4                            BRA     TURNOF                          ; JUST IN CASE
+                                      ; SPC  1
+                              *TEST FLAG SET IF CLEAR
+                              *LOOP AS LONG AS SET
+C785  1A10            TSTSET          ORCC    #$10                            ; MASK IRQ
+C787  7DCC30                          TST     >FLAG
+C78A  2705                            BEQ     OKCONT                          ; CLEAR SO CONTINUE
+C78C  113F                            SWI3                            ;  GIVE UP AND WAIT
+C78E  12                              NOP
+C78F  20F4                            BRA     TSTSET
+C791  7CCC30          OKCONT          INC     >FLAG                           ; SET FLAG
+C794  39                              RTS
+                                      ; SPC  1
+                              *CLEAR FMS IN USE FLAG
+C795  7FCC30          CLRFLG          CLR     >FLAG
+C798  1CEF                            ANDCC   #$EF                            ; CLEAR IRQ FLAG
+C79A  39                              RTS
+                                      ; SPC  1
+                              *PRINTER SERVICE ROUTINES
+C79B  7DC71D          NEXTCH          TST     >CANCEL                         ; ABORT REST OF FILE?
+C79E  2627                            BNE     WRAPUP                          ; DONE IF SET
+C7A0  8ECAC0                          LDX     #SPLFCB
+C7A3  BDD406                          JSR     >FMCALL                         ; READ BYTE FROM FILE
+C7A6  261F                            BNE     WRAPUP                          ; IF ERROR THEN DONE
+C7A8  7DC71C                          TST     >CRFLAG                         ; LAST CHAR=RETURN?
+C7AB  270F                            BEQ     LINFED
+C7AD  7FC71C                          CLR     >CRFLAG                         ; SET LAST CHAR NOT CR
+C7B0  810A                            CMPA    #$0A                            ; IS IT LINE FEED
+C7B2  270F                            BEQ     PRINT                           ; THEN PRINT IT
+C7B4  3402                            PSHS    A                               ; SAVE NEXT CHARACTER
+C7B6  860A                            LDA     #$0A
+C7B8  8D3C                            BSR     OUTPUT                          ; PRINT LINE FEED
+C7BA  3502                            PULS    A                               ; GET NEXT CHARACTER
+C7BC  810D            LINFED          CMPA    #$0D                            ; IS IT CR?
+C7BE  2603                            BNE     PRINT                           ; PRINT IT IF NOT CR
+C7C0  B7C71C                          STA     >CRFLAG                         ; SET CRFLAG FOR LINE FEED
+C7C3  8D31            PRINT           BSR     OUTPUT
+C7C5  20D4                            BRA     NEXTCH                          ; LOOP FOR NEXT CHAR.
+                                      ; SPC  1
+                              *END OF FILE CLEANUP
+C7C7  860D            WRAPUP          LDA     #$0D                            ; OUTPUT RETURN
+C7C9  8D2B                            BSR     OUTPUT
+C7CB  860A                            LDA     #$0A                            ; OUTPUT LINE FEED
+C7CD  8D27                            BSR     OUTPUT
+C7CF  B6C712                          LDA     >FEED                           ; OUTPUT FORM FEED
+C7D2  8D22                            BSR     OUTPUT
+C7D4  7FC71D                          CLR     >CANCEL
+C7D7  BEC719                          LDX     >QPOINT                         ; POINT TO QUE
+C7DA  6D03                            TST     $03,X                           ; REPEAT COUNT=0?
+C7DC  2705                            BEQ     NXTFIL
+C7DE  6A03                            DEC     $03,X                           ; DEC REPEAT COUNT
+C7E0  7EC747                          JMP     >STARSP                         ; RESTART PRINTING
+                                      ; SPC  1
+C7E3  3004            NXTFIL          LEAX    $04,X                           ; BUMP QUE POINTER
+C7E5  8CC840                          CMPX    #QEND                           ; END OF QUE?
+C7E8  2603                            BNE     NOTEND
+C7EA  8EC810                          LDX     #QBEGIN                         ; MAKE QUE WRAP AROUND
+C7ED  BFC719          NOTEND          STX     >QPOINT
+C7F0  7AC71B                          DEC     >QCOUNT
+C7F3  7EC747                          JMP     >STARSP
+                                      ; SPC  1
+C7F6  BDCCD8          OUTPUT          JSR     >LPREDY                         ; PRINTER READY?
+C7F9  2B05                            BMI     SENDIT
+C7FB  113F                            SWI3                            ;  NOT READY SO GIVE UP TIME
+C7FD  12                              NOP
+C7FE  20F6                            BRA     OUTPUT                          ; KEEP TESTING
+                                      ; SPC  1
+C800  7ECCE4          SENDIT          JMP     >LPOUT                          ; PRINT CHAR.
+                                      ; SPC  1
+C810                  QBEGIN          EQU     $C810
+C840                  QEND            EQU     $C840
+CAC0                  SPLFCB          EQU     $CAC0                           ; SPOOL FILE CTRL BLOCK
+CC30                  FLAG            EQU     $CC30                           ; FMS IN USE FLAG
+CC31                  CURTSK          EQU     $CC31                           ; CURRENT TASK POINTER
+CC34                  MODE            EQU     $CC34                           ; MODE FLAG
+CCD8                  LPREDY          EQU     $CCD8                           ; PRINTER READY CHECK
+CCE4                  LPOUT           EQU     $CCE4                           ; PRINTER OUTPUT
+D3E7                  IHANDL          EQU     $D3E7                           ; IRQ HANDLER
+D3ED                  TIMOFF          EQU     $D3ED                           ; TURN OFF TIMER
+D406                  FMCALL          EQU     $D406                           ; CALL FILE MANAGER

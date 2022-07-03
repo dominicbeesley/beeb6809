@@ -52,7 +52,7 @@ zp_mos_rs423timeout			EQU $00EA	; RS423 timeout counter, unused if no RS423
 zp_mos_cfs_critical			EQU $00EB	; CFS/RFS 'critical' flag
 zp_mos_keynumlast			EQU $00EC	; Internal key number (last)
 zp_mos_keynumfirst			EQU $00ED	; Internal key number (first)
-zp_mos_keynumignore			EQU $00EE	; Internal key number of character to be ignored by OSBYTE &79, also the 1MHz bus paging register
+zp_mos_jimdevsave			EQU $00EE	; Internal key number of character to be ignored by OSBYTE &79, also the 1MHz bus paging register
 zp_mos_OSBW_A				EQU $00EF	; OSBYTE/OSWORD A reg value
 	***** NOTE: zp_mos_OSBW_Y&X swapped for endiannedss
 zp_mos_OSWORD_X				EQU $00F0
@@ -313,6 +313,9 @@ snd_tempx				EQU $83F
 snd_envelope_defs			EQU $8C0
 
 soft_keys_start				EQU $B00
+soft_keys_ptrs				EQU soft_keys_start
+soft_keys_end_ptr			EQU soft_keys_ptrs+$10
+soft_keys_defs				EQU soft_keys_start+$11
 
 vec_nmi					EQU $0D00
 

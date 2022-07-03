@@ -1,0 +1,401 @@
+;
+* -----------------------------
+* Generate a sideways ROM error in ADDR_ERRBUF *stack or other space*
+* -----------------------------
+brk_inst	BRK					; this is a macro on chipkit/beeb it is SWI3 on MB it is SWI
+brk_inst_len	EQU	*-brk_inst
+BounceErrorOffStack
+		bsr	PrepErrBuf
+		puls	X				; get back return address
+1		lda	,X+				; copy error to stack / buffer
+		sta	,Y+
+		bne	1B
+		jsr	jimReleaseDev_err
+		jmp	ADDR_ERRBUF			; execute BRK from buffer
+
+PrepErrBuf
+		ldy	#ADDR_ERRBUF
+		ldb	#brk_inst_len
+		leax	brk_inst,PCR
+1		lda	,X+
+		sta	,Y+
+		decb
+		bne	1B
+		rts
+
+;------------------------------------------------------------------------------
+; Printing
+;------------------------------------------------------------------------------
+PrintCommaSpace	lda	#','
+		jsr	PrintA
+		bra	PrintSpc
+Print2Spc	jsr	PrintSpc
+PrintSpc		lda	#' '
+		bra	PrintA
+PrintNL		lda	#$D
+PrintA		jmp	OSASCI
+
+PrintX		pshs	X
+2		lda	,X+
+		beq	1F
+		jsr	OSASCI
+		bra	2B
+1		puls	X,PC
+
+PrintHexNybA	anda	#$0F
+		cmpa	#9
+		bls	1F
+		adda	#'A'-'9'-1
+1		adda	#'0'
+		jsr	PrintA
+		rts
+PrintHexA	pshs	A
+		lsra
+		lsra
+		lsra
+		lsra
+		jsr	PrintHexNybA
+		lda	0,S
+		jsr	PrintHexNybA
+		puls	A,PC
+PrintHexX	pshs	D,X
+		tfr	X,D
+		jsr	PrintHexA
+		lda	3,S
+		jsr	PrintHexA
+		puls	D,X,PC
+
+
+PrintDec		; acc is number to print (destroyed)
+		; zp_trans_tmp+1 destroyed
+		clrb
+1		jsr	div10Acc
+		sta	,-S			;stack a digit
+		incb
+		jsr	isAcc0
+		bne	1B
+2		lda	,S+
+		jsr	PrintHexNybA
+		decb
+		bne	2B
+		rts
+
+
+PrintMsgThenHexNyb
+		pshs	A
+		jsr	PrintX
+		puls	A
+		jsr	PrintHexNybA
+		jmp	PrintNL
+
+PrintImmed	pshs	A,X
+		; get back return address (first byte of string)
+		ldx	3,S
+1		lda	,X+
+		beq	2F
+		jsr	OSASCI
+		bra	1B
+2		stx	3,S
+		puls	A,X,PC
+
+PrintBytesAndK	jsr	PushAcc
+		jsr	PrintDec
+		jsr	PrintSpc
+		jsr	PopAcc
+		jsr	PrintSizeK
+		jmp	OSNEWL
+
+
+PrintSizeK	; print free space in Kbytes
+		; divide by 1024
+		; assume max of 16384k
+		ldd	zp_trans_acc+1
+		lsra
+		rorb
+		lsra
+		rorb
+		std	zp_trans_acc+2
+		; div 4
+		clr	zp_trans_acc+0
+		clr	zp_trans_acc+1
+		jsr	PrintDec
+		lda	#'k'
+		jmp	OSWRCH
+
+
+
+PromptYN		jsr	PrintX
+		ldx	#str_YN
+		jsr	PrintX
+
+1		jsr	WaitKey
+		bcs	2F
+		cmpa	#'Y'
+		beq	PromptYes
+		cmpa	#'N'
+		bne	1B
+PromptNo	ldx	#strNo
+		jsr	PrintX
+		lda	#$FF
+		CLC
+		rts
+PromptYes	ldx	#strYes
+		jsr	PrintX
+		clra
+		CLC
+2		rts
+
+
+WaitKey		pshs	B,X,Y
+2		lda	#OSBYTE_129_INKEY
+		ldy	#$7F
+		ldx	#$FF
+		jsr	OSBYTE
+		bcs	1F
+		tfr	X,D
+		tfr	B,A
+		CLC
+		puls	B,X,Y,PC
+1		cmpy	#27				; check for escape
+		bne	2B
+		lbra	ackEscape
+
+;------------------------------------------------------------------------------
+; Parsing
+;------------------------------------------------------------------------------
+SkipSpacesX	lda	,X+
+		cmpa	#' '
+		beq	SkipSpacesX
+		leax	-1,X
+		rts
+
+ToUpper		cmpa	#'a'
+		blo	1F
+		cmpa	#'z'
+		bhi	1F
+		anda	#$DF
+1		rts
+
+ParseHex	clrb
+		decb					; indicates first char
+		jsr	zeroAcc
+		jsr	SkipSpacesX
+		cmpa	#$D
+		beq	ParseHexErr
+ParseHexLp	lda	,X+
+		jsr	ToUpper
+		incb	
+		beq	1F
+		cmpa	#'+'
+		beq	ParseHexDone	
+1		cmpa	#' '
+		bls	ParseHexDone
+		cmpa	#'0'
+		blo	ParseHexErr
+		cmpa	#'9'
+		bhi	ParseHexAlpha
+		suba	#'0'
+ParseHexShAd	jsr	asl4Acc				; multiply existing number by 16
+		jsr	addAAcc				; add current digit
+		bra	ParseHexLp
+ParseHexAlpha	cmpa	#'A'
+		blo	ParseHexErr
+		cmpa	#'F'
+		bhi	ParseHexErr
+		suba	#'A'-10
+		bra	ParseHexShAd
+ParseHexErr	SEC
+		rts
+ParseHexDone	leax	-1,X
+		CLC
+		rts
+
+;------------------------------------------------------------------------------
+; Arith
+;------------------------------------------------------------------------------
+zeroAcc		clr	zp_trans_acc
+		clr	zp_trans_acc + 1
+		clr	zp_trans_acc + 2
+		clr	zp_trans_acc + 3
+		rts
+
+asl4Acc		pshs	B
+		ldb	#4
+1		asl	zp_trans_acc + 3
+		rol	zp_trans_acc + 2
+		rol	zp_trans_acc + 1
+		rol	zp_trans_acc + 0
+		decb
+		bne	1B
+		puls	B,PC
+
+addAAcc		pshs	D
+		tfr	A,B
+		clra
+		addd	zp_trans_acc + 2
+		std	zp_trans_acc + 2
+		clra
+		adca	zp_trans_acc + 1
+		sta	zp_trans_acc + 1
+		clra
+		adca	zp_trans_acc + 0
+		sta	zp_trans_acc + 0
+		puls	D,PC
+
+addAtXAcc	pshs	D
+		ldd	2,X
+		addd	zp_trans_acc + 2
+		std	zp_trans_acc + 2
+		ldd	0,x
+		adcb	zp_trans_acc + 1
+		adca	zp_trans_acc + 0
+		std	zp_trans_acc + 0
+		puls	D,PC
+
+subAtXAcc	pshs	D
+		ldd	zp_trans_acc + 2
+		subd	2,X
+		std	zp_trans_acc + 2
+		ldd	zp_trans_acc + 0
+		sbcb	1,X
+		sbca	0,x
+		std	zp_trans_acc + 0
+		puls	D,PC
+
+
+		; found at http://nparker.llx.com/a2/mult.html
+
+div10Acc		stb	,-S
+		lda	zp_trans_tmp
+		sta	,-S		;save working reg		
+        		clr	zp_trans_tmp      ;Initialize REM to 0
+        		ldb	#32     		;There are 32 bits in NUM1
+1	      	asl	zp_trans_acc+3   	;Shift hi bit of NUM1 into REM
+        		rol	zp_trans_acc+2 	;(vacating the lo bit, which will be used for the quotient)
+        		rol	zp_trans_acc+1
+        		rol	zp_trans_acc+0
+        		rol	zp_trans_tmp
+        		lda	zp_trans_tmp        				       
+        		suba	#10		;Trial subtraction
+        		bcs	2F	      	;Did subtraction succeed?
+        		sta	zp_trans_tmp
+        		inc	zp_trans_acc+3   	;and record a 1 in the quotient
+2	      	decb	        	
+		bne	1B
+        		ldb	,S+
+        		lda	zp_trans_tmp
+        		stb	zp_trans_tmp
+        		puls	B,PC
+
+isAcc0		pshs	D
+		ldd	zp_trans_acc
+		addd	zp_trans_acc+2
+		puls	D,PC
+
+PushAcc		leas	-4,S
+		std	,--S
+		
+		; stack contents
+		; 6..7	ret address
+		; 2..5	spare
+		; 0..1	saved D
+
+		ldd	6,S
+		std	2,S
+
+		; stack contents
+		; 4..7	spare
+		; 2..3	ret address
+		; 0..1	saved D
+
+		ldd	zp_trans_acc
+		std	4,S
+		ldd	zp_trans_acc+2
+		std	6,S
+
+		puls	D,PC
+
+
+PopAcc		std	,--S
+
+		; stack contents
+		; 4..7	old Acc
+		; 2..3	ret address
+		; 0..1	saved D
+
+		ldd 	4,S
+		std	zp_trans_acc
+		ldd 	6,S
+		std	zp_trans_acc+2
+
+		ldd	2,S
+		std	6,S
+
+		; stack contents
+		; 6..7	ret address
+		; 2..5	space
+		; 0..1	saved D
+
+		ldd	,S++
+		leas	4,S
+		rts
+
+
+POLYH    	EQU $10
+POLYL   	EQU $21
+POLY16		EQU $1021
+
+
+;;!!!TODO: check this - I am suspicious
+		; update CRC at zp_trans_acc with byte in A
+crc16		pshs	D,X
+		eora	zp_trans_acc
+		ldb	zp_trans_acc+1        
+		ldx	#8          		
+crc16_lp
+	IF CPU_6309
+		asld
+	ELSE
+		aslb
+		rola
+	ENDIF
+		bcc	crc16_cl
+	IF CPU_6309
+		eord	#POLY16
+	ELSE
+		eora	#POLYH
+		eorb	#POLYL
+	ENDIF
+crc16_cl	leax	-1,X
+		bne 	crc16_lp
+		std	zp_trans_acc
+		puls	D,X,PC
+
+
+inkey_clear
+		ldx	#0
+		ldy	#0
+		lda	#OSBYTE_129_INKEY
+		jsr	OSBYTE
+		bcc	inkey_clear
+
+inkey
+		pshs	X,Y,A
+		ldx	#255
+		ldy	#127
+		lda	#OSBYTE_129_INKEY
+		jsr	OSBYTE
+		tfr	X,D
+		puls	X,Y,A,PC
+
+
+CheckESC	tst	zp_mos_ESC_flag			; TODO - system call for this?
+		bpl	1F
+ackEscape
+		ldx	#$FF
+		lda	#OSBYTE_126_ESCAPE_ACK
+		jsr	OSBYTE
+brkEscape	M_ERROR
+		FCB	17, "Escape",0
+
+1		rts

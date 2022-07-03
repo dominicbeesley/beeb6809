@@ -6,14 +6,14 @@ assScanEnter						; L8920
 		CALL	skipSpacesY
 		EORA	#']'
 		BEQ	assScanExit				;  End of assembler
-		LEAY	-1,Y
+		LEAU	-1,U
 		CALL	storeYasTXTPTR
-		PSHS	Y
+		PSHS	U
 		CALL	assScanNextOp
 		PULS	X
 		STX	ZP_TXTPTR2			; points at start of instruction
-		STY	ZP_FPA
-;;		LEAY	-1,Y
+		STU	ZP_FPA
+;;		LEAU	-1,U
 		LDA	ZP_OPT
 		LSRA
 		BCC	assSkipList
@@ -90,18 +90,18 @@ L89A7		CMPX	ZP_FPA
 		BLO	L89A1
 L89AB		CALL	PrintCRclearPRLINCOUNT
 assSkipList	
-;;		LEAY	-1,Y
-L89B1		LDA	,Y+
+;;		LEAU	-1,U
+L89B1		LDA	,U+
 		CMPA	#':'
 		BEQ	L89BC
 		CMPA	#$0D
 		BNE	L89B1
-L89BC		LEAY 	-1,Y
+L89BC		LEAU 	-1,U
 		CALL	scanNextStmtFromY
-		LDA	,Y+
+		LDA	,U+
 		CMPA	#':'
 		BEQ	L89D1
-		TFR	Y,D
+		TFR	U,D
 ;;;		LDA	ZP_TXTPTR + 1
 		CMPA	#$07
 		BNE	L89CE
@@ -110,7 +110,7 @@ L89CE		CALL	doTraceOrEndAtELSE
 L89D1		JUMP	assScanEnter
 
 assDecYEvalForceINT_LE
-		LEAY	-1,Y
+		LEAU	-1,U
 assEvalForceINT_LE
 		CALL	evalForceINT
 		PSHS	D

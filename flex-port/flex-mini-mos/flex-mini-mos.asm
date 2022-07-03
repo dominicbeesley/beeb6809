@@ -12,6 +12,23 @@
 ; A cut down version of the MOS to service Flex VDU and keyboard requests
 ;==============================================================================
 
+
+		; page ChipRAM in at $0-$7FFF
+SHADOW_ON	MACRO
+		stb	,-S
+		ldb	#$FF
+		stb	sheila_MEM_LOMEMTURBO
+		ldb	,S+
+		ENDM
+
+		; page screen/MB mem in at $3000-$7FFF
+SHADOW_OFF	MACRO
+		stb	,-S
+		ldb	#$07
+		stb	sheila_MEM_LOMEMTURBO
+		ldb	,S+
+		ENDM
+
 M_ENTEROS	MACRO
 		JSR	_ENTEROS
 		ENDM
@@ -1335,10 +1352,8 @@ LCBC1_clear_whole_screen
 		lda	#$0C				;	CBCF
 		jsr	mos_stx_6845rA			;	CBD1
 
-		ldb	sheila_ROMCTL_MOS
-		pshs	B
-		andb	#~ROMCTL_BITS_FLEX
-		stb	sheila_ROMCTL_MOS
+
+		SHADOW_OFF
 
 
 ;;	lda	vduvar_TXT_BACK			;	CBD4
@@ -1355,7 +1370,8 @@ LCBC1_clear_whole_screen
 		lda	B,X				; get # bytes to clear (high in A)
 		clrb
 		tfr	D,Y
-		lda	vduvar_TXT_BACK
+;		lda	vduvar_TXT_BACK
+		lda	#$A5
 		ldx	vduvar_6845_SCREEN_START
 1		sta	,X+
 		leay	-1,Y
@@ -1371,8 +1387,7 @@ LCBC1_clear_whole_screen
 		pulsw
 	ENDIF
 
-		puls	B
-		stb	sheila_ROMCTL_MOS
+		SHADOW_ON
 
 		rts
 ;; ----------------------------------------------------------------------------
@@ -1608,10 +1623,7 @@ x_clear_a_line
 		sta	zp_vdu_wksp+2
 		ldx	zp_vdu_top_scanline
 		lda	vduvar_TXT_BACK
-		ldb	sheila_ROMCTL_MOS
-		pshs	B
-		andb	#~ROMCTL_BITS_FLEX
-		stb	sheila_ROMCTL_MOS
+		SHADOW_OFF
 
 LCEBF		ldb	vduvar_BYTES_PER_CHAR
 LCEC5		sta	,X+
@@ -1626,8 +1638,9 @@ LCEC5		sta	,X+
 		lda	vduvar_TXT_BACK
 LCEDA		dec	zp_vdu_wksp+2
 		bpl	LCEBF
-		puls	B
-		stb	sheila_ROMCTL_MOS
+		
+		SHADOW_ON
+		
 		stx	zp_vdu_top_scanline
 		puls	A
 LCEE3_sta_TXT_CUR_X_setC_rts	
@@ -1717,10 +1730,7 @@ LCFBF_renderchar2
 render_logo2
 
 		; MINIMOS - page in screen memory
-		ldb	sheila_ROMCTL_MOS
-		pshs	B
-		andb	#~ROMCTL_BITS_FLEX
-		stb	sheila_ROMCTL_MOS
+		SHADOW_OFF
 
 
 		ldb	#7
@@ -1766,8 +1776,7 @@ render_logo2
 		eorb	zp_vdu_txtcolourEOR				;4		2
 		std	,Y++						;5+1		2
 
-		puls	b
-		stb	sheila_ROMCTL_MOS
+		SHADOW_ON
 
 		rts					;	CFDB
 ;;render_logox4
@@ -1823,8 +1832,7 @@ render_char_4colour
 LD017rts
 		puls	U
 
-		puls	b
-		stb	sheila_ROMCTL_MOS
+		SHADOW_ON
 
 		rts
 ;; ----------------------------------------------------------------------------
@@ -1998,16 +2006,14 @@ mos_handle_res
 		ORCC	#CC_I + CC_F
 		lds	#STACKTOP			; stack
 
-		ldb	#1
+		lda	#MOSROMSYS_DP / 256
+		tfr	A,DP				; setup mos DP
+
+		ldb	#0				; RAM at $8000-$BFFF
 		stb	sheila_ROMCTL_SWR
 
-		ldb	#$11
-		stb	sheila_ROMCTL_MOS		; SWMOS
-
+		SHADOW_ON
 		jsr	noice_handle_res
-
-		ldb	#1
-		stb	sheila_ROMCTL_SWR		; use bank #1 for ram at $8000-BFFF
 
 
 ;========================================================
@@ -2120,7 +2126,7 @@ FILL1
 	   ENDIF
 	  ELSE
 	   IF CPU_6809
-		error "no matching noice target"
+		includebin "../../mos/noice/noice/mon-noice-6809-beeb-flex-ovr.ovr"
 	   ELSE
 		includebin "../../mos/noice/noice/mon-noice-6309-beeb-flex-ovr.ovr"
 	   ENDIF
@@ -2586,7 +2592,7 @@ XRESETV		FDB	mos_handle_res			; $FFFE
 noice_handle_nmi	JMP	[NOICE_CODE_BASE+0]
 noice_handle_swi	JMP	[NOICE_CODE_BASE+2]
 noice_handle_ch		JMP	[NOICE_CODE_BASE+4]
-noice_handle_res	JMP	NOICE_CODE_BASE+6
+noice_handle_res	JMP	[NOICE_CODE_BASE+6]
 		ENDIF
 
 *******************************************************************************

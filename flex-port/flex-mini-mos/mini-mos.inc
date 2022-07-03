@@ -1,6 +1,6 @@
 * Address of MOS ROM base
 MOSROMBASE				EQU $E100	; leave room for noice scratch space at E000
-MOSSTRINGS				EQU $F4A0
+MOSSTRINGS				EQU $F4B0
 MOSROMSYS_DP				EQU $E400
 STACKTOP				EQU $E500
 MOSCODEBASE				EQU $E600

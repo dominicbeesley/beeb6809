@@ -1,0 +1,46 @@
+	*********************************************
+	* WESTERN DIGITAL PARAMTERS
+	* ******* ******* *********
+	* REGISTERS:
+
+DRQ		EQU	2				; DRQ BIT MASK
+BUSY		EQU	1				; BUSY MASK
+RDMSK		EQU	$1C				; READ ERROR MASK
+VERMSK		EQU	$18				; VERIFY ERROR MASK
+WTMSK		EQU	$5C				; WRITE ERROR MASK
+SEEKMASK	EQU	$18
+
+	* COMMANDS:
+WTCMD		EQU	$F4				; WRITE TRACK COMMAND
+RDCMND		EQU	$84				; READ COMMAND
+WTCMND		EQU	$A4				; WRITE COMMAND
+RSCMND		EQU	$04				; RESTORE COMMAND
+SKCMND		EQU	$14				; SEEK COMMAND
+
+	* HARDWARE REGS
+COMREG		EQU	sheila_1770_wdc_cmd		; COMMAND REGISTER
+TRKREG		EQU	sheila_1770_wdc_trk		; TRACK REGISTER
+SECREG		EQU	sheila_1770_wdc_sec		; SECTOR REGISTER
+DATREG		EQU	sheila_1770_wdc_dat		; DATA REGISTER
+
+	*********************************************
+	* CONTROLLER DEPENDENT PARAMETERS
+	* ********** ********* **********
+DRVREG		EQU	sheila_1770_dcontrol		; DRIVE SELECT REGISTER
+
+
+	**************************************************
+	* DISK SIZE PARAMETERS - DB: moved into /drivers/wd177x.inc
+	* **** **** **********
+	* THE FOLLOWING CONSTANTS SETUP THE SIZE OF THE
+	* DISK TO BE FORMATTED. THE VALUES SHOWN ARE FOR
+	* 8 INCH DISKS. FOR 5 INCH DISKS, USE APPROPRIATE
+	* VALUES. (IE. 35 TRACKS AND 10 SECTORS PER SIDE)
+	**************************************************
+MAXTRK		EQU	80				; NUMBER OF TRACKS
+	* SINGLE DENSITY:
+SMAXS0		EQU	10				; SD MAX SIDE 0 SECTORS
+SMAXS1		EQU	20				; SD MAX SIDE 1 SECTORS
+	* DOUBLE DENSITY:
+DMAXS0		EQU	20				; DD MAX SIDE 0 SECTORS
+DMAXS1		EQU	40				; DD MAX SIDE 1 SECTORS

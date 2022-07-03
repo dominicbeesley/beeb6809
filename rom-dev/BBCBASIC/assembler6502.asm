@@ -245,7 +245,7 @@ ASM_OPNUM_STA		EQU	*-assOpcodeBytes		;$40
 ASM_OPNUM_MAX		EQU	*-assOpcodeBytes		;$43
 	
 
-assScanLabel	LEAY	1,Y				; L89D4
+assScanLabel	LEAU	1,U				; L89D4
 		CALL	findVarOrAllocEmpty
 		BEQ	assJmpBrkSyntax
 		BCS	assJmpBrkSyntax
@@ -254,10 +254,10 @@ assScanLabel	LEAY	1,Y				; L89D4
 		STA	ZP_VARTYPE
 		CALL	storeEvaledExpressioninStackedVarPTr
 ;;		CALL	copyTXTOFF2toTXTOFF
-		STY	ZP_ASS_LBLEND		
+		STU	ZP_ASS_LBLEND		
 assScanNextOp	CLR	ZP_ASS_OPLEN
 		CALL	skipSpacesY			; L89EB
-		LEAY	-1,Y
+		LEAU	-1,U
 		CLR	ZP_FPB + 2			; clear opcode bits accumulator
 		CMPA	#':'
 		BEQ	assScanEndOfStmt		;  End of statement
@@ -269,7 +269,7 @@ assScanNextOp	CLR	ZP_ASS_OPLEN
 		BEQ	assScanLabel			;  Label
 		LDX	#$03				;  Prepare to fetch three characters
 assScanOpLoop						; L8A06	
-		LDA	,Y+		
+		LDA	,U+		
 		BMI	assScanTokFound			;  Token, check for tokenised AND, EOR, OR
 		CMPA	#' '
 		BEQ	assScanOpSkSpace		;  Space, step past
@@ -308,7 +308,7 @@ assScanTokFound						; L8A38
 		LEAX	1,X
 		CMPA	#tknOR				;  opcode number for 'ORA'
 		BNE	assJmpBrkSyntax			;  Not tokenised 'OR'
-		LDA	,Y+				;  Get next character
+		LDA	,U+				;  Get next character
 		ANDA	#$DF				;  Ensure upper case
 		CMPA	#'A'			
 		BNE	assJmpBrkSyntax			; Ensure 'OR' followed by 'A'
@@ -324,14 +324,14 @@ assScanOpMatchFound
 		CMPX	#ASM_OPLASTIMPLIED + 1
 		BHS	assProcessOpArgs
 assScanEndOfStmt
-		PSHS	U				; L8A5E
-		LDU	VAR_P_PERCENT + 2
-		STU	ZP_GEN_PTR
+		PSHS	Y				; L8A5E
+		LDY	VAR_P_PERCENT + 2
+		STY	ZP_GEN_PTR
 		LDA	ZP_OPT
 		CMPA	#$04
 		BLO	assSkNotOpt4			; check for OPT 4+
-		LDU	VAR_O_PERCENT + 2		; opt 4+ get O% into storage pointer
-assSkNotOpt4	STU	ZP_ASS_OPSAVED
+		LDY	VAR_O_PERCENT + 2		; opt 4+ get O% into storage pointer
+assSkNotOpt4	STY	ZP_ASS_OPSAVED
 		LDX	#ZP_ASS_OPBUF			; source for the copy
 		LDB	ZP_ASS_OPLEN
 		BEQ	assSkNowtToStore
@@ -341,7 +341,7 @@ assSkNotOpt4	STU	ZP_ASS_OPSAVED
 		BEQ	assSkNowtToStore
 assStoreLoop						; L8A83
 		LDA	,X+
-		STA	,U+
+		STA	,Y+
 
 		INC	VAR_P_PERCENT + 3
 		BNE	1F
@@ -354,7 +354,7 @@ assSkNotOpt4_2	DECB
 		BNE	assStoreLoop
 
 assSkNowtToStore					; L8AA5
-		PULS	U				; restore U
+		PULS	Y				; restore Y
 		RTS
 assProcessOpArgs					; proccess opcode arguments
 		CMPX	#ASM_OPLASTBRA8 + 1
@@ -416,7 +416,7 @@ assProcOpSkNotImmed					; L8B07
 		CALL	assOpcodeAdd16			; is indirect, add 16 to opcode
 		CALL	skipSpacesCheckCommaAtY
 		BEQ	asmSkPostIndexIndir	
-		LEAY	-1,Y
+		LEAU	-1,U
 		INC	ZP_ASS_OPBUF			; just indirect zp, inc opcode
 		BRA	assProcOpStoreIntAsPostByte	; store post byte and continue
 asmSkPostIndexIndir
@@ -439,7 +439,7 @@ asmSkNotIndirBrack					; L8B44
 		CALL	assDecYEvalForceINT_LE
 		CALL	skipSpacesCheckCommaAtY
 		BNE	assOpAdd4CheckIfZpOrAbs
-		CALL	assOpcodeAdd16			; got a comma add 16 to op code for XXX,X or XXX,Y
+		CALL	assOpcodeAdd16			; got a comma add 16 to op code for XXX,X or XXX,U
 		CALL	SkipSpaceCheckXAtY
 		BEQ	assOpAdd4CheckIfZpOrAbs				
 		CMPA	#'Y'				; so it should be a Y
@@ -451,7 +451,7 @@ assOpAdd4CheckIfZpOrAbs					; L8B5E
 		CALL	assOpcodeAdd4
 assOpDecYCheckIfZpOrAbs					; L8B61
 
-		LEAY	-1,Y
+		LEAU	-1,U
 assOpCheckIfZpOrAbs					; L8B61
 		LDA	ZP_INT_WA + 1
 		BNE	assOpAdd8Len3
@@ -473,7 +473,7 @@ assSkNotXXX_A						; L8B74
 L8B84braBrkIndex
 		BRA	brkIndex			; if not complain
 assSkCheckXXX_A
-		LDA	,Y				; check char after 'A'
+		LDA	,U				; check char after 'A'
 		CALL	checkIsValidVariableNameChar	; carry set if it's a variable char
 		BCS	assSkNotXXX_A			; looks like a variable name instead of A for register A
 		LDB	#$16				; opcode = INCA-4
@@ -484,7 +484,7 @@ assSkCheckXXX_A
 skAssNotDEC_A	STB	ZP_ASS_OPBUF			; store modified code
 skAssNotINCDEC
 		CALL	assOpcodeAdd4
-;;		LDY	#$01				; set single byte op - not needed already set?
+;;		LDU	#$01				; set single byte op - not needed already set?
 
 		BRA	L8C00jumpassScanEndOfStmt
 assSkHSSTZ
@@ -511,7 +511,7 @@ assSkSTZnotZP						; L8BB7
 		ADDB	ZP_ASS_OPBUF			; correct opcode for $64 STZ d,X
 		STB	ZP_ASS_OPBUF
 assSkSTZnotIndex					; L8BC7
-		LEAY	-1,Y
+		LEAU	-1,U
 		BRA	L8C00jumpassScanEndOfStmt
 assSkOpHS_CPX
 		CMPX	#ASM_OPBIT + 1
@@ -523,7 +523,7 @@ assSkOpHS_CPX
 
 		CALL	skipSpacesCheckHashAtY
 		BEQ	assJumpProcOpParseImmed
-		LEAY	-1,Y
+		LEAU	-1,U
 assSkTSB_TRB						; L8BD9
 		CALL	assEvalForceINT_LE
 assBraOpAdd4CheckIfZpOrAbs				; L8BDC
@@ -546,7 +546,7 @@ assSkHS_BIT						; L8BEA
 		CALL	skipSpacesY
 		CMPA	#'('
 		BEQ	assSkJMPIndir
-		LEAY	-1,Y
+		LEAU	-1,U
 assSkJSR	CALL	assEvalForceINT_LE
 assScanEndOfStmtOpLen3					; L8BFE
 		LDB	#3
@@ -578,8 +578,8 @@ assSkHI_JSR
 		ANDA	#$1F
 		PSHS	A				; this now contains %000LI00X where 
 							; L = 1 for load, 0 for store
-							; I = 1 for X/Y
-							; X = 1 for X, 0 for Y
+							; I = 1 for X/U
+							; X = 1 for X, 0 for U
 							; I = 0, X = 0 for A
 		CMPX	#ASM_OPNUM_STA+1
 		BHS	assSkdoST_
@@ -614,7 +614,7 @@ assSkdoST_						; L8C59
 		BEQ	assSkdoST_notIndex
 		JUMP	brkByte
 assSkdoST_notIndex2
-		LEAY	-1,Y		
+		LEAU	-1,U		
 assSkdoST_notIndex					; L8C77
 		JUMP assOpCheckIfZpOrAbs			; TODO: remove and use LBxx
 assSkProcDirectives
@@ -628,9 +628,9 @@ assSkProcDirectives
 assSkEQU
 		TODODEADEND "EQU"
 ;		LDX #$01
-;		LDY ZP_TXTOFF
+;		LDU ZP_TXTOFF
 ;		INC ZP_TXTOFF
-;		LDA (ZP_TXTPTR),Y
+;		LDA (ZP_TXTPTR),U
 ;		AND #$DF
 ;		CMP #$42
 ;		BEQ L8CA7
@@ -661,7 +661,7 @@ L8CB1jmpAssScanEndOfStmt
 ;		PLA
 ;		STA ZP_OPT
 ;		CALL copyTXTOFF2toTXTOFF
-;		LDY #$FF
+;		LDU #$FF
 ;		BRA L8CB1jmpAssScanEndOfStmt
 assOpcodeAdd16						; L8CC9
 		CALL	assOpcodeAdd8

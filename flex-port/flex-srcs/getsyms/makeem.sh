@@ -15,7 +15,7 @@ for x in $MY_DIR/*.TXT; do
 	echo $x
 	$MY_DIR/../../scripts/TXT2ASM2.pl <$x >$x.org.asm
 	checkstat "perl"
-	asm6809 -S -o $x.hex /dev/nul --listing=$x.lst $x.org.asm
+	asm6809 -S -o $x.hex --listing=$x.lst $x.org.asm
 	checkstat "asm6809"
 	$MY_DIR/../../../scripts/getsymbols.pl <$x.lst >$x.sym
 	checkstat "getsymbols"

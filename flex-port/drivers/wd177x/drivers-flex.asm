@@ -31,9 +31,9 @@ DSEEK		JMP	SEEK
 
 		include "disk_read_sector.asm"
 
+		include "disk_seek.asm"
 		include "disk_wait_command.asm"
 
-		include "disk_seek.asm"
 
 		include "disk_write_sector.asm"
 

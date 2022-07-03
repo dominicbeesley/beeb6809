@@ -1,0 +1,1222 @@
+                                      ; NAM  FLEX9 FILE MANAGER
+                                      ; OPT  PAG
+                              **********************************
+                              *
+                              *  TSC FLEX FILE MANAGER
+                              *  VERSION 3.01
+                              *
+                              **********************************
+C709                  TSTSET          EQU     $C709                           ; TEST FLAG SET IF CLEAR
+C70C                  FLGCLR          EQU     $C70C                           ; CLEAR FLAG
+CC0E                  MONTH           EQU     $CC0E
+CC10                  YEAR            EQU     $CC10
+CCFC                  TASK1           EQU     $CCFC                           ; BACKGROUND STATUS FLAG
+                                      ; SPC  1
+D400                                  ORG     $D400
+D400  7ED436                          JMP     INIT
+D403  7ED450                          JMP     CLOSE
+D406  7ED472                          JMP     FMCALL
+                                      ; SPC  1
+D409  0005            D0DIR           FDB     5                               ; DRIVE ZERO DIRECTORY POINTER
+D40B  0005            D1DIR           FDB     5
+D40D  0005            D2DIR           FDB     5
+D40F  0005            D3DIR           FDB     5
+D411                  BASPTR          RMB     2                               ; FCB LIST BASE POINTER
+D413                  CURFCB          RMB     2                               ; CURRENT FCB
+D415                  RANDX           RMB     2                               ; RANDOM INDEX
+D417                  ERR1            RMB     1                               ; ERROR COUNT AND TEMP
+D418                  ERR2            RMB     1
+D419                  RDPROT          RMB     1                               ; READ PROT FLAG
+D41A                  LNKPTR          RMB     2                               ; CURRENT LINKED LIST
+D41C                  LNKLIS          RMB     $18                             ; FOUR LISTS @6 BYTES EACH
+                                      ; SPC  1
+D435                                  ORG     $D435
+D435  FF              VFLAG           FCB     $FF                             ; VERIFY FLAG
+                                      ; SPC  1
+                              *INITALIZE FILE MANAGER
+D436  BDDE15          INIT            JSR     DRINIT                          ; INITALIZE DISK DRIVERS
+D439  8ED411                          LDX     #BASPTR
+D43C  C609                            LDB     #$09                            ; SET BYTE COUNT
+D43E  8D08                            BSR     INIT2                           ; CLEAR FMS STORAGE
+D440  7FD419                          CLR     RDPROT                          ; TURN OFF READ PROT
+D443  8ED41A          INIT1           LDX     #LNKPTR                         ; CLEAR SECTOR LISTS
+D446  C61A                            LDB     #$1A
+D448  6F80            INIT2           CLR     ,X+
+D44A  5A                              DECB
+D44B  26FB                            BNE     INIT2
+D44D  7EC70C                          JMP     FLGCLR                          ; CLEAR FMS INUSE FLAG
+                                      ; SPC  1
+                              *CLOSE ALL OPEN FILES
+D450  BDC709          CLOSE           JSR     TSTSET                          ; SET INUSE FLAG
+D453  BED411          CLOS1           LDX     BASPTR                          ; GET FCB POINTER
+D456  27EB                            BEQ     INIT1                           ; NOTHING OPEN?
+D458  3088E4                          LEAX    -$1C,X                          ; CORRECT OFFSET
+D45B  BFD413                          STX     CURFCB                          ; SAVE AS CURRENT FCB
+D45E  3420                            PSHS    Y                               ; SAVE Y
+D460  BDDA7F                          JSR     CLOSE1                          ; CLOSE FILE
+D463  3520                            PULS    Y
+D465  24EC                            BCC     CLOS1                           ; NO ERROR?
+D467  BED413                          LDX     CURFCB
+D46A  6F02                            CLR     $02,X                           ; MARK AS INACTIVE
+D46C  BDC70C                          JSR     FLGCLR                          ; CLEAR FMS IN USE FLAG
+D46F  C6FF                            LDB     #$FF                            ; SET NOT EQUAL STATUS
+D471  39                              RTS
+                                      ; SPC  1
+                              *CALL FILE MANAGER
+D472  7DCCFC          FMCALL          TST     TASK1                           ; BACKGROUND ACTIVE?
+D475  2703                            BEQ     CALL1                           ; NO THEN BRANCH
+D477  BDC709                          JSR     TSTSET                          ; WAIT FOR FMS NOT BUSY
+D47A  3424            CALL1           PSHS    Y,B
+D47C  BFD413                          STX     CURFCB                          ; SAVE FCB POINTER
+D47F  6F01                            CLR     $01,X                           ; CLEAR ERROR BYTE
+D481  E684                            LDB     ,X                              ; GET FUNCTION CODE
+D483  2622                            BNE     CALL5                           ; LOOK IT UP
+D485  E602                            LDB     $02,X                           ; GET FILE STATUS
+D487  271A                            BEQ     CALL4                           ; BAD STATUS?
+D489  C102                            CMPB    #$02                            ; OPEN FOR WRITE?
+D48B  2711                            BEQ     CALL3
+D48D  BDD5AA                          JSR     SPCEXP                          ; GET NEXT CHAR. FROM DISK
+D490  BED413          CALL2           LDX     CURFCB
+D493  2526                            BCS     CALL7                           ; ERROR?
+D495  7DCCFC                          TST     TASK1                           ; BACKGROUND ACTIVE?
+D498  2623                            BNE     CALL8                           ; THEN CLEAR FLAG
+D49A  5F                              CLRB
+D49B  3524                            PULS    Y,B
+D49D  39                              RTS
+D49E  BDD6C5          CALL3           JSR     SPCCOM                          ; SEND CHAR. TO DISK
+D4A1  20ED                            BRA     CALL2
+D4A3  C612            CALL4           LDB     #$12                            ; FILE STATUS ERROR
+D4A5  2014                            BRA     CALL7
+D4A7  C116            CALL5           CMPB    #$16                            ; FUNCTION IN RANGE?
+D4A9  2304                            BLS     CALL6
+D4AB  C601                            LDB     #$01                            ; ILLEGAL FUNCTION
+D4AD  200C                            BRA     CALL7
+D4AF  5A              CALL6           DECB                            ;  CORRECT FOR FUNCTION 0
+D4B0  58                              ASLB                            ;  MULT. BY 2
+D4B1  8ED4C5                          LDX     #TABLE
+D4B4  AD95                            JSR     [B,X]                           ; DO FUNCTION
+D4B6  BED413                          LDX     CURFCB
+D4B9  2402                            BCC     CALL8                           ; NO ERROR?
+D4BB  E701            CALL7           STB     $01,X                           ; SET ERROR
+D4BD  BDC70C          CALL8           JSR     FLGCLR                          ; CLEAR INUSE FLAG
+D4C0  6D01                            TST     $01,X                           ; ERROR?
+D4C2  3524                            PULS    Y,B
+D4C4  39                              RTS
+                                      ; SPC  1
+                              *FUNCTION LOOKUP TABLE
+D4C5  D942            TABLE           FDB     OREAD
+D4C7  D995                            FDB     OWRITE
+D4C9  DAB5                            FDB     UPDATE
+D4CB  DA7F                            FDB     CLOSE1
+D4CD  D5D8                            FDB     REWIND
+D4CF  D80D                            FDB     ODIR
+D4D1  D82A                            FDB     GETREC
+D4D3  D85E                            FDB     PUTREC
+D4D5  D637                            FDB     SREAD
+D4D7  D695                            FDB     SWRITE
+D4D9  D925                            FDB     PUTDIR
+D4DB  DB92                            FDB     DELETE
+D4DD  DAE8                            FDB     RENAME
+D4DF  D68F                            FDB     TSTER2
+D4E1  DA43                            FDB     NXTSCT
+D4E3  D806                            FDB     OINFO
+D4E5  D566                            FDB     GBYTE
+D4E7  D586                            FDB     PBYTE
+D4E9  DAC3                            FDB     EXPAND
+D4EB  DD79                            FDB     RDYCK
+D4ED  DCB7                            FDB     POSITN
+D4EF  DCA1                            FDB     BACKUP
+                                      ; SPC  1
+D4F1  8D20            LNKFCB          BSR     FINDFB                          ; SEARCH FOR FCB
+D4F3  2605                            BNE     LINK                            ; NOT FOUND?
+D4F5  C602                            LDB     #$02                            ; ERROR FCB IN USE
+D4F7  1A01                            ORCC    #$01
+D4F9  39                              RTS
+                                      ; SPC  1
+D4FA  ED84            LINK            STD     ,X                              ; LINK FCB INTO LIST
+D4FC  AE84                            LDX     ,X
+D4FE  6F84                            CLR     ,X
+D500  6F01                            CLR     $01,X
+D502  39                              RTS
+                                      ; SPC  1
+D503  8D0E            KILFCB          BSR     FINDFB                          ; SEARCH FOR FCB
+D505  2705                            BEQ     UNLINK                          ; FCB FOUND?
+D507  C60D                            LDB     #$0D                            ; ERROR ILLEGAL FCB
+D509  1A01                            ORCC    #$01
+D50B  39                              RTS
+                                      ; SPC  1
+D50C  EC94            UNLINK          LDD     [,X]                            ; DELETE FCB FROM LIST
+D50E  ED84                            STD     ,X
+D510  1CFE                            ANDCC   #$FE
+D512  39                              RTS
+                                      ; SPC  1
+D513  FCD413          FINDFB          LDD     CURFCB                          ; POINT TO CURRENT FCB
+D516  C3001C                          ADDD    #$001C                          ; ADD LINK OFFSET
+D519  8ED411                          LDX     #BASPTR                         ; POINT TO FIRST FCB
+D51C  10AE84          FIND1           LDY     ,X
+D51F  2603                            BNE     FIND2                           ; LAST ONE?
+D521  1CFB                            ANDCC   #$FB
+D523  39                              RTS
+D524  10A384          FIND2           CMPD    ,X                              ; SAME AS CURRENT?
+D527  2601                            BNE     FIND3
+D529  39                              RTS
+D52A  AE84            FIND3           LDX     ,X                              ; NEXT FCB
+D52C  20EE                            BRA     FIND1
+                                      ; SPC  1
+D52E  BED413          CLRFCB          LDX     CURFCB
+D531  4F                              CLRA
+D532  5F                              CLRB                            ;  BYTE COUNT =256
+D533  8D02                            BSR     CLRFB1                          ; CLEAR FCB
+D535  C62F                            LDB     #$2F                            ; CLEAR MORE
+D537  A78811          CLRFB1          STA     $11,X
+D53A  3001                            LEAX    $01,X
+D53C  5A                              DECB
+D53D  26F8                            BNE     CLRFB1
+D53F  39                              RTS
+                                      ; SPC  1
+D540  BED413          MOVNAM          LDX     CURFCB                          ; MOVE FILE NAME TO TEMP
+D543  C60B                            LDB     #$0B
+D545  A604            MOVNM1          LDA     $04,X
+D547  A78824                          STA     $24,X
+D54A  3001                            LEAX    $01,X
+D54C  5A                              DECB
+D54D  26F6                            BNE     MOVNM1
+D54F  39                              RTS
+                                      ; SPC  1
+D550  BED413          MATCH           LDX     CURFCB                          ; CHECK FILE NAME FOR MATCH
+D553  C60B                            LDB     #$0B
+D555  A604            MATCH1          LDA     $04,X
+D557  3402                            PSHS    A
+D559  A68824                          LDA     $24,X
+D55C  A1E0                            CMPA    ,S+
+D55E  2605                            BNE     MATCH2
+D560  3001                            LEAX    $01,X
+D562  5A                              DECB
+D563  26F0                            BNE     MATCH1
+D565  39              MATCH2          RTS
+                                      ; SPC  1
+                              *GET RANDOM BYTE FROM SECTOR
+D566  BED413          GBYTE           LDX     CURFCB                          ; GET RANDOM BYTE
+D569  E602                            LDB     $02,X                           ; GET FILE STATUS
+D56B                  error ;;;; !!!! ;;;;  LSRB
+D56B  2479                            BCC     ERR12                           ; FILE STATUS ERROR?
+D56D  E68823                          LDB     $23,X                           ; GET BYTE INDEX
+D570  7ED5F6                          JMP     GETB1                           ; GET BYTE
+                                      ; SPC  1
+D573  BED413          PUTBYT          LDX     CURFCB
+D576  E68822                          LDB     $22,X                           ; GET DATA INDEX
+D579  6C8822                          INC     $22,X
+D57C  3A                              ABX
+D57D  A78840                          STA     $40,X                           ; PUT BYTE IN SECTOR BUFF
+D580  5C                              INCB
+D581  261F                            BNE     PBYTE1                          ; EXIT
+D583  1A01                            ORCC    #$01                            ; OVERFLOW
+D585  39                              RTS
+                                      ; SPC  1
+                              *PUT RANDOM BYTE IN SECTOR
+D586  BED413          PBYTE           LDX     CURFCB
+D589  E602                            LDB     $02,X                           ; GET FILE STATUS
+D58B  C403                            ANDB    #$03                            ; MASK WRITE FLAG
+D58D  C103                            CMPB    #$03                            ; OPEN FOR UPDATE?
+D58F  2655                            BNE     ERR12                           ; OOPS!
+D591  CA80                            ORB     #$80                            ; SET BYTE WRITTEN
+D593  E702                            STB     $02,X
+D595  E60F                            LDB     $0F,X                           ; GET PROT BYTE
+D597  C580                            BITB    #$80                            ; WRITE PROT?
+D599  260A                            BNE     PBYTE2
+D59B  E68823                          LDB     $23,X                           ; GET INDEX POINTER
+D59E  3A                              ABX
+D59F  A78840                          STA     $40,X                           ; PUT BYTE
+D5A2  1CFE            PBYTE1          ANDCC   #$FE
+D5A4  39                              RTS
+D5A5  C60B            PBYTE2          LDB     #$0B                            ; ERROR PROTECTED FILE
+D5A7  1A01                            ORCC    #$01
+D5A9  39                              RTS
+                                      ; SPC  1
+                              *GET SEQUENTIAL CHARACTER FROM FILE
+D5AA  A6883B          SPCEXP          LDA     $3B,X                           ; GET SPACE COUNT
+D5AD  2B3C                            BMI     GETBYT                          ; SPACE COMP. OFF?
+D5AF  2707                            BEQ     SETEXP                          ; SPACE COUNT ZERO?
+D5B1  6A883B                          DEC     $3B,X                           ; DEC SPACE COUNT
+D5B4  8620                            LDA     #$20                            ; SPACE
+D5B6  201D                            BRA     SETXP2                          ; EXIT
+                                      ; SPC  1
+D5B8  8D31            SETEXP          BSR     GETBYT                          ; GET NEXT BYTE FROM DISK
+D5BA  251B                            BCS     SETXP3                          ; ERROR?
+D5BC  8118                            CMPA    #$18
+D5BE  2215                            BHI     SETXP2                          ; EXIT WITH CHAR
+D5C0  27F6                            BEQ     SETEXP                          ; IGNORE NULL
+D5C2  8109                            CMPA    #$09                            ; H TAB?
+D5C4  260C                            BNE     SETXP1
+D5C6  8D23                            BSR     GETBYT                          ; GET SPACE COUNT
+D5C8  250D                            BCS     SETXP3                          ; ERROR?
+D5CA  BED413                          LDX     CURFCB
+D5CD  A7883B                          STA     $3B,X                           ; PUT COUNT IN FCB
+D5D0  20D8                            BRA     SPCEXP
+D5D2  4D              SETXP1          TSTA
+D5D3  27E3                            BEQ     SETEXP
+D5D5  1CFE            SETXP2          ANDCC   #$FE
+D5D7  39              SETXP3          RTS
+                                      ; SPC  1
+                              *REWIND FILE TO BEGINNING
+D5D8  BDDA6D          REWIND          JSR     TSTUPD                          ; WRITE ANY NEW DATA
+D5DB  2509                            BCS     ERR12                           ; ERROR?
+D5DD  8501                            BITA    #$01                            ; READ OR UPDATE?
+D5DF  2705                            BEQ     ERR12                           ; ERROR FMS STATUS
+D5E1  A784                            STA     ,X                              ; FAKE FUNCTION
+D5E3  7ED95C                          JMP     OREAD1                          ; REOPEN
+D5E6  C612            ERR12           LDB     #$12
+D5E8  1A01                            ORCC    #$01
+D5EA  39                              RTS
+                                      ; SPC  1
+D5EB  BED413          GETBYT          LDX     CURFCB
+D5EE  E68822                          LDB     $22,X                           ; GET INDEX
+D5F1  270A                            BEQ     GETB2                           ; BUFFER EMPTY?
+D5F3  6C8822                          INC     $22,X
+D5F6  3A              GETB1           ABX
+D5F7  A68840                          LDA     $40,X                           ; GET DATA BYTE
+D5FA  1CFE                            ANDCC   #$FE
+D5FC  39                              RTS
+D5FD  8D03            GETB2           BSR     RDNXT                           ; READ NEXT SECTOR
+D5FF  24EA                            BCC     GETBYT
+D601  39                              RTS
+                                      ; SPC  1
+D602  BED413          RDNXT           LDX     CURFCB
+D605  EC8840                          LDD     $40,X                           ; GET TRACK-SECTOR
+D608  6C8821                          INC     $21,X                           ; BUMP RECORD COUNT
+D60B  2603                            BNE     RDNX1
+D60D  6C8820                          INC     $20,X
+D610  10830000        RDNX1           CMPD    #$0000                          ; LAST SECTOR?
+D614  271C                            BEQ     RDNX4
+D616  ED881E          RDNXT2          STD     $1E,X                           ; STORE TRACK-SECTOR
+D619  3402                            PSHS    A
+D61B  8604                            LDA     #$04
+D61D  A78822                          STA     $22,X                           ; SET INDEX TO START OF DATA
+D620  3502                            PULS    A
+D622  8D13                            BSR     SREAD                           ; READ SECTOR
+D624  2410                            BCC     RDNX6                           ; ERROR?
+D626  C580                            BITB    #$80                            ; MASK READY BIT
+D628  2704                            BEQ     RDNX3                           ; OTHER ERROR?
+D62A  C610                            LDB     #$10                            ; ERROR NOT READY
+D62C  2006                            BRA     RDNX5
+D62E  C609            RDNX3           LDB     #$09                            ; READ ERROR
+D630  2002                            BRA     RDNX5
+D632  C608            RDNX4           LDB     #$08                            ; ERROR EOF
+D634  1A01            RDNX5           ORCC    #$01
+D636  39              RDNX6           RTS
+                                      ; SPC  1
+                              *SINGLE SECTOR READ
+D637  8D25            SREAD           BSR     CLRERR                          ; CLEAR ERROR COUNT
+D639  BED413                          LDX     CURFCB
+D63C  BDDE0C                          JSR     SELECT                          ; SELECT DRIVE
+D63F  2512                            BCS     SREAD3                          ; ERROR?
+D641  8D11            SREAD1          BSR     BUFSET                          ; SET BUFFER POINTER
+D643  BDDE00                          JSR     READ                            ; READ SECTOR
+D646  2603                            BNE     SREAD2                          ; ERROR?
+D648  1CFE                            ANDCC   #$FE
+D64A  39                              RTS
+D64B  3404            SREAD2          PSHS    B
+D64D  8D17                            BSR     TSTERR                          ; TEST ERROR
+D64F  3504                            PULS    B
+D651  24EE                            BCC     SREAD1                          ; RETRY READ?
+D653  39              SREAD3          RTS
+                                      ; SPC  1
+D654  BED413          BUFSET          LDX     CURFCB
+D657  EC881E                          LDD     $1E,X                           ; GET TRACK-SECTOR
+D65A  308840                          LEAX    $40,X                           ; POINT TO SECTOR BUFFER
+D65D  39                              RTS
+                                      ; SPC  1
+D65E  4F              CLRERR          CLRA                            ;  CLEAR ERROR COUNT
+D65F  B7D417                          STA     ERR1
+D662  B7D418                          STA     ERR2
+D665  39                              RTS
+                                      ; SPC  1
+D666  C510            TSTERR          BITB    #$10                            ; RECORD NOT FOUND?
+D668  2611                            BNE     TSTER1                          ; OTHER ERROR?
+D66A  C580                            BITB    #$80                            ; NOT READY?
+D66C  2624                            BNE     TSTER3
+D66E  F6D417                          LDB     ERR1
+D671  5C                              INCB
+D672  C107                            CMPB    #$07
+D674  2705                            BEQ     TSTER1
+D676  F7D417                          STB     ERR1
+D679  2014                            BRA     TSTER2
+D67B  7FD417          TSTER1          CLR     ERR1
+D67E  F6D418                          LDB     ERR2
+D681  5C                              INCB
+D682  C104                            CMPB    #$04
+D684  270C                            BEQ     TSTER3
+D686  F7D418                          STB     ERR2
+D689  BED413                          LDX     CURFCB
+D68C  BDDE09                          JSR     RESTOR
+D68F  1CFE            TSTER2          ANDCC   #$FE                            ; RETRY
+D691  39                              RTS
+D692  1A01            TSTER3          ORCC    #$01                            ; DONT RETRY
+D694  39                              RTS
+                                      ; SPC  1
+                              *SINGLE SECTOR WRITE
+D695  8DC7            SWRITE          BSR     CLRERR                          ; CLEAR ERROR COUNT
+D697  BED413                          LDX     CURFCB
+D69A  BDDE0C                          JSR     SELECT                          ; SELECT DRIVE
+D69D  2520                            BCS     SWRIT3                          ; ERROR?
+D69F  BED413          SWRIT1          LDX     CURFCB
+D6A2  8DB0                            BSR     BUFSET                          ; SET BUFFER POINTER
+D6A4  BDDE03                          JSR     WRITE                           ; WRITE SECTOR
+D6A7  260A                            BNE     SWRIT2                          ; ERROR?
+D6A9  B6D435                          LDA     VFLAG
+D6AC  2737                            BEQ     PRES3                           ; VERIFY OFF?
+D6AE  BDDE06                          JSR     VERIFY
+D6B1  2732                            BEQ     PRES3                           ; EXIT
+D6B3  C540            SWRIT2          BITB    #$40                            ; WRITE PROT.?
+D6B5  260B                            BNE     SWRIT4
+D6B7  3404                            PSHS    B
+D6B9  8DAB                            BSR     TSTERR
+D6BB  3504                            PULS    B
+D6BD  24E0                            BCC     SWRIT1                          ; RETRY?
+D6BF  39              SWRIT3          RTS
+D6C0  C620                            LDB     #$20                            ; SET ERROR CODE
+D6C2  1A01            SWRIT4          ORCC    #$01
+D6C4  39                              RTS
+                                      ; SPC  1
+                              *SEQUENTIAL CHARACTER WRITE
+D6C5  BED413          SPCCOM          LDX     CURFCB
+D6C8  E6883B                          LDB     $3B,X                           ; SPACE COUNT
+D6CB  2B3D                            BMI     WRBYTE                          ; SPC COMP.OFF?
+D6CD  8120                            CMPA    #$20                            ; IS CHAR A SPACE?
+D6CF  260F                            BNE     PRES2
+D6D1  5C                              INCB                            ;  BUMP SPACE COUNT
+D6D2  E7883B                          STB     $3B,X
+D6D5  C17F                            CMPB    #$7F                            ; OVERFLOW?
+D6D7  260C                            BNE     PRES3                           ; EXIT
+D6D9  200D                            BRA     PRES4
+D6DB  8D0B            PRES1           BSR     PRES4
+D6DD  24E6                            BCC     SPCCOM
+D6DF  39                              RTS
+D6E0  5D              PRES2           TSTB                            ;  SPACE COUNT ZERO?
+D6E1  2727                            BEQ     WRBYTE
+D6E3  20F6                            BRA     PRES1
+D6E5  1CFE            PRES3           ANDCC   #$FE
+D6E7  39                              RTS
+D6E8  3402            PRES4           PSHS    A
+D6EA  C101                            CMPB    #$01                            ; ONE SPACE?
+D6EC  2604                            BNE     PRES5
+D6EE  8620                            LDA     #$20                            ; SEND A SPACE
+D6F0  2010                            BRA     PRES6
+D6F2  8609            PRES5           LDA     #$09                            ; SEND H TAB
+D6F4  8D14                            BSR     WRBYTE
+D6F6  3502                            PULS    A
+D6F8  250F                            BCS     PRES7
+D6FA  3402                            PSHS    A
+D6FC  BED413                          LDX     CURFCB
+D6FF  A6883B                          LDA     $3B,X                           ; GET SPACE COUNT
+D702  6F883B          PRES6           CLR     $3B,X                           ; CLEAR COUNT
+D705  8D03                            BSR     WRBYTE                          ; WRITE COUNT
+D707  3502                            PULS    A
+D709  39              PRES7           RTS
+                                      ; SPC  1
+D70A  BED413          WRBYTE          LDX     CURFCB
+D70D  E602                            LDB     $02,X                           ; GET STATUS
+D70F  C102                            CMPB    #$02                            ; OPEN FOR WRITE?
+D711  1026FED1                        LBNE    ERR12
+D715  E68822                          LDB     $22,X                           ; GET INDEX
+D718  C104                            CMPB    #$04                            ; EMPTY BUFFER?
+D71A  2608                            BNE     BYTE1
+D71C  3402                            PSHS    A
+D71E  8D21                            BSR     LNKNXT                          ; SET FORWARD LINK
+D720  3502                            PULS    A
+D722  250F                            BCS     BYTE2                           ; ERROR?
+D724  BDD573          BYTE1           JSR     PUTBYT                          ; WRITE BYTE
+D727  240A                            BCC     BYTE2
+D729  C604                            LDB     #$04                            ; POINT TO START OF BUFF
+D72B  BED413                          LDX     CURFCB
+D72E  E78822                          STB     $22,X
+D731  1CFE                            ANDCC   #$FE
+D733  39              BYTE2           RTS
+                                      ; SPC  1
+D734  BED413          WRTNXT          LDX     CURFCB
+D737  4F                              CLRA
+D738  5F                              CLRB
+D739  ED8820                          STD     $20,X                           ; CLEAR RECORD COUNT
+D73C  ED8842                          STD     $42,X
+D73F  2027                            BRA     LNKNX2
+                                      ; SPC  1
+D741  E68812          LNKNXT          LDB     $12,X                           ; GET FILE START ADDR.
+D744  2622                            BNE     LNKNX2                          ; NOT FIRST SECTOR?
+D746  E68817                          LDB     $17,X                           ; GET SECTOR MAP
+D749  2744                            BEQ     RDLINK                          ; NOT RANDOM?
+D74B  6F8817                          CLR     $17,X
+D74E  8D3F                            BSR     RDLINK                          ; GET SECTOR LINK
+D750  252A                            BCS     LNKNX1                          ; EXIT
+D752  8DE0                            BSR     WRTNXT                          ; RESERVE SECTOR
+D754  2526                            BCS     LNKNX1                          ; EXIT
+D756  8DDC                            BSR     WRTNXT                          ; RESERVE SECTOR
+D758  2522                            BCS     LNKNX1                          ; EXIT
+D75A  BED413                          LDX     CURFCB
+D75D  C602                            LDB     #$02
+D75F  E78817                          STB     $17,X                           ; SET SECTOR MAP
+D762  EC8811                          LDD     $11,X                           ; POINT TO FIRST SECTOR
+D765  7EDC3E                          JMP     BLDN4                           ; BUILD INDEX
+                                      ; SPC  1
+D768  8D0E            LNKNX2          BSR     GETLNK                          ; GET LINK TO NEXT
+D76A  BED413                          LDX     CURFCB
+D76D  ED8840                          STD     $40,X                           ; PUT IN SECTOR BUFFER
+D770  BDD695                          JSR     SWRITE                          ; WRITE SECTOR
+D773  241A                            BCC     RDLINK                          ; READ NEXT LINK
+D775  7EDB7D                          JMP     WTRY1                           ; TRY TO RECOVER
+                                      ; SPC  1
+D778  8D03            GETLNK          BSR     GETPTR                          ; POINT TO FREE LIST
+D77A  EC84                            LDD     ,X                              ; GET TRACK-SECTOR
+D77C  39              LNKNX1          RTS
+                                      ; SPC  1
+D77D  BED413          GETPTR          LDX     CURFCB
+D780  E603                            LDB     $03,X                           ; GET DRIVE NUMB.
+D782  8606                            LDA     #$06                            ; TABLE ENTRY SIZE
+D784  3D                              MUL
+D785  8ED41C                          LDX     #LNKLIS                         ; POINT TO TABLE BEGIN
+D788  3A                              ABX                             ;  INDEX INTO TABLE
+D789  BFD41A                          STX     LNKPTR                          ; SAVE POINTER
+D78C  6D84                            TST     ,X
+D78E  39                              RTS
+                                      ; SPC  1
+D78F  8DE7            RDLINK          BSR     GETLNK                          ; GET SECTOR LINK
+D791  2605                            BNE     LINK2                           ; OUT OF DISK SPACE?
+D793  C607                            LDB     #$07                            ; ERROR OUT OF SPACE
+D795  1A01            LINK1           ORCC    #$01
+D797  39                              RTS
+D798  BED413          LINK2           LDX     CURFCB
+D79B  ED8813                          STD     $13,X                           ; SET LAST SECTOR
+D79E  6D8812                          TST     $12,X                           ; FIRST SECTOR?
+D7A1  2603                            BNE     LINK3
+D7A3  ED8811                          STD     $11,X                           ; SET FIRST SECTOR
+D7A6  6C8816          LINK3           INC     $16,X                           ; INC RECORD COUNT
+D7A9  2603                            BNE     LINK4
+D7AB  6C8815                          INC     $15,X
+D7AE  6D8817          LINK4           TST     $17,X                           ; RANDOM FILE?
+D7B1  270B                            BEQ     LINK5
+D7B3  BDDBFF                          JSR     BLDNDX                          ; BUILD INDEX
+D7B6  25DD                            BCS     LINK1
+D7B8  BED413                          LDX     CURFCB
+D7BB  EC8813                          LDD     $13,X
+D7BE  BDD616          LINK5           JSR     RDNXT2                          ; READ NEXT FOR LINK
+D7C1  25D2                            BCS     LINK1                           ; ERROR?
+D7C3  BED413                          LDX     CURFCB
+D7C6  EC8840                          LDD     $40,X                           ; GET LINK
+D7C9  3406                            PSHS    B,A
+D7CB  8DB0                            BSR     GETPTR
+D7CD  3506                            PULS    B,A
+D7CF  ED84                            STD     ,X                              ; SAVE LINK
+D7D1  260A                            BNE     LINK6                           ; END OF DISK?
+D7D3  6F02                            CLR     $02,X
+D7D5  6F03                            CLR     $03,X
+D7D7  6F04                            CLR     $04,X
+D7D9  6F05                            CLR     $05,X
+D7DB  2008                            BRA     LINK7
+D7DD  10AE04          LINK6           LDY     $04,X                           ; DEC SECTOR REMAINING
+D7E0  313F                            LEAY    -$01,Y
+D7E2  10AF04                          STY     $04,X
+D7E5  4F              LINK7           CLRA
+D7E6  BED413                          LDX     CURFCB
+D7E9  6C8821                          INC     $21,X                           ; INC RECORD NUMB.
+D7EC  2603                            BNE     LINK8
+D7EE  6C8820                          INC     $20,X
+D7F1  5F              LINK8           CLRB                            ;  COUNT=256
+D7F2  A78840          LINK9           STA     $40,X                           ; CLEAR SECTOR BUFF.
+D7F5  3001                            LEAX    $01,X
+D7F7  5A                              DECB
+D7F8  26F8                            BNE     LINK9
+D7FA  BED413                          LDX     CURFCB
+D7FD  EC8820                          LDD     $20,X                           ; GET RECORD NUMB.
+D800  ED8842                          STD     $42,X                           ; PUT IN BUFF.
+D803  1CFE                            ANDCC   #$FE
+D805  39                              RTS
+                                      ; SPC  1
+                              * OPEN SYSTEM INFO SECTOR
+D806  5F              OINFO           CLRB                            ;  TRACK ZERO
+D807  3404                            PSHS    B
+D809  C603                            LDB     #$03                            ; SECTOR 3
+D80B  200D                            BRA     ODIR1
+                                      ; SPC  1
+                                      ; SPC  1
+                              *OPEN DIRECTORY
+D80D  BED413          ODIR            LDX     CURFCB                          ; POINT TO CURRENT FILE BLOCK
+D810  E603                            LDB     3,X                             ; GET DRIVE NUMB.
+D812  58                              ASLB                            ;  MULT BY TWO
+D813  8ED409                          LDX     #D0DIR                          ; POINT TO DIRECTORY TABLE
+D816  EC85                            LDD     B,X                             ; GET DIR START FOR THIS DRIVE
+D818  3402                            PSHS    A
+D81A  BED413          ODIR1           LDX     CURFCB
+D81D  E78841                          STB     $41,X                           ; SET SECTOR
+D820  3504                            PULS    B
+D822  E78840                          STB     $40,X                           ; SET TRACK
+D825  5F                              CLRB
+D826  E78822                          STB     $22,X                           ; COUNT=0
+D829  39                              RTS
+                                      ; SPC  1
+                              *GET DIRECTORY ENTRY
+D82A  BED413          GETREC          LDX     CURFCB
+D82D  E68822                          LDB     $22,X                           ; GET RECORD COUNT
+D830  2613                            BNE     GREC2                           ; FIRST RECORD?
+D832  BDD602                          JSR     RDNXT                           ; READ SECTOR
+D835  2526                            BCS     GREC4                           ; ERROR?
+D837  BED413                          LDX     CURFCB
+D83A  8610            GREC1           LDA     #$10                            ; DIR STARTS AT $10
+D83C  A78822                          STA     $22,X
+D83F  EC881E                          LDD     $1E,X                           ; GET CURRENT POSITION
+D842  ED882F                          STD     $2F,X                           ; SET CURRENT DIR. POS.
+D845  A68822          GREC2           LDA     $22,X
+D848  A78831                          STA     $31,X
+D84B  C618                            LDB     #$18                            ; BYTE COUNT
+D84D  3414            GREC3           PSHS    X,B
+D84F  BDD5EB                          JSR     GETBYT                          ; GET CHAR FROM DIR.
+D852  3514                            PULS    X,B
+D854  A704                            STA     $04,X                           ; STORE CHAR IN FCB
+D856  3001                            LEAX    $01,X
+D858  5A                              DECB                            ;  DONE?
+D859  26F2                            BNE     GREC3
+D85B  1CFE                            ANDCC   #$FE
+D85D  39              GREC4           RTS
+                                      ; SPC  1
+                              *WRITE DIRECTORY ENTRY
+D85E  BED413          PUTREC          LDX     CURFCB
+D861  A68831                          LDA     $31,X                           ; GET RECORD COUNT
+D864  A78822                          STA     $22,X                           ; PUT IN INDEX
+D867  C618                            LDB     #$18                            ; BYTE COUNT
+D869  3414            PREC1           PSHS    X,B
+D86B  A604                            LDA     $04,X                           ; GET CHAR
+D86D  BDD70A                          JSR     WRBYTE                          ; PUT IN DIR
+D870  3514                            PULS    X,B
+D872  3001                            LEAX    $01,X
+D874  5A                              DECB                            ;  DONE?
+D875  26F2                            BNE     PREC1
+D877  7ED695                          JMP     SWRITE                          ; WRITE SECTOR
+                                      ; SPC  1
+D87A  BED413          SCHDIR          LDX     CURFCB
+D87D  6D03                            TST     3,X                             ; CHECK IF DRIVE NUMBER IS REAL
+D87F  2A0E                            BPL     SRCHIT
+D881  BDDD79          SRCH3           JSR     RDYCK
+D884  2536                            BCS     SCHIT6
+D886  8D07                            BSR     SRCHIT
+D888  231C                            BLS     SCHIT2
+D88A  BDDD69                          JSR     RSTNAM
+D88D  20F2                            BRA     SRCH3
+                                      ; SPC  1
+D88F  BED413          SRCHIT          LDX     CURFCB
+D892  7FD419                          CLR     RDPROT
+D895  BDD540                          JSR     MOVNAM                          ; SAVE NAME IN SCRATCH
+D898  BDD80D                          JSR     ODIR                            ; OPEN DIRECTORY
+D89B  BDD82A          SCHIT1          JSR     GETREC                          ; GET RECORD
+D89E  2407                            BCC     SCHIT3                          ; NO ERROR?
+D8A0  C108                            CMPB    #$08                            ; END OF FILE?
+D8A2  2718                            BEQ     SCHIT6
+D8A4  1A01                            ORCC    #$01
+D8A6  39              SCHIT2          RTS
+D8A7  BED413          SCHIT3          LDX     CURFCB
+D8AA  A604                            LDA     $04,X                           ; GET FIRST CHAR IN NAME
+D8AC  270C                            BEQ     SCHIT5                          ; ZERO?
+D8AE  2A02                            BPL     SCHIT4                          ; NOT DELETED?
+D8B0  8D0F                            BSR     SETPTS                          ; MARK EMPTY DIR SLOT
+D8B2  BDD550          SCHIT4          JSR     MATCH                           ; NAMES MATCH?
+D8B5  26E4                            BNE     SCHIT1                          ; NEXT NAME
+D8B7  1CFE                            ANDCC   #$FE                            ; NAME FOUND
+D8B9  39                              RTS
+D8BA  8D05            SCHIT5          BSR     SETPTS                          ; SET POINTER TO EMPTY SLOT
+D8BC  1CFB            SCHIT6          ANDCC   #$FB
+D8BE  1CFE                            ANDCC   #$FE
+D8C0  39                              RTS
+                                      ; SPC  1
+D8C1  A68833          SETPTS          LDA     $33,X
+D8C4  260C                            BNE     SETP1
+D8C6  EC882F                          LDD     $2F,X
+D8C9  ED8832                          STD     $32,X
+D8CC  A68831                          LDA     $31,X
+D8CF  A78834                          STA     $34,X
+D8D2  39              SETP1           RTS
+                                      ; SPC  1
+D8D3  BDD77D          GETIFO          JSR     GETPTR                          ; POINT TO LINK LIST
+D8D6  2617                            BNE     GIFO2
+D8D8  8D18                            BSR     RDINFO                          ; READ SYS INFO
+D8DA  2515                            BCS     GIFO3                           ; ERROR?
+D8DC  C606                            LDB     #$06                            ; BYTE COUNT
+D8DE  10BED413                        LDY     CURFCB
+D8E2  BED41A                          LDX     LNKPTR
+D8E5  A6A85D          GIFO1           LDA     $5D,Y                           ; MOVE BUFF TO LIST
+D8E8  3121                            LEAY    $01,Y
+D8EA  A780                            STA     ,X+
+D8EC  5A                              DECB
+D8ED  26F6                            BNE     GIFO1
+D8EF  1CFE            GIFO2           ANDCC   #$FE
+D8F1  39              GIFO3           RTS
+                                      ; SPC  1
+D8F2  BDD806          RDINFO          JSR     OINFO                           ; OPEN T-0 S-3
+D8F5  BDD602                          JSR     RDNXT                           ; READ SECTOR
+D8F8  2508                            BCS     RDIFO1                          ; ERROR?
+D8FA  BED413                          LDX     CURFCB
+D8FD  C610                            LDB     #$10                            ; SET DATA INDEX
+D8FF  E78822                          STB     $22,X
+D902  39              RDIFO1          RTS
+                                      ; SPC  1
+D903  BDD77D          WRINFO          JSR     GETPTR                          ; POINT TO LINK LIST
+D906  8DEA                            BSR     RDINFO                          ; READ IT
+D908  25F8                            BCS     RDIFO1                          ; ERROR?
+D90A  C606                            LDB     #$06                            ; BYTE COUNT
+D90C  10BED413                        LDY     CURFCB
+D910  BED41A                          LDX     LNKPTR
+D913  A680            WRIFO1          LDA     ,X+                             ; MOVE LIST TO BUFF
+D915  A7A85D                          STA     $5D,Y
+D918  3121                            LEAY    $01,Y
+D91A  5A                              DECB
+D91B  26F6                            BNE     WRIFO1
+D91D  BDD695                          JSR     SWRITE                          ; WRITE SECTOR
+D920  24E0                            BCC     RDIFO1                          ; NO ERROR?
+D922  7EDB7D                          JMP     WTRY1                           ; TRY AGAIN
+                                      ; SPC  1
+D925  BED413          PUTDIR          LDX     CURFCB
+D928  8602                            LDA     #$02                            ; SET OPEN FOR WRITE
+D92A  A702                            STA     $02,X
+D92C  EC882F                          LDD     $2F,X                           ; SET TO DIR POINTER
+D92F  ED881E                          STD     $1E,X
+D932  BDD637                          JSR     SREAD                           ; READ DIR
+D935  2508                            BCS     PDIR1
+D937  BDD85E                          JSR     PUTREC                          ; MOVE FCB TO DIR
+D93A  2405                            BCC     PDIR2
+D93C  7EDB7D                          JMP     WTRY1
+D93F  C60A            PDIR1           LDB     #$0A
+D941  39              PDIR2           RTS
+                                      ; SPC  1
+                              *OPEN FILE FOR READ
+D942  BDD4F1          OREAD           JSR     LNKFCB                          ; ADD FCB TO ACTIVE LIST
+D945  253D                            BCS     OREAD4                          ; ERROR?
+D947  BDD87A                          JSR     SCHDIR                          ; FIND NAME IN DIR
+D94A  2538                            BCS     OREAD4                          ; ERROR?
+D94C  263B                            BNE     NOTOPN                          ; ERROR NOT FOUND?
+D94E  BED413                          LDX     CURFCB
+D951  7DD419                          TST     RDPROT                          ; TEST FOR PROT?
+D954  2706                            BEQ     OREAD1                          ; NO?
+D956  A60F                            LDA     $0F,X                           ; PROT FLAG
+D958  8520                            BITA    #$20
+D95A  2629                            BNE     OREAD5                          ; FILE READ PROTECTED?
+D95C  BDDC7C          OREAD1          JSR     GSMAX                           ; GET TRACK SIZE
+D95F  252A                            BCS     NOTOP1                          ; ERROR?
+D961  EC8811                          LDD     $11,X                           ; GET FIRST SECTOR
+D964  ED8840                          STD     $40,X
+D967  BDDA32                          JSR     SETSTA                          ; SET READ STATUS
+D96A  E68817                          LDB     $17,X                           ; RANDOM?
+D96D  2713                            BEQ     OREAD3
+D96F  3404            OREAD2          PSHS    B
+D971  BDD602                          JSR     RDNXT                           ; READ INDEX
+D974  3504                            PULS    B
+D976  250C                            BCS     OREAD4                          ; ERROR?
+D978  5A                              DECB
+D979  26F4                            BNE     OREAD2                          ; MORE INDEX LEFT?
+D97B  BED413                          LDX     CURFCB
+D97E  5F                              CLRB
+D97F  E78822                          STB     $22,X                           ; CLEAR RECORD COUNT
+D982  1CFE            OREAD3          ANDCC   #$FE
+D984  39              OREAD4          RTS
+D985  C611            OREAD5          LDB     #$11                            ; ERROR PROTECTED
+D987  2002                            BRA     NOTOP1
+                                      ; SPC  1
+D989  C604            NOTOPN          LDB     #$04                            ; ERROR NOT FOUND
+D98B  3404            NOTOP1          PSHS    B
+D98D  BDD503                          JSR     KILFCB
+D990  3504                            PULS    B
+D992  1A01                            ORCC    #$01
+D994  39                              RTS
+                                      ; SPC  1
+                              *OPEN FILE FOR WRITE
+D995  BED413          OWRITE          LDX     CURFCB
+D998  6D03                            TST     $03,X
+D99A  2A08                            BPL     OPNWR1                          ; REAL DRIVE NUMB.?
+D99C  BDDD79                          JSR     RDYCK                           ; SELECT NEXT READY DRV.
+D99F  2403                            BCC     OPNWR1                          ; DRIVE FOUND
+D9A1  C610                            LDB     #$10                            ; ERROR DRIVE NOT READY
+D9A3  39                              RTS
+D9A4  BDD4F1          OPNWR1          JSR     LNKFCB
+D9A7  25E2                            BCS     NOTOP1
+D9A9  BDD52E                          JSR     CLRFCB                          ; CLEAR FCB
+D9AC  BDD8D3                          JSR     GETIFO                          ; GET SYS INFO
+D9AF  25DA                            BCS     NOTOP1
+D9B1  BDD87A                          JSR     SCHDIR                          ; SEARCH DIR
+D9B4  25D5                            BCS     NOTOP1                          ; ERROR?
+D9B6  2604                            BNE     OPNWR2                          ; FILE NOT FOUND?
+D9B8  C603                            LDB     #$03                            ; ERROR FILE EXISTS
+D9BA  20CF                            BRA     NOTOP1
+D9BC  BDDC7C          OPNWR2          JSR     GSMAX                           ; GET TRACK SIZE
+D9BF  25CA                            BCS     NOTOP1
+D9C1  BED413                          LDX     CURFCB
+D9C4  C60A                            LDB     #$0A
+D9C6  6F0F            OPNWR3          CLR     $0F,X                           ; CLEAR FIRST-LAST
+D9C8  3001                            LEAX    $01,X
+D9CA  5A                              DECB
+D9CB  26F9                            BNE     OPNWR3
+D9CD  BED413                          LDX     CURFCB
+D9D0  EC8832                          LDD     $32,X                           ; GET DIR POINTER
+D9D3  2727                            BEQ     EXPDIR                          ; OUT OF SPACE?
+D9D5  ED882F                          STD     $2F,X
+D9D8  A68834                          LDA     $34,X
+D9DB  A78831                          STA     $31,X
+D9DE  FCCC0E                          LDD     MONTH                           ; SET DATE
+D9E1  ED8819                          STD     $19,X
+D9E4  B6CC10                          LDA     YEAR
+D9E7  A7881B                          STA     $1B,X
+D9EA  BDDD69                          JSR     RSTNAM
+D9ED  BDD925                          JSR     PUTDIR                          ; WRITE TO DIR
+D9F0  2599                            BCS     NOTOP1                          ; ERROR?
+D9F2  8D3E                            BSR     SETSTA                          ; SET WRITE STATUS
+D9F4  8604                            LDA     #$04
+D9F6  A78822                          STA     $22,X                           ; SET DATA POINTER
+D9F9  1CFE                            ANDCC   #$FE
+D9FB  39                              RTS
+D9FC  BED413          EXPDIR          LDX     CURFCB
+D9FF  6F8817                          CLR     $17,X                           ; FORCE NOT RANDOM
+DA02  6C8812                          INC     $12,X                           ; BUMP RECORD COUNT
+DA05  EC882F                          LDD     $2F,X                           ; POINT TO LAST OF DIR
+DA08  BDD616                          JSR     RDNXT2                          ; READ IT
+DA0B  250D                            BCS     EXPDR1                          ; ERROR?
+DA0D  BDD768                          JSR     LNKNX2                          ; SET FORWARD LINK
+DA10  2508                            BCS     EXPDR1
+DA12  BDD695                          JSR     SWRITE                          ; WRITE SECTOR
+DA15  2406                            BCC     EXPDR2
+DA17  BDDB7D                          JSR     WTRY1                           ; RETRY ERROR
+DA1A  7ED98B          EXPDR1          JMP     NOTOP1
+DA1D  BED413          EXPDR2          LDX     CURFCB
+DA20  EC881E                          LDD     $1E,X
+DA23  ED8832                          STD     $32,X
+DA26  8610                            LDA     #$10
+DA28  A78834                          STA     $34,X
+DA2B  BDD903                          JSR     WRINFO                          ; UPDATE SYS INFO
+DA2E  25EA                            BCS     EXPDR1
+DA30  208A                            BRA     OPNWR2                          ; FINISH OPEN
+                                      ; SPC  1
+DA32  BED413          SETSTA          LDX     CURFCB
+DA35  A684                            LDA     ,X                              ; GET FUNCTION CODE
+DA37  A702                            STA     $02,X                           ; SAVE AS STATUS
+DA39  6F84                            CLR     ,X                              ; CLEAR FUNCTION
+DA3B  6F883B                          CLR     $3B,X                           ; CLEAR SPACE COUNT
+DA3E  4F                              CLRA
+DA3F  A78822                          STA     $22,X                           ; CLEAR DATA INDEX
+DA42  39                              RTS
+                                      ; SPC  1
+                              *MOVE FILE TO NEXT SECTOR
+DA43  8D28            NXTSCT          BSR     TSTUPD                          ; WRITE NEW DATA
+DA45  250E                            BCS     NXTS1
+DA47  6F84                            CLR     ,X                              ; CLEAR FUNCTION
+DA49  44                              LSRA                            ;  TEST STATUS
+DA4A  1025FBB4                        LBCS    RDNXT                           ; READ NEXT SECTOR
+DA4E  C604                            LDB     #$04                            ; SET DATA INDEX
+DA50  E78822                          STB     $22,X
+DA53  1CFE                            ANDCC   #$FE
+DA55  39              NXTS1           RTS
+                                      ; SPC  1
+DA56  BED413          WRUPDT          LDX     CURFCB
+DA59  A602                            LDA     $02,X                           ; GET STATUS
+DA5B  8183                            CMPA    #$83                            ; DATA WRITTEN?
+DA5D  260B                            BNE     WRUP2
+DA5F  8603                            LDA     #$03                            ; CLEAR DATA FLAG
+DA61  A702                            STA     $02,X
+DA63  BDD695          WRUP1           JSR     SWRITE                          ; WRITE SECTOR
+DA66  10250113                        LBCS    WTRY1                           ; ERROR RETRY
+DA6A  1CFE            WRUP2           ANDCC   #$FE
+DA6C  39                              RTS
+                                      ; SPC  1
+DA6D  8DE7            TSTUPD          BSR     WRUPDT                          ; WRITE IF NECESSARY
+DA6F  250D                            BCS     TSTUP1
+DA71  BED413                          LDX     CURFCB
+DA74  A602                            LDA     $02,X                           ; GET STATUS
+DA76  8103                            CMPA    #$03                            ; OPEN FOR UPDATE?
+DA78  23F0                            BLS     WRUP2
+DA7A  C612                            LDB     #$12                            ; ERROR FILE STATUS
+DA7C  1A01                            ORCC    #$01
+DA7E  39              TSTUP1          RTS
+                                      ; SPC  1
+                              *CLOSE FILE
+DA7F  8DEC            CLOSE1          BSR     TSTUPD                          ; WRITE IF NECESSARY
+DA81  2531                            BCS     CLSE7
+DA83  8102                            CMPA    #$02                            ; OPEN FOR WRITE?
+DA85  2708                            BEQ     CLSE3
+DA87  BED413          CLSE2           LDX     CURFCB
+DA8A  6F02                            CLR     $02,X                           ; SET STATUS NOT OPEN
+DA8C  7ED503                          JMP     KILFCB                          ; UNLINK FCB
+DA8F  A68812          CLSE3           LDA     $12,X                           ; ANY DATA IN FILE?
+DA92  2605                            BNE     CLSE4                           ; THEN WRITE IT
+DA94  BDDB63                          JSR     DELNAM                          ; DELETE NAME
+DA97  2019                            BRA     CLSE6
+DA99  8DC8            CLSE4           BSR     WRUP1                           ; WRITE DATA
+DA9B  2517                            BCS     CLSE7
+DA9D  BED413                          LDX     CURFCB
+DAA0  6D8817                          TST     $17,X                           ; RANDOM FILE?
+DAA3  2705                            BEQ     CLSE5
+DAA5  BDDC54                          JSR     PUINDX                          ; FINISH INDEX FILE
+DAA8  250A                            BCS     CLSE7                           ; ERROR?
+DAAA  BDD925          CLSE5           JSR     PUTDIR                          ; WRITE DIR
+DAAD  2505                            BCS     CLSE7
+DAAF  BDD903                          JSR     WRINFO                          ; UPDATE SYS INFO
+DAB2  24D3            CLSE6           BCC     CLSE2
+DAB4  39              CLSE7           RTS
+                                      ; SPC  1
+                              *OPEN FILE FOR UPDATE
+DAB5  BDD942          UPDATE          JSR     OREAD                           ; OPEN FOR READ
+DAB8  2528                            BCS     EXPND2
+DABA  BDD602                          JSR     RDNXT                           ; READ FIRST SECTOR
+DABD  2523                            BCS     EXPND2
+DABF  8603                            LDA     #$03                            ; SET UPDATE STATUS
+DAC1  2018                            BRA     EXPND1
+                                      ; SPC  1
+                              *EXPAND FILE
+DAC3  BDD942          EXPAND          JSR     OREAD                           ; OPEN FOR READ
+DAC6  251A                            BCS     EXPND2
+DAC8  BED413                          LDX     CURFCB
+DACB  A60F                            LDA     $0F,X                           ; WRITE PROT.?
+DACD  8580                            BITA    #$80
+DACF  2612                            BNE     EXPND3
+DAD1  EC8813                          LDD     $13,X                           ; GET LAST SECTOR
+DAD4  BDD616                          JSR     RDNXT2                          ; READ IT
+DAD7  2509                            BCS     EXPND2
+DAD9  8602                            LDA     #$02                            ; WRITE STATUS
+DADB  BED413          EXPND1          LDX     CURFCB
+DADE  A702                            STA     $02,X                           ; SET STATUS
+DAE0  1CFE                            ANDCC   #$FE
+DAE2  39              EXPND2          RTS
+DAE3  C60B            EXPND3          LDB     #$0B                            ; ERROR PROTECTED
+DAE5  1A01                            ORCC    #$01
+DAE7  39                              RTS
+                                      ; SPC  1
+                              *RENAME FILE
+DAE8  8D35            RENAME          BSR     SWPNAM                          ; SAVE NAME
+DAEA  BDD87A                          JSR     SCHDIR                          ; SEARCH FOR IT
+DAED  252A                            BCS     RENAM3                          ; ERROR?
+DAEF  2724                            BEQ     RENAM2
+DAF1  BED413                          LDX     CURFCB
+DAF4  C60B                            LDB     #$0B
+DAF6  A68824          RENAM1          LDA     $24,X                           ; MOVE NAME
+DAF9  A704                            STA     $04,X
+DAFB  3001                            LEAX    $01,X
+DAFD  5A                              DECB
+DAFE  26F6                            BNE     RENAM1
+DB00  8D4D                            BSR     SWPSCH                          ; SWAP AND SEARCH
+DB02  2515                            BCS     RENAM3
+DB04  BED413                          LDX     CURFCB
+DB07  A60F                            LDA     $0F,X                           ; WRITE PROT?
+DB09  8580                            BITA    #$80
+DB0B  26D6                            BNE     EXPND3
+DB0D  8560                            BITA    #$60                            ; DELETE PROT?
+DB0F  2609                            BNE     RENAM4
+DB11  8D0C                            BSR     SWPNAM                          ; SAVE NAME
+DB13  2055                            BRA     DELN1                           ; PUT NEW NAME IN DIR
+DB15  C603            RENAM2          LDB     #$03                            ; ERROR NOT FOUND
+DB17  1A01                            ORCC    #$01
+DB19  39              RENAM3          RTS
+DB1A  C60C            RENAM4          LDB     #$0C                            ; ERROR WRITE PROT.
+DB1C  1A01                            ORCC    #$01
+DB1E  39                              RTS
+                                      ; SPC  1
+DB1F  BED413          SWPNAM          LDX     CURFCB
+DB22  860B                            LDA     #$0B                            ; BYTE COUNT
+DB24  B7D417                          STA     ERR1
+DB27  A604            SWPN1           LDA     $04,X                           ; MOVE NAME TO TEMP
+DB29  E68835                          LDB     $35,X                           ; MOVE TEMP TO NAME
+DB2C  A78835                          STA     $35,X
+DB2F  E704                            STB     $04,X
+DB31  3001                            LEAX    $01,X
+DB33  7AD417                          DEC     ERR1                            ; LAST BYTE?
+DB36  26EF                            BNE     SWPN1
+DB38  BED413                          LDX     CURFCB
+DB3B  A60C                            LDA     $0C,X                           ; EXTENTION SET?
+DB3D  260C                            BNE     SWPN3
+DB3F  C603                            LDB     #$03                            ; BYTE COUNT
+DB41  A6883D          SWPN2           LDA     $3D,X                           ; MOVE EXT. FROM TEMP
+DB44  A70C                            STA     $0C,X
+DB46  3001                            LEAX    $01,X
+DB48  5A                              DECB
+DB49  26F6                            BNE     SWPN2
+DB4B  BED413          SWPN3           LDX     CURFCB
+DB4E  39                              RTS
+                                      ; SPC  1
+DB4F  8DCE            SWPSCH          BSR     SWPNAM                          ; SWAP NAME
+DB51  BDD87A          SWSRCH          JSR     SCHDIR                          ; SEARCH FOR IT
+DB54  2507                            BCS     SWPSC1                          ; ERROR?
+DB56  2606                            BNE     SWPSC2                          ; NOT FOUND?
+DB58  BED413                          LDX     CURFCB
+DB5B  1CFE                            ANDCC   #$FE
+DB5D  39              SWPSC1          RTS
+DB5E  C604            SWPSC2          LDB     #$04                            ; ERROR NOT FOUND
+DB60  1A01                            ORCC    #$01
+DB62  39                              RTS
+                                      ; SPC  1
+DB63  BED413          DELNAM          LDX     CURFCB
+DB66  86FF                            LDA     #$FF
+DB68  A704                            STA     $04,X                           ; MARK NAME AS DELETED
+DB6A  BDD925          DELN1           JSR     PUTDIR                          ; WRITE DIR
+DB6D  BED413                          LDX     CURFCB
+DB70  8600                            LDA     #$00
+DB72  A702                            STA     $02,X                           ; SET FILE NOT OPEN
+DB74  39                              RTS
+                                      ; SPC  1
+DB75  ED8840          WRETRY          STD     $40,X                           ; SET TRACK-SECTOR
+DB78  BDD695                          JSR     SWRITE
+DB7B  2414                            BCC     WTRY4                           ; NO ERROR?
+DB7D  C540            WTRY1           BITB    #$40                            ; WRITE PROT.?
+DB7F  2608                            BNE     WTRY2
+DB81  C580                            BITB    #$80                            ; DRIVE NOT READY?
+DB83  270A                            BEQ     WTRY3
+DB85  C610                            LDB     #$10                            ; ERROR NOT READY
+DB87  2006                            BRA     WTRY3
+DB89  C60B            WTRY2           LDB     #$0B                            ; ERROR WRITE PROT.
+DB8B  2002                            BRA     WTRY3
+DB8D  C60A                            LDB     #$0A                            ; ERROR WRITE ERROR
+DB8F  1A01            WTRY3           ORCC    #$01
+DB91  39              WTRY4           RTS
+                                      ; SPC  1
+                              *DELETE FILE
+DB92  BDD8D3          DELETE          JSR     GETIFO                          ; GET SYS INFO
+DB95  255E                            BCS     DELET4                          ; ERROR?
+DB97  8DB8                            BSR     SWSRCH                          ; SEARCH DIR
+DB99  255A                            BCS     DELET4
+DB9B  BED413                          LDX     CURFCB
+DB9E  A60F                            LDA     $0F,X
+DBA0  8580                            BITA    #$80                            ; WRITE PROT?
+DBA2  2652                            BNE     DELET5
+DBA4  8560                            BITA    #$60                            ; DELETE PROT?
+DBA6  2652                            BNE     DELET6
+DBA8  BDD77D                          JSR     GETPTR                          ; GET POINTER TO LINK
+DBAB  BED41A                          LDX     LNKPTR
+DBAE  EC02                            LDD     $02,X                           ; ANY FREE SECTORS?
+DBB0  260F                            BNE     DELET1
+DBB2  BED413                          LDX     CURFCB
+DBB5  EC8811                          LDD     $11,X                           ; GET START OF FILE
+DBB8  2733                            BEQ     DELET3
+DBBA  BED41A                          LDX     LNKPTR
+DBBD  ED84                            STD     ,X                              ; STORE AS FREE LIST
+DBBF  2014                            BRA     DELET2
+DBC1  BED413          DELET1          LDX     CURFCB
+DBC4  BDD616                          JSR     RDNXT2                          ; READ LAST FREE SECTOR
+DBC7  252C                            BCS     DELET4
+DBC9  BED413                          LDX     CURFCB
+DBCC  EC8811                          LDD     $11,X                           ; GET FIRST OF FILE
+DBCF  271C                            BEQ     DELET3
+DBD1  8DA2                            BSR     WRETRY                          ; LINK TO END OF FREE
+DBD3  2520                            BCS     DELET4
+DBD5  BED413          DELET2          LDX     CURFCB
+DBD8  EC8813                          LDD     $13,X                           ; GET END OF FILE
+DBDB  BED41A                          LDX     LNKPTR
+DBDE  ED02                            STD     $02,X                           ; STORE AS END OF FREE
+DBE0  BED413                          LDX     CURFCB
+DBE3  EC8815                          LDD     $15,X                           ; GET FILE SIZE
+DBE6  BED41A                          LDX     LNKPTR
+DBE9  E304                            ADDD    $04,X                           ; ADD TO SECTORS AVAIL.
+DBEB  ED04                            STD     $04,X
+DBED  BDDB63          DELET3          JSR     DELNAM                          ; KILL NAME
+DBF0  2503                            BCS     DELET4
+DBF2  BDD903                          JSR     WRINFO                          ; SAVE SYS INFO
+DBF5  39              DELET4          RTS
+DBF6  C60B            DELET5          LDB     #$0B                            ; ERROR WRITE PROT
+DBF8  2002                            BRA     DELET7
+DBFA  C60C            DELET6          LDB     #$0C                            ; ERROR DELETE PROT
+DBFC  1A01            DELET7          ORCC    #$01
+DBFE  39                              RTS
+                                      ; SPC  1
+DBFF  EC881E          BLDNDX          LDD     $1E,X                           ; GET CURRENT TRACK-SECTOR
+DC02  5C                              INCB                            ;  BUMP SECTOR COUNT
+DC03  E1883C                          CMPB    $3C,X                           ; SAME AS MAX SECTOR?
+DC06  2303                            BLS     BLDN1
+DC08  C601                            LDB     #$01                            ; POINT TO SECTOR ONE
+DC0A  4C                              INCA                            ;  BUMP TRACK
+DC0B  10A38813        BLDN1           CMPD    $13,X                           ; MATCH NEXT TRACK-SECTOR
+DC0F  260E                            BNE     BLDN2
+DC11  A68837                          LDA     $37,X                           ; GET CONTIG COUNT
+DC14  81FF                            CMPA    #$FF                            ; EQUAL MAX CONTIG.
+DC16  2707                            BEQ     BLDN2
+DC18  4C                              INCA                            ;  BUMP CONTIG COUNT
+DC19  A78837                          STA     $37,X                           ; SAVE IT
+DC1C  1CFE                            ANDCC   #$FE
+DC1E  39                              RTS
+DC1F  8D33            BLDN2           BSR     PUINDX                          ; WRITE INDEX IN MAP
+DC21  2530                            BCS     BLDN6                           ; ERROR?
+DC23  BED413                          LDX     CURFCB
+DC26  A6883A                          LDA     $3A,X                           ; GET MAP POINTER
+DC29  8B03                            ADDA    #$03                            ; BUMP INDEX POINTER
+DC2B  2616                            BNE     BLDN5                           ; END OF SECTOR?
+DC2D  EC881E                          LDD     $1E,X                           ; GET CURRENT TRK-SCT
+DC30  10A38811                        CMPD    $11,X                           ; FIRST OF MAP?
+DC34  2705                            BEQ     BLDN3
+DC36  C617                            LDB     #$17                            ; ERROR OVERFLOW
+DC38  1A01                            ORCC    #$01
+DC3A  39                              RTS
+DC3B  EC8840          BLDN3           LDD     $40,X                           ; GET LINK
+DC3E  ED8838          BLDN4           STD     $38,X                           ; PUT IN INDEX
+DC41  8604                            LDA     #$04
+DC43  A7883A          BLDN5           STA     $3A,X                           ; RESET DATA INDEX
+DC46  EC8813                          LDD     $13,X
+DC49  ED8835                          STD     $35,X
+DC4C  8601                            LDA     #$01                            ; RESET CONTIG COUNT
+DC4E  A78837                          STA     $37,X
+DC51  1CFE                            ANDCC   #$FE
+DC53  39              BLDN6           RTS
+                                      ; SPC  1
+DC54  EC8838          PUINDX          LDD     $38,X                           ; GET MAP SECTOR
+DC57  BDD616                          JSR     RDNXT2                          ; READ IT
+DC5A  25F7                            BCS     BLDN6
+DC5C  BED413                          LDX     CURFCB
+DC5F  1F12                            TFR     X,Y
+DC61  E6883A                          LDB     $3A,X                           ; GET MAP POINTER
+DC64  3A                              ABX
+DC65  C603                            LDB     #$03                            ; BYTE COUNT
+DC67  A6A835          PNDX1           LDA     $35,Y                           ; MOVE TRACK-SECTOR
+DC6A  3121                            LEAY    $01,Y                           ; TO INDEX MAP
+DC6C  A78840                          STA     $40,X
+DC6F  3001                            LEAX    $01,X
+DC71  5A                              DECB
+DC72  26F3                            BNE     PNDX1
+DC74  BDD695                          JSR     SWRITE                          ; WRITE INDEX
+DC77  24DA                            BCC     BLDN6                           ; NO ERROR?
+DC79  7EDB7D                          JMP     WTRY1                           ; RETRY
+DC7C  BDD806          GSMAX           JSR     OINFO                           ; READ SYS INFO
+DC7F  BDD602                          JSR     RDNXT
+DC82  2546                            BCS     POSN2                           ; ERROR?
+DC84  BED413                          LDX     CURFCB
+DC87  4F                              CLRA
+DC88  5F                              CLRB
+DC89  ED8820                          STD     $20,X                           ; CLEAR RECORD COUNT
+DC8C  A68867                          LDA     $67,X                           ; GET TRACK SIZE
+DC8F  A7883C                          STA     $3C,X
+DC92  5F                              CLRB
+DC93  6F8840          CLRBUF          CLR     $40,X                           ; CLEAR SECTOR BUFF
+DC96  3001                            LEAX    $01,X
+DC98  5A                              DECB
+DC99  26F8                            BNE     CLRBUF
+DC9B  BED413                          LDX     CURFCB
+DC9E  1CFE                            ANDCC   #$FE
+DCA0  39                              RTS
+                                      ; SPC  1
+                              *BACKUP FILE ONE RECORD
+DCA1  BED413          BACKUP          LDX     CURFCB
+DCA4  A68817                          LDA     $17,X                           ; RANDOM?
+DCA7  271D                            BEQ     POSN1
+DCA9  EC8820                          LDD     $20,X                           ; GET RECORD NUMB
+DCAC  830001                          SUBD    #$0001
+DCAF  2A03                            BPL     BACK1                           ; LESS THAN ZERO?
+DCB1  7EDD56                          JMP     RECD1                           ; ERROR
+DCB4  ED8820          BACK1           STD     $20,X                           ; SET RECORD NUMB
+                                      ; SPC  1
+                              *POSITION FILE TO RANDOM SECTOR
+DCB7  BDDA6D          POSITN          JSR     TSTUPD                          ; WRITE NEW DATA
+DCBA  250E                            BCS     POSN2                           ; ERROR?
+DCBC  46                              RORA
+DCBD  2407                            BCC     POSN1                           ; NOT READ OR UPDATE
+DCBF  6F84                            CLR     ,X                              ; CLEAR FUNCTION
+DCC1  A68817                          LDA     $17,X                           ; RANDOM FILE?
+DCC4  2605                            BNE     RANDOM
+DCC6  C612            POSN1           LDB     #$12                            ; ERROR SYS FILE ERROR
+DCC8  1A01                            ORCC    #$01
+DCCA  39              POSN2           RTS
+                                      ; SPC  1
+DCCB  7FD417          RANDOM          CLR     ERR1
+DCCE  EC8811                          LDD     $11,X                           ; GET FILE START
+DCD1  10AE8820                        LDY     $20,X                           ; GET RECORD NUMB
+DCD5  276A                            BEQ     RECORD                          ; RECORD ZERO?
+DCD7  BDDD5B                          JSR     RDINDX                          ; READ SECTOR MAP
+DCDA  25EE                            BCS     POSN2
+DCDC  4F                              CLRA                            ;  SET RECORD ZERO
+DCDD  5F                              CLRB
+DCDE  6D02            RAND1           TST     $02,X                           ; OUT OF SECTORS?
+DCE0  2774                            BEQ     RECD1
+DCE2  EB02                            ADDB    $02,X                           ; INC BY RECORDS
+DCE4  8900                            ADCA    #$00                            ; IN THIS BLOCK
+DCE6  BFD415                          STX     RANDX
+DCE9  BED413                          LDX     CURFCB
+DCEC  10A38820                        CMPD    $20,X                           ; PROPER INDEX?
+DCF0  242C                            BCC     RAND3                           ; YES GET POINTER
+DCF2  BED415                          LDX     RANDX
+DCF5  3003                            LEAX    $03,X                           ; BUMP TO NEXT BLOCK
+DCF7  3402                            PSHS    A
+DCF9  B6D417                          LDA     ERR1
+DCFC  4C                              INCA                            ;  BUMP BLOCK COUNT
+DCFD  B7D417                          STA     ERR1
+DD00  8154                            CMPA    #$54
+DD02  2708                            BEQ     RAND2                           ; END OF SECTOR ONE?
+DD04  81A8                            CMPA    #$A8
+DD06  3502                            PULS    A
+DD08  274C                            BEQ     RECD1                           ; END OF MAP?
+DD0A  20D2                            BRA     RAND1
+DD0C  3404            RAND2           PSHS    B
+DD0E  BED413                          LDX     CURFCB
+DD11  EC8840                          LDD     $40,X                           ; LINK TO NEXT SECTOR
+DD14  8D45                            BSR     RDINDX                          ; SET NEXT SECTOR
+DD16  253E                            BCS     RECD1
+DD18  3504                            PULS    B
+DD1A  3502                            PULS    A
+DD1C  20C0                            BRA     RAND1
+DD1E  A38820          RAND3           SUBD    $20,X                           ; GET DIFFERENCE
+DD21  BED415                          LDX     RANDX
+DD24  A602                            LDA     $02,X                           ; GET CONTIG COUNT
+DD26  3404                            PSHS    B
+DD28  A0E0                            SUBA    ,S+                             ; CALC. SECTOR COUNT
+DD2A  4A                              DECA
+DD2B  1F89                            TFR     A,B
+DD2D  A684                            LDA     ,X                              ; ADD COUNT TO TRACK-SECTOR
+DD2F  EB01                            ADDB    $01,X
+DD31  BED413                          LDX     CURFCB
+DD34  2505                            BCS     RAND5
+DD36  E1883C          RAND4           CMPB    $3C,X                           ; <=MAX SECTOR?
+DD39  2306                            BLS     RECORD                          ; GET RECORD
+DD3B  E0883C          RAND5           SUBB    $3C,X                           ; DEC SECTOR COUNT
+DD3E  4C                              INCA                            ;  INC TRACK COUNT
+DD3F  20F5                            BRA     RAND4
+                                      ; SPC  1
+DD41  BDD616          RECORD          JSR     RDNXT2                          ; READ SECTOR
+DD44  2514                            BCS     RECD3                           ; ERROR?
+DD46  BED413                          LDX     CURFCB
+DD49  EC8842                          LDD     $42,X                           ; GET RECORD NUMB
+DD4C  10A38820                        CMPD    $20,X                           ; RECORD MATCH?
+DD50  2714                            BEQ     RDNDX1
+DD52  C619                            LDB     #$19                            ; ERROR MISMATCH
+DD54  2002                            BRA     RECD2
+DD56  C618            RECD1           LDB     #$18                            ; ERROR NON EXISTANT RECORD
+DD58  1A01            RECD2           ORCC    #$01
+DD5A  39              RECD3           RTS
+                                      ; SPC  1
+DD5B  BDD616          RDINDX          JSR     RDNXT2                          ; READ SECTOR
+DD5E  2508                            BCS     RDNDX2
+DD60  BED413                          LDX     CURFCB
+DD63  C644                            LDB     #$44
+DD65  3A                              ABX                             ;  POINT TO DATA
+DD66  1CFE            RDNDX1          ANDCC   #$FE
+DD68  39              RDNDX2          RTS
+                                      ; SPC  1
+DD69  BED413          RSTNAM          LDX     CURFCB
+DD6C  C60B                            LDB     #$0B                            ; BYTE COUNT
+DD6E  A68824          RESTN1          LDA     $24,X                           ; MOVE TO FCB NAME
+DD71  A704                            STA     $04,X
+DD73  3001                            LEAX    $01,X
+DD75  5A                              DECB
+DD76  26F6                            BNE     RESTN1
+DD78  39                              RTS
+                                      ; SPC  1
+                              *FIND NEXT READY DRIVE
+DD79  BED413          RDYCK           LDX     CURFCB
+DD7C  A603                            LDA     $03,X                           ; GET DRIVE NUMB
+DD7E  4C                              INCA
+DD7F  8104                            CMPA    #$04                            ; VALID DRIVE?
+DD81  240F                            BCC     CKRDY3
+DD83  A703                            STA     $03,X                           ; SET DRIVE
+DD85  2605                            BNE     CKRDY1                          ; NOT DRIVE 0
+DD87  BDDE0F                          JSR     CHECK                           ; WAIT AND CHECK
+DD8A  2003                            BRA     CKRDY2
+DD8C  BDDE12          CKRDY1          JSR     QCHECK                          ; CHECK DRIVE READY
+DD8F  25E8            CKRDY2          BCS     RDYCK                           ; NOT READY?
+DD91  39                              RTS
+DD92  C610            CKRDY3          LDB     #$10                            ; ERROR NOT READY
+DD94  1A01                            ORCC    #$01
+DD96  39                              RTS
+                                      ; SPC  1
+                              *DISK DRIVERS
+DE00                  READ            EQU     $DE00
+DE03                  WRITE           EQU     $DE03
+DE06                  VERIFY          EQU     $DE06
+DE09                  RESTOR          EQU     $DE09
+DE0C                  SELECT          EQU     $DE0C
+DE0F                  CHECK           EQU     $DE0F
+DE12                  QCHECK          EQU     $DE12
+DE15                  DRINIT          EQU     $DE15
+DE18                  WINITD          EQU     $DE18
+DE1B                  SEEKIT          EQU     $DE1B

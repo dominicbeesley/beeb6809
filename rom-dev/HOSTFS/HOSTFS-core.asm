@@ -12,7 +12,8 @@ DO_TUBE			EQU	0
 
 * Filing System values
 * ====================
-HOSTFS_ESC		EQU	$9B
+;HOSTFS_ESC		EQU	$9B
+HOSTFS_ESC		EQU	$7F
 HOSTFS_FSNO 		EQU	$09
 HOSTFS_CHANLO		EQU	$80
 HOSTFS_CHANHI		EQU	$9F

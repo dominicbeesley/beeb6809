@@ -17,12 +17,10 @@ ROMBANK		EQU $8
 
 
 	IF MACH_BEEB
-		LDA	zp_mos_curROM
-		PSHS	A
-		LDA	#ROMBANK
-		STA	zp_mos_curROM
-		STA	sheila_ROMCTL_SWR
-DESTBASE	EQU	$8000				; on beeb copy via SWROM #8
+		LDA	#1
+		ORA	sheila_ROMCTL_MOS
+		STA	sheila_ROMCTL_MOS		; page in new ROM as MOS
+DESTBASE	EQU	$C000				; on beeb copy via SWROM #8
 	ELSE
 		LDA	#$8		
 		ORA	sheila_ROMCTL_MOS
@@ -31,7 +29,6 @@ DESTBASE	EQU	$C000
 	ENDIF
 
 
-	IF MACH_CHIPKIT
 		; map RAM bank $8 in top ROM hole and copy $4000-$7FFF there, missing out $FC00-$FEFF
 		LDX	#$4000
 		LDU	#DESTBASE
@@ -48,15 +45,6 @@ DESTBASE	EQU	$C000
 		STD	,U++
 		LEAY	-2,Y
 		BNE	1B
-	ELSE
-		LDX	#$4000
-		LDU	#DESTBASE
-		LDY	#$4000				
-1		LDD	,X++
-		STD	,U++
-		LEAY	-2,Y
-		BNE	1B	
-	ENDIF
 
 ;		LDD	ROM_VECTORS_SAV + OFF_SWI_VEC
 ;		STD	REMAPPED_HW_VECTORS + OFF_SWI_VEC
@@ -73,16 +61,6 @@ DESTBASE	EQU	$C000
 ;;		JSR	OSWRCH
 ;;		BRA 	1B
 ;;2
-
-	IF MACH_BEEB
-		PULS	A
-		STA	zp_mos_curROM
-		STA	sheila_ROMCTL_SWR
-		LDA	#1
-		ORA	sheila_ROMCTL_MOS
-		STA	sheila_ROMCTL_MOS		; page in new ROM as MOS
-	ENDIF
-
 
 EXITWAIT	JMP	EXITWAIT
 ;		DEBUG_INST				; re-enter debugger

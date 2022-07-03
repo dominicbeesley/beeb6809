@@ -17,6 +17,12 @@
 		; user must press BREAK to continue booting minimos
 
 
+		; TODO: warn user of impending doom if:
+		;	- ROM 8 in use
+		;	- already SWRAM
+		;	- ROM 0 in use
+		; TODO: choose ROMs more carefully? Check? API get MOSRAM slot from API/OS99?
+
 
 		ORCC	#CC_I+CC_F		; disable interrupts
 
@@ -28,7 +34,7 @@
 1
 
 
-		LDB	#9
+		LDB	#8
 		STB	sheila_ROMCTL_SWR	; mos memory at 8000
 
 		; map RAM bank $8 in top ROM hole and copy $4000-$7FFF there, missing out $FC00-$FEFF
@@ -40,11 +46,14 @@
 		LEAY	-2,Y
 		BNE	1B
 
-		LDB	#1
-		STB	sheila_ROMCTL_SWR	; swram bank #1 memory at 8000
-		LDB	#$01
-		STB	sheila_ROMCTL_MOS	; enable SWMOS
+		LDB	#0
+		STB	sheila_ROMCTL_SWR	; swram bank #0 memory at 8000
+;		LDB	#$FF
+;		STB	sheila_MEM_LOMEMTURBO	; ChipRAM in 0-7FFF
 
+		LDB	sheila_MEM_CTL
+		ORB	#BITS_MEM_CTL_SWMOS
+		STB	sheila_MEM_CTL
 
 1		CWAI	#$FF				; wait for BREAK
 		BRA	1B

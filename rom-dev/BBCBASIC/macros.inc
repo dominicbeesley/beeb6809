@@ -9,52 +9,21 @@ __ABSR		SET 1B+2
 		ENDM
 
 
-PRINT_STR	MACRO
-		SECTION	"tables_and_strings"
-1		FCB	\1,0
-__STR		SET	1B
-		CODE
-		PSHS	X
-		LEAX	__STR,PCR
-		JSR	PRSTRING
-		PULS	X
-		ENDM
-
-PRINT_STR_BRK	MACRO
-		SECTION	"tables_and_strings"
-8		DO_BRK_B
-		FCB	\2
-9		FCB	\1,0
-__STR		SET	9B
-__BRK		SET	8B
-		CODE
-		LEAX	__STR,PCR
-		JSR	PRSTRING
-		LBRA	__BRK		
-		ENDM
 
 
 TODODEADENDFLEX		MACRO
-	IF DEBUG
-			ABSR	PrRegs
-		ABSR		PrDeadFlex
-		PRINT_STR_BRK	\1, $7E
-		ELSE
 		DO_BRK_B
-		FCB		$7E,\1,0
-		ENDIF
+		FCB		$7E,"F:"
+		FCB		\1
+		FCB		0
 			ENDM
 
 TODODEADEND		MACRO
-	IF DEBUG
-		ABSR		PrRegs
-		ABSR		PrDead
-		PRINT_STR_BRK	\1, $7E
-	ELSE
 		DO_BRK_B
-		FCB		$7E,\1,0
-	ENDIF
-		ENDM
+		FCB		$7E,"D:"
+		FCB		\1
+		FCB		0
+			ENDM
 
 TODO_CMD		MACRO
 			TODODEADEND "\1"
@@ -63,7 +32,7 @@ TODO_CMD		MACRO
 DO_BRK_B		MACRO			; code
 		IF FLEX
 			JSR	HandleBRK
-		ELSIF MATCHBOX
+		ELSIF MACH_MATCHBOX
 			SWI
 		ELSE
 			SWI3

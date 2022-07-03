@@ -1,4 +1,4 @@
-ASFLAGS=-3 -v
+ASFLAGS=-v
 TARGETS=
 TARGETS_BEEB=	flex-mini-mos-noice.bin  \
 		minimos-load.hex
@@ -18,7 +18,7 @@ CLEAN_EXTRA=$(addprefix $(BEEBOUT)/,flex-mini-mosloadandrun.noi flex-mini-mosloa
 
 $(BEEBOUT)/flex-mini-mos-noice.bin:	flex-mini-mos.asm $(DEPS) ../../mos/noice/noice/mon-noice-6309-beeb-ovr.ovr $(BEEBOUT)/minimos-load.hex
 			./mkversion.sh
-			$(AS) -v -3 --define NOICE=1 --define CPU_6309=1 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
+			$(AS) -v -3 --define NOICE=1 --define CPU_6809=1 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
 			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 						
 

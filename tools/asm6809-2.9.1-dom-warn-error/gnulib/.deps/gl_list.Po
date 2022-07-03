@@ -1,0 +1,11 @@
+gl_list.o: gl_list.c ../config.h gl_list.h \
+ /usr/lib/gcc/x86_64-pc-cygwin/9.3.0/include/stdbool.h \
+ /usr/lib/gcc/x86_64-pc-cygwin/9.3.0/include/stddef.h
+
+../config.h:
+
+gl_list.h:
+
+/usr/lib/gcc/x86_64-pc-cygwin/9.3.0/include/stdbool.h:
+
+/usr/lib/gcc/x86_64-pc-cygwin/9.3.0/include/stddef.h:
