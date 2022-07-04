@@ -37,7 +37,7 @@ if [[ -z "$NAME" ]]; then
 fi
 
 if [[ -z "$DEST" ]]; then
-  SSD="$name.ssd"
+  SSD="$NAME.ssd"
 else
   SSD="$DEST"
 fi;
