@@ -211,7 +211,7 @@ assClassFound
 assClassSuff_FollowTail
 		LDX	#assSuffSetsTbl			; get base of suffix sets table
 		; loop through table to find start of our set, skipping unwanted sets
-		ANDB	#$3F
+;;		ANDB	#$3F		-- table > 3F think can go up to 7F now!
 1		DECB
 		ABX
 assClass_SuffSetLp
