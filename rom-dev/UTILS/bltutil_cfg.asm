@@ -410,7 +410,8 @@ CI_flags_done
 		lda	JIM+jim_offs_VERSION_Board_level
 		cmpa	#3
 		bge	CI_mk2_2
-		ldb	JIM+jim_offs_VERSION_cfg_bits+1		; get MK.2 host in bit 12..10 inverted
+		ldb	JIM+jim_offs_VERSION_cfg_bits+1		; get MK.2 host in bit 13..11 inverted
+		lsrb
 		lsrb
 		lsrb
 CI_mk2_2	andb	#7
