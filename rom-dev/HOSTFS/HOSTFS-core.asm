@@ -17,17 +17,29 @@ HOSTFS_ESC		EQU	$7F
 HOSTFS_FSNO 		EQU	$09
 HOSTFS_CHANLO		EQU	$80
 HOSTFS_CHANHI		EQU	$9F
-KEY_SEL_AT_BREAK	EQU	$60
 
 ADDR_ERRBUF		EQU	$100			; base of stack!
 
 		SETDP 0
+
+		; scratch vars - these are not persisted between calls
+ZP_ADDR_CTRLPTR		EQU	zp_fs_s + $00		; OSFILE, OSGBPB control block
+ZP_ADDR_LPTR		EQU	zp_fs_s + $02
+ZP_ADDR_TRANS		EQU	zp_fs_s + $04		
+
+		; workspace vars - these are kept so long as we're the cur ABSWKS/FS 
 ZP_ADDR_PROG		EQU	zp_fs_w + $00
 ZP_ADDR_MEMTOP		EQU	zp_fs_w + $04
-ZP_ADDR_TRANS		EQU	zp_fs_w + $06		; ADDR   - Data transfer address (assembler doesn't like 'INC ADDR')
-ZP_ADDR_LPTR		EQU	zp_fs_w + $0A
-ZP_ADDR_CMDPTR		EQU	zp_fs_w + $0E
-ZP_ADDR_CTRLPTR		EQU	zp_fs_w + $0C		; OSFILE, OSGBPB control block
+
+	IF TCPIP
+ZP_TCPIP_RDBUF		EQU	zp_fs_w + $08		; extra "odd" byte that was last read, reads from hardware are always 16 bits so we must hold on to this
+ZP_TCPIP_RDBUF_FULL	EQU	zp_fs_w + $09		; when NE there is a byte buffered
+ZP_TCPIP_RSR		EQU	zp_fs_w + $0A		; data remaining in current packet being written
+ZP_TCPIP_WRBUF		EQU	zp_fs_w + $0C		; extra "odd" byte that was last written
+ZP_TCPIP_WRBUF_FULL	EQU	zp_fs_w + $0D		; when NE there is a byte buffered
+	ENDIF
+
+ZP_ADDR_CMDPTR		EQU	zp_fs_w + $0E		; last run command - need to keep hold of this one!
 ZP_ESCFLG		EQU	$FF			; TODO - get this through API (somehow!)
 
 		;TODO : move these to autogen'd files? Agree version # with JGH
@@ -53,6 +65,20 @@ TODO		MACRO
 		FCB	0
 		ENDM
 
+
+	IF TCPIP
+BEGINTRANS	MACRO
+		lbsr	wiz_begin_trans
+		ENDM
+ENDTRANS	MACRO
+		lbsr	wiz_end_trans
+		ENDM
+	ELSE
+BEGINTRANS	MACRO
+		ENDM
+ENDTRANS	MACRO
+		ENDM
+	ENDIF
 
 
 
@@ -95,7 +121,9 @@ SJTE		MACRO
 ;* ----------------
 	;TODO make this relative!
 Serv_jump_table
-;		SJTE	$01, Serv1
+	IF TCPIP
+		SJTE	$01, Serv1_ClaimABS
+	ENDIF
 		SJTE	$03, Serv3
 		SJTE	$04, Serv4
 		SJTE	$09, Serv9
@@ -106,21 +134,27 @@ Serv_jump_table
 		FCB	0
 
 Service
-		leay	Serv_jump_table,PCR
-1		tst	,Y
+		pshs	U
+		leau	Serv_jump_table,PCR
+1		tst	,U
 		beq	ServiceOut
-		cmpa	,Y+
+		cmpa	,U+
 		bne	2F
-		jmp	,Y
-2		leay	3,Y
+		jsr	,U
+		puls	U,PC
+2		leau	3,U
 		bra	1B
-ServiceOut	rts
+ServiceOut	puls	U,PC
+
+	IF TCPIP
 ;
 ;* --------------------------------------
 ;* SERVICE 1 - Claim workspace/initialise
 ;* --------------------------------------
-;Serv1
-;		rts
+Serv1_ClaimABS
+		jsr	wiz_init
+		rts
+	ENDIF
 ;
 * ---------------------------------------
 * SERVICE 3 - Boot filing system on Break
@@ -312,7 +346,10 @@ Serv12Select
 		ldx	#15
 		jsr	OSBYTE				; Vectors changed
 Serv12Serial						; We're taking over Serial system
-	IF MYELIN
+
+	IF TCPIP
+		; TODO: open socket here?
+	ELSIF MYELIN
 		; no claim to make?
 	ELSE
 		lda	#156
@@ -838,7 +875,9 @@ MyosRDCH
 *
 MyosRDCH_IO
 		clra
+		BEGINTRANS
 		lbsr	SendCommand			; Send command $00 - ummOSRDCH
+		ENDTRANS
 WaitCarryChar						; Wait for Carry and A
 		lbsr	WaitByte			; Wait for carry
 		asla
@@ -952,8 +991,10 @@ CmdHelp
 *
 osCLI_IO
 		lda	#$02
+		BEGINTRANS
 		lbsr	SendCommand			; Send command $02 - OSCLI
 		lbsr	SendStringLPTR			; Send command string at ZP_ADDR_LPTR
+		ENDTRANS
 			
 		; Drop through to wait for Ack and enter code
 
@@ -1042,6 +1083,7 @@ MyosFSCV
 ;		clc
 ByteHi2
 		pshs	CC
+		BEGINTRANS
 		lbsr	SendCommand
 		puls	CC				; Send command $06 or $18 - BYTEHI or FSC
 		tfr	X,D
@@ -1051,6 +1093,7 @@ ByteHi2
 		lbsr	SendByte			; Send second parameter
 		puls	A
 		lbsr	SendByte			; Send function
+		ENDTRANS
 		bcs	ByteHi3				; Skip OSBYTE checks
 		cmpa	#$8E
 		beq	WaitEnterCode			; If select language, check to enter code
@@ -1089,7 +1132,9 @@ LFAEFrts
 ;
 FSCString
 		leas	1,S				; discard stacked A
+		BEGINTRANS
 		lbsr	SendString			; Send string
+		ENDTRANS
 FSCStrLp2
 		lda	,X+
 		cmpa	#'!'
@@ -1101,7 +1146,7 @@ FSCStrLp3
 		beq	FSCStrLp3			; Skip to non-' '
 		leay	-1,X
 		sty	ZP_ADDR_CMDPTR
-		bsr	WaitEnterCode			; Wait for Ack, enter code if needed
+		lbsr	WaitEnterCode			; Wait for Ack, enter code if needed
 		bpl	LFAEFrts			; Response=<$40, all done, return response
 			; Response=$40 ($80 at this point), print text
 FSCStrChr
@@ -1356,6 +1401,7 @@ FSCStrChr
 MyosARGS
 		pshs	A
 		lda	#$0C
+		BEGINTRANS
 		lbsr	SendCommand			; Send command $0C - ummOSARGS
 		m_tya
 		lbsr	SendByte			; Send handle
@@ -1369,6 +1415,7 @@ MyosARGS
 		lbsr	SendByte
 		puls	A
 		lbsr	SendByte			; Send function
+		ENDTRANS
 		lbsr	WaitByte
 		pshs	A				; Get and save result
 		lbsr	WaitByte
@@ -1394,9 +1441,11 @@ MyosARGS
 *
 MyosBGET
 		lda	#$0E
+		BEGINTRANS
 		lbsr	SendCommand			; Send command $0E - ummOSBGET
 		m_tya
 		lbsr	SendByte			; Send handle
+		ENDTRANS
 		lbra	WaitCarryChar			; Jump to wait for Carry and byte
 
 
@@ -1412,6 +1461,7 @@ MyosBGET
 MyosBPUT
 		pshs	A
 		lda	#$10
+		BEGINTRANS
 		lbsr	SendCommand			; Send command $10 - ummOSBPUT
 		m_tya
 		lbsr	SendByte			; Send handle
@@ -1419,6 +1469,7 @@ MyosBPUT
 		lbsr	SendByte			; Send byte
 		pshs	A
 		lbsr	WaitByte
+		ENDTRANS
 		puls	A
 		rts					; Wait for acknowledge and return
 
@@ -1435,6 +1486,7 @@ MyosBPUT
 MyosFIND
 		pshs	A
 		lda	#$12
+		BEGINTRANS
 		lbsr	SendCommand			; Send command $12 - ummOSFIND
 		puls	A
 		lbsr	SendByte			; Send function
@@ -1443,12 +1495,14 @@ MyosFIND
 CLOSE
 		pshs	A
 		m_tya
-		bsr	SendByte			; Send handle
+		lbsr	SendByte			; Send handle
+		ENDTRANS
 		lbsr	WaitByte
 		puls	A
 		rts			; Wait for acknowledge, restore regs and return
 OPEN
 		bsr	SendString			; Send pathname
+		ENDTRANS
 		lbra	WaitByte			; Wait for and return handle
 
 
@@ -1466,6 +1520,7 @@ MyosFILE
 		pshs	D,X,Y
 		stx	ZP_ADDR_CTRLPTR
 		lda	#$14
+		BEGINTRANS
 		bsr	SendCommand			; Send command $14 - ummOSFILE
 
 ;; ;; 		ldb	#$0E				; point at End Addr /attributes
@@ -1493,6 +1548,7 @@ MyosFILE
 		bsr	SendString			; Send pathname
 		puls	A
 		bsr	SendByte			; Send function
+		ENDTRANS
 		bsr	WaitByte
 		pshs	A				; Wait for result
 
@@ -1532,6 +1588,7 @@ MyosFILE
 MyosGBPB
 		pshs	A,X
 		lda	#$16
+		BEGINTRANS
 		bsr	SendCommand			; Send command $16 - ummOSGBPB
 		ldb	#$0C
 LFC9A
@@ -1541,6 +1598,7 @@ LFC9A
 		bpl	LFC9A				; Loop for $0C..$00
 		puls	A
 		bsr	SendByte			; Send function
+		ENDTRANS
 		ldb	#$0C
 		ldx	0,S
 LFCA8		bsr	WaitByte
@@ -1557,7 +1615,7 @@ LFCA8		bsr	WaitByte
 * -------------
 SendString
 		stx	ZP_ADDR_LPTR
-SendStringLPTR
+SendStringLPTR						; TODO - get rid of LPTR, this looks dodgy as uses seem to pass in X anyway!
 LF9B8
 		lda	,X+
 		bsr	SendByte			; Send character to I/O
@@ -1689,11 +1747,11 @@ WaitCommand
 		tfr	A,B				; Move count to B
 		ldx	ZP_ADDR_CTRLPTR
 		abx
-WaitLength
+1
 		bsr	WaitByte			; Wait for a byte
 		sta	,-X				; Store it
 		decb
-		bpl	WaitLength
+		bpl	1B
 		rts
 
 ;* HOSTFS_ESC,$00 - Error
@@ -1702,11 +1760,11 @@ WaitError
 		jsr	PrepErrBuf			; Y now points after SWI/SWI3 instruction in ERRBUF
 		bsr	WaitByte
 		sta	,Y+				; Store Error number
-WaitErrorLp
+1
 		bsr	WaitByte
 		sta	,Y+				; Store Error character
 		cmpa	#0
-		bne	WaitErrorLp			; Loop until final $00
+		bne	1B			; Loop until final $00
 
 		ldx	#$2000
 WaitErr1
@@ -1756,7 +1814,11 @@ WaitEvent
 * ------------------
 WaitEnd
 		cmpa	#$B0
-		blo	WaitExit			; Return to WaitByte
+	IF TCPIP
+		lblo	WaitNetA0			; Return to WaitByte
+	ELSE
+		lblo	WaitExit
+	ENDIF
 
 * HOSTFS_ESC,$Bx - End transfer
 * ----------------------
@@ -1783,7 +1845,7 @@ WaitExitRelease
 WaitExitScreen
 	IF SWROM
 		ldy	#0
-		bra	vramSelect			; Page in main memory, return to WaitByte
+		lbra	vramSelect			; Page in main memory, return to WaitByte
 	ELSE
 		rts
 	ENDIF
@@ -1895,6 +1957,19 @@ CallCode
 		lda	#$00
 		SEC
 		jmp	[ZP_ADDR_TRANS]			; Enter code with A=0, SEC
+
+	IF TCPIP
+WaitNetA0	; had a &Ax command do a "net" command
+		lbsr	WaitByte			; get sub code
+		anda	#$F0
+		cmpa	#$F0
+		lbeq	SpCmdXferFixed
+		cmpa	#$E0
+		lbeq	SpCmdXferFixed
+		M_ERROR
+		FCB	0
+		FCN	"Protocol Error"
+	ENDIF
 
 
 * Screen selection routines
@@ -2045,7 +2120,9 @@ Not6x09Code
 * On entry, A=byte to send
 * On exit,  A,X,Y preserved, P corrupted
 *
-	IF MYELIN
+	IF TCPIP
+SendData	EQU	wiz_send_byte_s7
+	ELSIF MYELIN
 SendData
 		pshs	A
 SendWait
@@ -2072,7 +2149,9 @@ SendWait
 * On exit, P =CC, no data
 *            =CS, data present, EQ=HOSTFS_ESC, NE=not HOSTFS_ESC
 *
-	IF MYELIN
+	IF TCPIP
+ReadData	EQU	wiz_read_byte_s7
+	ELSIF MYELIN
 ReadData
 		lda	fred_MYELIN_SERIAL_STATUS	
 		anda	#MYELIN_SERIAL_RXRDY
