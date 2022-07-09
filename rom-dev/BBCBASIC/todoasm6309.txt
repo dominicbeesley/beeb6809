@@ -5,7 +5,7 @@ Incorrectly encoded instructions
  - DIVD 
  - DIVQ
  - LDQ
- 
+
 
 Missing instructions:
  - pshsw
@@ -32,6 +32,9 @@ Not tested:
  - BOR
  - LDBT
  - STBT
+
+Desirable?
+ - Little endian EQUD/EQUW
 
 
  Fixed
