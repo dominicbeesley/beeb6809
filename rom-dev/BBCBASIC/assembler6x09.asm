@@ -211,14 +211,16 @@ assClassFound
 assClassSuff_FollowTail
 		LDX	#assSuffSetsTbl			; get base of suffix sets table
 		; loop through table to find start of our set, skipping unwanted sets
-;;		ANDB	#$3F		-- table > 3F think can go up to 7F now!
+		ANDB	#$7F		
 1		DECB
 		ABX
 assClass_SuffSetLp
 		; suffix set found, now need to try out each suffix set item
 		LDB	,X+
-		BITB	#$40				; check for a tail bit - if set restart scan at spec'd index in lower bits
-		BNE	assClassSuff_FollowTail
+		CMPB	#$FF				; check for a tail bit - if set restart scan at spec'd index in lower bits
+		BNE	assClass_SuffSetSingle
+		LDB	,X+
+		BRA	assClassSuff_FollowTail
 assClass_SuffSetSingle
 		CALL	assParseTrySuffix
 		BCS	assClass_suffixMatched		; we found one
@@ -534,8 +536,8 @@ assModeParseIXRegAfterComma
 		LDA	#3				; room for op, post byte, 8 bit offset 
 		LDB	#ASS_BITS_PRE
 		BITB	2+ASS_VAR_FLAGS,S
-		BNE	1F
-		INC	A				; add one for prefix
+		BEQ	1F
+		INCA					; add one for prefix
 1		STA	ZP_INT_WA + 1
 		LDD	ZP_INT_WA + 2
 		SUBD	VAR_P_PERCENT + 2

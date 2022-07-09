@@ -830,6 +830,7 @@ FOUND_TAIL:
 
 			if (!$found) {
 				printf $fh_asm "\t\t* SUFLIST [%02.02X] - %s\n", $sdiix, $sd;
+				printf $fh_asm "\t\t* " . join(" ", (map { $sufdef_items[$_]->{suf} } @curlist)) . "\n";
 				print $fh_asm "\t\tFCB\t";
 				print $fh_asm join(",", (map { sprintf("\$%02.02X", $_) } @curlist));
 				print $fh_asm "\n";
@@ -838,13 +839,14 @@ FOUND_TAIL:
 				$sdiix += scalar @curlist;
 			} elsif ($sufskip != 0) {
 				printf $fh_asm "\t\t* SUFLIST [%02.02X] - %s\n", $sdiix, $sd;
+				printf $fh_asm "\t\t* " . join(" ", (map { $sufdef_items[$_]->{suf} } @curlist[0 .. $sufskip - 1])) . "\n";
 				print $fh_asm "\t\tFCB\t";
 				print $fh_asm join(",", (map { sprintf("\$%02.02X", $_) } @curlist[0 .. $sufskip - 1]));
-				printf $fh_asm ",\$%02.02X", 0x40 + $sufstartix;
+				printf $fh_asm ",\$FF,\$%02.02X", $sufstartix;
 				print $fh_asm "\n";
 				push @existlists, { ix => $sdiix, lst => \@curlist};
 				$hereix = $sdiix;
-				$sdiix += $sufskip + 1;				
+				$sdiix += $sufskip + 2;				
 			}
 
 			$hereix > 0x7f && die "X $hereix";
