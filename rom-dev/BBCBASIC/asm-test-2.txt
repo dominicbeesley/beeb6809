@@ -1,0 +1,41 @@
+# This file contains a list of instructions and the supported modes
+# of each
+# items marked * are 6309 specific
+# format is <OPCODE>\s[mode[,mode]+]
+# where mode is dp|ex|im|ix|re|rr|sk
+
+CMPA	dp,ex,im,ix
+CMPB	dp,ex,im,ix
+CMPD	dp,ex,im,ix
+CMPS	dp,ex,im,ix
+CMPU	dp,ex,im,ix
+CMPX	dp,ex,im,ix
+CMPY	dp,ex,im,ix
+
+COMA
+COMB
+COM	dp,ex,ix
+
+CWAI	im
+
+DAA
+
+DECA
+DECB
+DEC	dp,ex,ix
+
+EORA	dp,ex,im,ix
+EORB	dp,ex,im,ix
+
+EXG	rr
+
+INCA
+INCB
+INC	dp,ex,ix
+
+JMP	dp,ex,ix
+
+JSR	dp,ex,ix
+
+
+

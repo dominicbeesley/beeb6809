@@ -4,6 +4,7 @@ use strict;
 
 my $do6309=0;
 my $target=0;
+my $save;
 
 while (@ARGV[0] =~ /^-/) {
 	my $sw = shift;
@@ -12,10 +13,12 @@ while (@ARGV[0] =~ /^-/) {
 		exit 0;
 	} elsif ($sw eq '-3' || $sw eq '--6309') {
 		$do6309 = 1;
-	} elsif ($sw eq '-B' || $sw eq '--bbc') {
+	} elsif ($sw eq '-B' || $sw eq '--emit') {
 		$target = 1;
 	} elsif ($sw eq '-A' || $sw eq '--asm') {
 		$target = 2;
+	} elsif ($sw eq '-S' || $sw eq '--save') {
+		$save = shift;
 	} else {
 		usage(*stderr);
 		die "Bad command line option \"$sw\"";
@@ -40,9 +43,9 @@ sub usage($) {
 
 Options:
 	-3|--6309	include 6309 only instructions
-	-B|--bbc	generate BBC BASIC assembler
+	-B|--emit	generate emit BASIC assembler
 	-A|--asm	generate XRoar assembler
-
+	-S|--save	filename to save at end of BBC assembly
 ";
 }
 
@@ -83,103 +86,119 @@ my $bbc_ct;
 
 
 if ($target == 1) {
-	#BBC
-
-	print $fhout "DP%=0:DP2%=&FF:DP3%=12:EX%=&1234:EX2%=&ABCD\n";
-	print $fhout "P%=&4000:[OPT";
+	#emit
+	print $fhout "IFTOP>&5000:PRINT \"TOO BIG\":STOP\n";
+	print $fhout "HIMEM=&5000\n";
+	print $fhout "C_DP=0:C_DP2=&FF:C_DP3=12:C_EX=&1234:C_EX2=&ABCD\n";
+	print $fhout "P%=&5000:[OPT";
 	print $fhout $do6309?"&13":"3";
 	print $fhout "\n";
+} else {
+	print $fhout "\t\tORG \$5000\n";
+	print $fhout "C_DP\tEQU\t0\n";
+	print $fhout "C_DP2\tEQU\t\$FF\n";
+	print $fhout "C_DP3\tEQU\t12\n";
+	print $fhout "C_EX\tEQU\t\$1234\n";
+	print $fhout "C_EX2\tEQU\t\$ABCD\n";
+}
 
 
-	for my $op (@instr) {
-		my @modes = @{$op->{modes}};
-		my $mne = $op->{op};
-		$first = 1;
-		$bbc_ct = 0;
-		if (!scalar @modes) {
-			bbc("$mne");
-		} else {
-			for my $m (@modes) {
+for my $op (@instr) {
+	my @modes = @{$op->{modes}};
+	my $mne = $op->{op};
+	$first = 1;
+	$bbc_ct = 0;
+	if (!scalar @modes) {
+		emit($mne);
+	} else {
+		for my $m (@modes) {
 
-				if ($m eq "dp") {
-					bbc("$mne<&AA");
-					bbc("$mne<&55");
-					bbc("$mne DP%");
-				} elsif ($m eq "ex") {
-					bbc("$mne&AA55");
-					bbc("$mne&55AA");
-					bbc("$mne EX%");
-					bbc("$mne>&AA55");
-					bbc("$mne>&55AA");
-					bbc("$mne EX2%");
-				} elsif ($m eq "im") {
-					bbc("$mne#&66");
-					bbc("$mne#DP%");
-				} elsif ($m eq "ix") {
-					bbc_ix_z($mne);
-					bbc_ix_r_o($mne,"X",-1);
-					bbc_ix_r_o($mne,"Y",1);
-					bbc_ix_r_o($mne,"U",-16);
-					bbc_ix_r_o($mne,"S",16);
-					bbc_ix_r_o($mne,"X",-99);
-					bbc_ix_r_o($mne,"Y",99);
-					bbc_ix_r_o($mne,"U",-1600);
-					bbc_ix_r_o($mne,"S",1600);
-					bbc_ix_r_o($mne,"U","-DP3%");
-					bbc_ix_r_o($mne,"S","DP3%");
-					bbc_ix_r_o($mne,"S","A");
-					bbc_ix_r_o($mne,"U","B");
-					bbc_ix_r_o($mne,"X","D");
-					bbc_ix_r_o($mne,"Y","d");
-					bbc("$mne ,X+");
-					bbc("$mne ,Y++");
-					bbc("$mne [,U++]");
-					bbc("$mne ,-X");
-					bbc("$mne ,--Y");
-					bbc("$mne [,--U]");
-					bbc("$mne-&55,PCR");
-					bbc("$mne &AA,PCR");
-					bbc("$mne-DP3%,PCR");
-					bbc("${mne}DP3%,PCR");
-					bbc("$mne-EX%,PCR");
-					bbc("${mne}EX%,PCR");
-					bbc("$mne\[&AAA]");
-					bbc("$mne\[EX%]");
-				} elsif ($m eq "re") {
-					bbc("$mne P%-10");
-					bbc("$mne P%+10");
-					bbc("L$mne P%-1000");
-					bbc("L$mne P%+1000");					
-				} elsif ($m eq "rr") {
-					for my $r1 (@regs) {
-						for my $r2 (@regs) {
-							bbc("$mne$r1,$r2");
-						}
+			if ($m eq "dp") {
+				emit($mne,"<&AA");
+				emit($mne,"<&55");
+				emit($mne,"C_DP");
+			} elsif ($m eq "ex") {
+				emit($mne,"&AA55");
+				emit($mne,"&55AA");
+				emit($mne,"C_EX");
+				emit($mne,">&AA55");
+				emit($mne,">&55AA");
+				emit($mne,"C_EX2");
+			} elsif ($m eq "im") {
+				emit($mne,"#&66");
+				emit($mne,"#C_DP");
+			} elsif ($m eq "ix") {
+				emit_ix_z($mne);
+				emit_ix_r_o($mne,"X",-1);
+				emit_ix_r_o($mne,"Y",1);
+				emit_ix_r_o($mne,"U",-16);
+				emit_ix_r_o($mne,"S",16);
+				emit_ix_r_o($mne,"X",-99);
+				emit_ix_r_o($mne,"Y",99);
+				emit_ix_r_o($mne,"U",-1600);
+				emit_ix_r_o($mne,"S",1600);
+				emit_ix_r_o($mne,"U","-C_DP3");
+				emit_ix_r_o($mne,"S","C_DP3");
+				emit_ix_r_o($mne,"S","A");
+				emit_ix_r_o($mne,"U","B");
+				emit_ix_r_o($mne,"X","D");
+				emit_ix_r_o($mne,"Y","d");
+				emit($mne,",X+");
+				emit($mne,",Y++");
+				emit($mne,"[,U++]");
+				emit($mne,",-X");
+				emit($mne,",--Y");
+				emit($mne,"[,--U]");
+				emit($mne,"-&55,PCR");
+				emit($mne,"&AA,PCR");
+				emit($mne,"-C_DP3,PCR");
+				emit($mne,"C_DP3,PCR");
+				emit($mne,"-C_EX,PCR");
+				emit($mne,"C_EX,PCR");
+				emit($mne,"\[&AAA]");
+				emit($mne,"\[C_EX]");
+			} elsif ($m eq "re") {
+				emit($mne,"*-10");
+				emit($mne,"*+10");
+				emit("L$mne","*-1000");
+				emit("L$mne","*+1000");					
+			} elsif ($m eq "rr") {
+				for my $r1 (@regs) {
+					for my $r2 (@regs) {
+						emit($mne,"$r1,$r2");
 					}
-				} elsif ($m eq "sk") {
-					bbc_sk($mne,0x01);
-					bbc_sk($mne,0x02);
-					bbc_sk($mne,0x04);
-					bbc_sk($mne,0x08);
-					bbc_sk($mne,0x10);
-					bbc_sk($mne,0x20);
-					bbc_sk($mne,0x40);
-					bbc_sk($mne,0x80);
-					bbc_sk($mne,0xFF);
-					bbc_sk($mne,0x12);
-					bbc_sk($mne,0x34);
-					bbc_sk($mne,0x76);
-					bbc_sk($mne,0x67);
-				} else {
-					die "Unimplemented mode $m in $op";
 				}
+			} elsif ($m eq "sk") {
+				emit_sk($mne,0x01);
+				emit_sk($mne,0x02);
+				emit_sk($mne,0x04);
+				emit_sk($mne,0x08);
+				emit_sk($mne,0x10);
+				emit_sk($mne,0x20);
+				emit_sk($mne,0x40);
+				emit_sk($mne,0x80);
+				emit_sk($mne,0xFF);
+				emit_sk($mne,0x12);
+				emit_sk($mne,0x34);
+				emit_sk($mne,0x76);
+				emit_sk($mne,0x67);
+			} else {
+				die "Unimplemented mode $m in $op";
 			}
 		}
-		print $fhout "\n";
+	}
+	print $fhout "\n";
+}
+
+
+if ($target == 1) {
+	print $fhout "\]\n";
+	if ($save) {
+		print $fhout "OSCLI(\"SAVE $save 5000+\"+STR\$~(P%-&5000))\n";
 	}
 }
 
-sub bbc_sk($$) {
+sub emit_sk($$) {
 	my ($mne, $bits) = @_;
 	my $m = 1;
 	my $i = 0;
@@ -202,45 +221,59 @@ sub bbc_sk($$) {
 	}
 
 
-	bbc($mne . join(",",@regs));
+	emit($mne,join(",",@regs));
 }
 
 
-sub bbc_ix_z($) {
+sub emit_ix_z($) {
 	my ($mne) = @_;
-	bbc_ix_z_r($mne, "S");
-	bbc_ix_z_r($mne, "U");
-	bbc_ix_z_r($mne, "X");
-	bbc_ix_z_r($mne, "Y");
+	emit_ix_z_r($mne, "S");
+	emit_ix_z_r($mne, "U");
+	emit_ix_z_r($mne, "X");
+	emit_ix_z_r($mne, "Y");
 }
 
-sub bbc_ix_z_r($$) {
+sub emit_ix_z_r($$) {
 	my ($mne, $r) = @_;
-	bbc("$mne,$r");
-	bbc("${mne}0,$r");
-	bbc("${mne} 0,$r");
-	bbc("$mne\[,$r]");
-	bbc("${mne}\[0,$r]");
-	bbc("${mne} [0,$r]");
+	emit($mne,",$r");
+	emit($mne,"0,$r");
+	emit($mne,"[,$r]");
+	emit($mne,"\[0,$r]");
+	emit($mne,"[0,$r]");
 }
 
-sub bbc_ix_r_o($$) {
+sub emit_ix_r_o($$) {
 	my ($mne, $r,$o) = @_;
-	bbc("${mne}$o,$r");
-	bbc("${mne}\[$o,$r]");
+	emit($mne,"$o,$r");
+	emit($mne,"\[$o,$r]");
 }
 
 
-sub bbc($) {
-	my ($i) = @_;
-	if ($bbc_ct + length($i) + 1 > 200) {
-		$bbc_ct = 0;
-		print $fhout "\n";
-		$first = 1;
+sub emit($$) {
+	my ($i,$o) = @_;
+	if ($target == 1) {
+		$o =~ s/\*/P%/g;
+		my $l = length($i) + ($o?1+length($o):0) + 1;
+		if ($bbc_ct + $l > 200) {
+			$bbc_ct = 0;
+			print $fhout "\n";
+		} else {
+			$bbc_ct += $l;
+			print $fhout $first?"":":";
+			$first = 0;
+		}
+		if ($o) {
+			print $fhout "$i $o";
+		} else {
+			print $fhout "$i";
+		}
 	} else {
-		$bbc_ct += length($i) + 1;
-		print $fhout $first?"":":";
-		$first = 0;
+		$o =~ s/&/\$/g;
+		if ($o) {
+			print $fhout "\t\t$i\t$o\n";
+		} else {
+			print $fhout "\t\t$i\n";
+		}
 	}
-	print $fhout $i;
+
 }

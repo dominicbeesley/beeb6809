@@ -1,0 +1,60 @@
+# This file contains a list of instructions and the supported modes
+# of each
+# items marked * are 6309 specific
+# format is <OPCODE>\s[mode[,mode]+]
+# where mode is dp|ex|im|ix|re|rr|sk
+
+LDA	dp,ex,im,ix
+LDB	dp,ex,im,ix
+LDD	dp,ex,im,ix
+LDS	dp,ex,im,ix
+LDU	dp,ex,im,ix
+LDX	dp,ex,im,ix
+LDY	dp,ex,im,ix
+
+
+LEAS	ix
+LEAU	ix
+LEAX	ix
+LEAY	ix
+
+LSLA
+LSLB
+LSL	dp,ex,ix
+
+LSRA
+LSRB
+LSR	dp,ex,ix
+
+
+MUL
+
+NEGA
+NEGB
+NEG	dp,ex,ix
+
+NOP
+
+ORA	dp,ex,im,ix
+ORB	dp,ex,im,ix
+
+ORCC	im
+
+PSHS	sk
+PSHU	sk
+
+PULS	sk
+PULU	sk
+
+ROLA
+ROLB
+ROL	dp,ex,ix
+
+RORA
+RORB
+ROR	dp,ex,ix
+
+RTI
+
+RTS
+

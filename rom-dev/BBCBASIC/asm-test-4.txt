@@ -1,0 +1,35 @@
+# This file contains a list of instructions and the supported modes
+# of each
+# items marked * are 6309 specific
+# format is <OPCODE>\s[mode[,mode]+]
+# where mode is dp|ex|im|ix|re|rr|sk
+
+
+SBCA	dp,ex,im,ix
+SBCB	dp,ex,im,ix
+
+SEX
+
+STA	dp,ex,ix
+STB	dp,ex,ix
+STD	dp,ex,ix
+STS	dp,ex,ix
+STU	dp,ex,ix
+STX	dp,ex,ix
+STY	dp,ex,ix
+
+SUBA	dp,ex,im,ix
+SUBB	dp,ex,im,ix
+SUBD	dp,ex,im,ix
+
+SWI
+SWI2
+SWI3
+
+SYNC
+
+TFR	rr
+
+TSTA
+TSTB
+TST	dp,ex,ix

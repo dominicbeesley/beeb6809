@@ -1,0 +1,58 @@
+# This file contains a list of instructions and the supported modes
+# of each
+# items marked * are 6309 specific
+# format is <OPCODE>\s[mode[,mode]+]
+# where mode is dp|ex|im|ix|re|rr|sk
+
+ABX
+
+ADCA	dp,ex,im,ix
+ADCB	dp,ex,im,ix
+
+ADDA	dp,ex,im,ix
+ADDB	dp,ex,im,ix
+ADDD	dp,ex,im,ix
+
+ANDA	dp,ex,im,ix
+ANDB	dp,ex,im,ix
+
+ANDCC	im
+
+
+ASLA
+ASLB
+ASL	dp,ex,ix
+
+ASRA
+ASRB
+ASR	dp,ex,ix
+
+BCC	re
+BCS	re
+BEQ	re
+BGE	re
+BGT	re
+BHI	re
+BHS	re
+BLE	re
+BLO	re
+BLS	re
+BLT	re
+BMI	re
+BNE	re
+BPL	re
+BRA	re
+BRN	re
+BVC	re
+BVS	re
+
+BITA	dp,ex,im,ix
+BITB	dp,ex,im,ix
+
+BSR	re
+
+CLRA
+CLRB
+CLR	dp,ex,ix
+
+
