@@ -942,20 +942,22 @@ assDirNotOPT
 		ANDA	#$DF				; uppercase
 		CMPA	#'S'
 		BEQ	assDirEQUS
-		LDB	#1
+		LDB	#-1
 		CMPA	#'B'
 		BEQ	1F
-		INCB
+		DECB
 		CMPA	#'W'
 		BEQ	1F
-		LDB	#4
+		LDB	#-4
 		CMPA	#'D'
 		BNE	assJmpBrkSyntax4
-1		PSHS	B
+1		STB	,-S
 		; get an integer (little endian)
-		CALL	assEvalForceINT_LE
-		LDX	#ZP_INT_WA
-		PULS	B
+		CALL	evalForceINT
+		LDX	#ZP_INT_WA+4
+		LDB	,S+
+		LEAX	B,X
+		NEGB
 assCopyBBytesToOpBufAndEnd
 		CALL	assCopyBBytesToOpBuf
 		JUMP	assScanEndOfStmt

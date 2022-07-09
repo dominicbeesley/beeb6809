@@ -677,3 +677,18 @@ SkipSpaceCheckXAtY
 		ANDA	#$DF
 		CMPA	#'X'
 		RTS
+
+assDecYEvalForceINT_LE
+		LEAU	-1,U
+assEvalForceINT_LE
+		CALL	evalForceINT
+		PSHS	D
+		LDD	ZP_INT_WA
+		PSHS	D
+		LDD	ZP_INT_WA+2
+		EXG	A,B
+		STD	ZP_INT_WA
+		PULS	D
+		EXG	A,B
+		STD	ZP_INT_WA+2
+		PULS	D,PC
