@@ -1026,5 +1026,6 @@ tblRegRegCodes						; index is push/pull bit, terminator is reg,reg code
 		FCB	"V", 	$80 + $07 + ASS_BITS_6309
 		FCB	"E", 	$80 + $0E + ASS_BITS_6309
 		FCB	"F", 	$80 + $0F + ASS_BITS_6309
+		FCB	"0", 	$80 + $0C + ASS_BITS_6309
 	ENDIF
 		FCB	$FF
