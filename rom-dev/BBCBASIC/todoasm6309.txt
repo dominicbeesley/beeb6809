@@ -1,6 +1,11 @@
 Known Issues with 6309 assembler
 ================================
 
+Incorrectly encoded instructions
+ - DIVD 
+ - DIVQ
+ - LDQ
+ 
 
 Missing instructions:
  - pshsw

@@ -16,8 +16,8 @@ DECF
 DECD
 DECW
 
-DIVD	dp,ex,im,ix
-DIVQ	dp,ex,im,ix
+#DIVD	dp,ex,im,ix	TODO: DIVD missing prefix
+#DIVQ	dp,ex,im,ix	TODO: DIVD missing prefix
 
 EORD	dp,ex,im,ix
 EORR	rr
@@ -30,7 +30,7 @@ INCW
 LDE	dp,ex,im,ix
 LDF	dp,ex,im,ix
 LDW	dp,ex,im,ix
-LDQ	dp,ex,im,ix
+#LDQ	dp,ex,im,ix	TODO: LDQ prefix incorrect?
 
 LSLD
 
