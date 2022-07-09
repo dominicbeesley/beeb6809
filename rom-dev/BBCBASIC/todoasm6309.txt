@@ -1,0 +1,40 @@
+Known Issues with 6309 assembler
+================================
+
+
+Missing instructions:
+ - pshsw
+ - pshuw
+ - pulsw
+ - puluw
+ - tfm
+
+
+Missing addressing modes:
+ - E,ix
+ - F,ix
+ - W,ix
+ - [E,ix]
+ - [F,ix]
+ - [W,ix]
+
+Not tested:
+ - BAND
+ - BEOR
+ - BIAND
+ - BIEOR
+ - BIO
+ - BOR
+ - LDBT
+ - STBT
+
+
+ Fixed
+ =====
+
+ 2022/7/9
+
+ - EQUW endianness
+ - EQUD endianness
+ - reg,reg instructions to/from "0" was encoded wrongly
+ 

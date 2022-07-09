@@ -1,0 +1,44 @@
+CMPE	dp,ex,im,ix
+CMPF	dp,ex,im,ix
+CMPW	dp,ex,im,ix
+
+CMPR	rr
+
+COME
+COMF
+
+COMD
+COMW
+
+DECE
+DECF
+
+DECD
+DECW
+
+DIVD	dp,ex,im,ix
+DIVQ	dp,ex,im,ix
+
+EORD	dp,ex,im,ix
+EORR	rr
+
+INCE
+INCF
+INCD
+INCW
+
+LDE	dp,ex,im,ix
+LDF	dp,ex,im,ix
+LDW	dp,ex,im,ix
+LDQ	dp,ex,im,ix
+
+LSLD
+
+LSRD
+LSRW
+
+MULD	dp,ex,im,ix
+
+NEGD
+#NEGW	TODO - XRoar missing NEGW
+

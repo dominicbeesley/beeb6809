@@ -1,0 +1,33 @@
+# This file contains a list of instructions and the supported modes
+# of each
+# items marked * are 6309 specific
+# format is <OPCODE>\s[mode[,mode]+]
+# where mode is dp|ex|im|ix|re|rr|sk
+
+
+ADCD    dp,ex,im,ix
+ADCR	rr
+
+ADDE	dp,ex,im,ix
+ADDW	dp,ex,im,ix
+ADDR	rr
+
+
+ANDR	rr
+
+ASLD
+#ASLW		TODO: this is not implemented in XRoar
+
+ASRD
+#ASRW		TODO: this is not implemented in XRoar
+
+BITD	dp,ex,im,ix
+
+BITMD	im
+LDMD	im
+
+CLRE
+CLRF
+CLRD
+CLRW
+

@@ -1,0 +1,39 @@
+ORD	dp,ex,im,ix
+
+ORR	rr
+
+#PSHSW		TODO:NOT IMPLEMENTED
+#PSHUW		TODO:NOT IMPLEMENTED
+#PULSW		TODO:NOT IMPLEMENTED
+#PULUW		TODO:NOT IMPLEMENTED
+
+ROLD
+ROLW
+
+RORD
+RORW
+
+SBCD	dp,ex,im,ix
+
+SBCR	rr
+
+SEXW
+
+STE	dp,ex,ix
+STF	dp,ex,ix
+STW	dp,ex,ix
+STQ	dp,ex,ix
+
+SUBE	dp,ex,im,ix
+SUBF	dp,ex,im,ix
+SUBW	dp,ex,im,ix
+SUBR	rr
+
+#TFM	tt	TODO:NOT IMPLEMENTED
+
+TSTE
+TSTF
+TSTD
+TSTW
+
+

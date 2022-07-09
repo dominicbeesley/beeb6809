@@ -1,5 +1,10 @@
 #!/bin/perl
 
+# TODO: add modes:
+#	- im16
+#	- im32
+
+
 use strict;
 
 my $do6309=0;
@@ -49,6 +54,25 @@ Options:
 ";
 }
 
+my @regs;
+
+if ($do6309) {
+	@regs = qw/D X Y U S PC A B CC DP V 0 W E F/;
+} else {
+	@regs = qw/D X Y U S PC A B CC DP/;
+}
+
+my @skregs = qw/PC @ Y X DP B A CC/;
+
+my @tfmregs = qw/D X Y U S/;
+
+my $first;
+my $bbc_ct;
+
+my $cmt = ($target==1)?"\\ ":"* ";
+
+my $hexpre = ($target == 1)?"&":"\$";
+
 my ($fnin, $fnout) = @ARGV;
 
 
@@ -60,29 +84,35 @@ my @instr=();
 while (<$fhin>) {
 	my $l = $_;
 	$l =~ s/[\r\n\s]+$//;
+	$l =~ s/#.*//;
 
-	if ($l =~ /^#/) {
-		#comment!
-	} elsif ($l =~ /^(\w+\*?)(\s+((\w\w)(\s*,\s*\w\w)*)?)?/) {
+	if ($l =~ /^(\w+\*?%?)(\s+((\w\w)(\s*,\s*\w\w)*)?)?\s*$/) {
 		my ($op,$smodes) = ($1,$3);
 
 		my @modes = split(/\s*,\s*/, $smodes);
 
-		push @instr, {
-			op => $op,
-			modes => \@modes
-		};
+		my @op2 = ();
+
+		if ($op =~ /^(\w+)%$/) {
+			# special for AIM# etc
+			$op = $1;
+			push @op2, "$op #${hexpre}AA,";
+			push @op2, "$op #${hexpre}55,";
+			push @op2, "$op #C_DP,";
+		} else {
+			push @op2, $op;
+		}
+
+		for my $op3 (@op2) {
+			push @instr, {
+				op => $op3,
+				modes => \@modes
+			};
+		}
 	} else {
-		$l =~ /^\s*$/ or die "Syntax error";
+		$l =~ /^\s*$/ or die "Syntax error: $l";
 	}
 }
-
-my @regs = qw/D X Y U S PC A B CC DP/;
-
-my @skregs = qw/PC @ Y X DP B A CC/;
-
-my $first;
-my $bbc_ct;
 
 
 if ($target == 1) {
@@ -157,6 +187,20 @@ for my $op (@instr) {
 				emit($mne,"C_EX,PCR");
 				emit($mne,"\[&AAA]");
 				emit($mne,"\[C_EX]");
+				emit($mne,"A,X");
+				emit($mne,"B,Y");
+				emit($mne,"D,U");
+				emit($mne,"\[A,S]");
+				emit($mne,"\[B,X]");
+				emit($mne,"\[D,U]");
+#				if ($do6309) {
+#					emit($mne,"E,X");
+#					emit($mne,"F,Y");
+#					emit($mne,"W,U");
+#					emit($mne,"\[E,S]");
+#					emit($mne,"\[F,X]");
+#					emit($mne,"\[W,U]");
+#				}
 			} elsif ($m eq "re") {
 				emit($mne,"*-10");
 				emit($mne,"*+10");
@@ -182,6 +226,17 @@ for my $op (@instr) {
 				emit_sk($mne,0x34);
 				emit_sk($mne,0x76);
 				emit_sk($mne,0x67);
+			} elsif ($m eq "tt") {
+				for my $r1 (@tfmregs) {
+					for my $r2 (@tfmregs) {
+						emit($mne,"$r1+,$r2+");
+						emit($mne,"$r1-,$r2-");
+						emit($mne,"$r1+,$r2");
+						emit($mne,"$r1,$r2+");
+					}
+				}
+			} elsif ($m eq "bb") {
+				printf fhout "$cmt skipped mode bb";				
 			} else {
 				die "Unimplemented mode $m in $op";
 			}

@@ -12,7 +12,6 @@ LDU	dp,ex,im,ix
 LDX	dp,ex,im,ix
 LDY	dp,ex,im,ix
 
-
 LEAS	ix
 LEAU	ix
 LEAX	ix
