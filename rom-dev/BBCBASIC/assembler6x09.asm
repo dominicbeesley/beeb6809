@@ -95,11 +95,7 @@ assScanLabel	LEAU	1,U				; L89D4
 assScanTokFound
 		; this assumes that the token is at the start of the scan and just sets up the
 		; accumulator as such
-	IF CPU_6309
-		LDB	#4
-	ELSE
-		LDB	#3
-	ENDIF
+		LDB	#assTokCount
 		LEAX	assTok2Acc_tbl,PCR
 1		CMPA	,X
 		BEQ	1F
@@ -149,6 +145,9 @@ assTok2Acc_tbl
 	IF ASSEMBLER_6309
 		FCB	tknDIV
 		FCB	assParseTbl_DIV_IX
+assTokCount EQU 4
+	ELSE
+assTokCount EQU 3
 	ENDIF
 
 	IF 	assParseTbl_AND-assParseTbl > 255 || assParseTbl_EOR-assParseTbl > 255 || assParseTbl_OR-assParseTbl > 255 || assParseTbl_DIV-assParseTbl > 255

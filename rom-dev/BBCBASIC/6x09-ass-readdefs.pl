@@ -358,8 +358,8 @@ my %sufdefs = (
 		{	suf => 'W',	pre => 0x10,	op => 0x50,	16 => 1,	3 => 1}
 	],
 	'DQ' => [
-		{	suf => 'D',			op => 0x00,			3 => 1},			# NOTE 8 bit mem 
-		{	suf => 'Q',			op => 0x01,	16 => 1,	3 => 1}		
+		{	suf => 'D',	op => 0x00,			3 => 1},			# NOTE 8 bit mem 
+		{	suf => 'Q',	op => 0x01,	16 => 1,	3 => 1}		
 	],
 	'23' => [
 		{	suf => '2',	pre => 0x10},
@@ -761,6 +761,7 @@ my $ix = 1;
 foreach my $suf (sort keys %sufs_items_by_suf) {
 	my %x = %{ $sufs_items_by_suf{$suf} };
 	foreach my $k (keys %x) {
+	print "--------- $ix $suf $k -------------\n";
 		my $sdi = $x{$k};
 		@sufdef_items[$ix] = $sdi;
 		$sufdef_item_ixs{$k} = $ix++;
@@ -830,7 +831,7 @@ FOUND_TAIL:
 
 			if (!$found) {
 				printf $fh_asm "\t\t* SUFLIST [%02.02X] - %s\n", $sdiix, $sd;
-				printf $fh_asm "\t\t* " . join(" ", (map { $sufdef_items[$_]->{suf} } @curlist)) . "\n";
+				printf $fh_asm "\t\t* " . join(" ", (map { $sufdef_items[$_ & 0x7F]->{suf} } @curlist)) . "\n";
 				print $fh_asm "\t\tFCB\t";
 				print $fh_asm join(",", (map { sprintf("\$%02.02X", $_) } @curlist));
 				print $fh_asm "\n";
@@ -839,7 +840,7 @@ FOUND_TAIL:
 				$sdiix += scalar @curlist;
 			} elsif ($sufskip != 0) {
 				printf $fh_asm "\t\t* SUFLIST [%02.02X] - %s\n", $sdiix, $sd;
-				printf $fh_asm "\t\t* " . join(" ", (map { $sufdef_items[$_]->{suf} } @curlist[0 .. $sufskip - 1])) . "\n";
+				printf $fh_asm "\t\t* " . join(" ", (map { $sufdef_items[$_ & 0x7F]->{suf} } @curlist[0 .. $sufskip - 1])) . "\n";
 				print $fh_asm "\t\tFCB\t";
 				print $fh_asm join(",", (map { sprintf("\$%02.02X", $_) } @curlist[0 .. $sufskip - 1]));
 				printf $fh_asm ",\$FF,\$%02.02X", $sufstartix;
@@ -866,6 +867,9 @@ print $fh_asm "\n\n\n*********************************************************\n
 print $fh_asm "assSuffItemTbl\n";
 
 my $ix = 1;
+
+print "££££££ " . scalar @sufdef_items . "\n";
+
 for (my $ix = 1; $ix < scalar @sufdef_items; $ix++) {
 	my $sdi = @sufdef_items[$ix];
 	printf $fh_asm "\t\t* SUFITEM [%02.02X] - %s\n", $ix, $sdi->{suf};
