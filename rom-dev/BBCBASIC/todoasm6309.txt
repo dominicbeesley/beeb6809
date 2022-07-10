@@ -2,8 +2,6 @@ Known Issues with 6309 assembler
 ================================
 
 Incorrectly encoded instructions
- - DIVD 
- - DIVQ
  - LDQ
 
 
@@ -39,6 +37,12 @@ Desirable?
 
  Fixed
  =====
+
+ 2022/7/10
+
+ - DIVD 
+ - DIVQ
+
 
  2022/7/9
 

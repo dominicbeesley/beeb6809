@@ -16,8 +16,8 @@ DECF
 DECD
 DECW
 
-#DIVD	dp,ex,im,ix	TODO: DIVD missing prefix
-#DIVQ	dp,ex,im,ix	TODO: DIVD missing prefix
+DIVD	dp,ex,im,ix
+DIVQ	dp,ex,im,ix
 
 EORD	dp,ex,im,ix
 EORR	rr
