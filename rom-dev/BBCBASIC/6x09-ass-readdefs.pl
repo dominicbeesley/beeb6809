@@ -358,8 +358,8 @@ my %sufdefs = (
 		{	suf => 'W',	pre => 0x10,	op => 0x50,	16 => 1,	3 => 1}
 	],
 	'DQ' => [
-		{	suf => 'D',	op => 0x00,			3 => 1},			# NOTE 8 bit mem 
-		{	suf => 'Q',	op => 0x01,	16 => 1,	3 => 1}		
+		{	suf => 'D',	pre => 0x11,    op => 0x00,			3 => 1},			# NOTE 8 bit mem 
+		{	suf => 'Q',	pre => 0x11,    op => 0x01,	16 => 1,	3 => 1}		
 	],
 	'23' => [
 		{	suf => '2',	pre => 0x10},

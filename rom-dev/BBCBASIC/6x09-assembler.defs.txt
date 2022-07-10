@@ -124,8 +124,8 @@ CMP=81
 !!OPCLASS=J!!
 #all prefixed 11
 #reg D=+$00, Q=+$01
-# mode imm=+$00, dir=+$10, ix=+$20, ext=+$30
-DIV=11 8D
+# mode imm=+$00, dir=+$10, ix=+$20, ext=+$30 note pre is defined in suffix classes
+DIV=8D
 
 !!OPCLASS=K!!
 #reg,reg
