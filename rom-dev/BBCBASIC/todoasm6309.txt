@@ -4,15 +4,6 @@ Known Issues with 6309 assembler
 Incorrectly encoded instructions
  - LDQ
 
-
-Missing instructions:
- - pshsw
- - pshuw
- - pulsw
- - puluw
- - tfm
-
-
 Missing addressing modes:
  - E,ix
  - F,ix
@@ -28,8 +19,16 @@ Not tested:
  - BIEOR
  - BIO
  - BOR
+
+ Not tested due to poss. problems with XRoar
  - LDBT
  - STBT
+ - PSHS #
+ - PSHU #
+ - ASLW
+ - ASRW
+ - NEGW
+
 
 Desirable?
  - Little endian EQUD/EQUW
@@ -37,6 +36,15 @@ Desirable?
 
  Fixed
  =====
+
+ 2022/7/12
+
+ - pshsw
+ - pshuw
+ - pulsw
+ - puluw
+ - tfm
+
 
  2022/7/10
 
