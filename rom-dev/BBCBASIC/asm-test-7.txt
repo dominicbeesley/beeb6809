@@ -29,8 +29,6 @@ SUBF	dp,ex,im,ix
 SUBW	dp,ex,im,ix
 SUBR	rr
 
-#TFM	tt	TODO:NOT IMPLEMENTED
-
 TSTE
 TSTF
 TSTD

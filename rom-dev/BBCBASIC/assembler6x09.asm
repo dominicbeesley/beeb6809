@@ -713,36 +713,100 @@ assModesTblAccIX
 		FCB	0
 
 
-assModesRegReg	CALL	skipSpacesYStepBack
+assModesRegReg	LDX	#tblRegRegCodes
+		LDB	#$FF
+assModesRegReg2		
+		PSHS	X,B
+		CALL	skipSpacesYStepBack
 		CALL	assModesRegRegScan
 		ASLA
 		ASLA
 		ASLA
 		ASLA
 		PSHS	A
-		CALL	skipSpacesCheckCommaAtY
+		TST	1,S
+		BMI	1F
+		CALL	TFMPM
+1		CALL	skipSpacesCheckCommaAtY
 		BNE	assJmpBrkSyntax3
+		LDX	2,S
 		CALL	assModesRegRegScan
 		ANDA	#$0F
-		ORA	,S+
+		ORA	,S
+		STA	,S
+		TST	1,S
+		BMI	1F
+		CALL	TFMPM
+
+		; 1,S will contain:
+		; $0	invalid
+		; $1	invalid
+		; $2	,+		+3 => B
+		; $3	invalid
+		; $4	invalid
+		; $5	invalid
+		; $6	invalid
+		; $7	invalid
+		; $8	+,		+2 => A
+		; $9	invalid
+		; $A	+,+		+0 => 8
+		; $B	invalid
+		; $C	invalid
+		; $D	invalid
+		; $E	invalid
+		; $F	-,-		+1 => 9
+
+		LDX	#tblTFMOP
+		LDA	#3
+		LDB	1,S
+4		CMPB	A,X
+		BEQ	2F
+		DECA
+		BPL	4B
+		BRA	assJmpBrkSyntax3
+2		ADDA	4+ASS_VAR_OP,S				; add to OPCODE
+		STA	4+ASS_VAR_OP,S
+1		PULS	A,B,X
 		JUMP	assPostByteThenScanEndOfStmt
-		
+
+tblTFMOP	FCB	$A,$F,$8,$2
+
+TFMPM		; look for plus/minus after TFM reg and ROL into bottom 2 bits of 3,S 
+		; encoded as 00 = no plus/minus, 10 = +, 11 = -
+		CLRB
+		LDA	,U+
+		CMPA	#'+'
+		BNE	1F
+		LDB	#$80
+		BRA	2F
+1		CMPA	#'-'
+		BNE	1F
+		LDB	#$C0
+		BRA	2F
+1		LEAU	-1,U
+2		ROLB
+		ROL	3,S
+		ROLB
+		ROL	3,S
+		RTS
+
+assModesTFM
+		LDX	#tblRegRegCodesTFM
+		CLRB
+		BRA	assModesRegReg2
 
 assModesRegRegScan
 		CLRB
 		PSHS	U
-		LDX	#tblRegRegCodes
 1		CALL	assMatchXY
 		BCS	1F
 		LDU	,S
 		INCB
 		BRA	1B
 1		CMPA	#$FF
-		BEQ	assJmpBrkSyntax3
+		BEQ	assJmpBrkSyntax6
 		LEAS	2,S				; discard stacked U
 		RTS
-
-
 
 
 
@@ -773,7 +837,7 @@ assPushPullRegsLoop
 		BLS	1F
 		DECB
 		CMPB	#8
-		BHS	assJmpBrkSyntax3
+		BHS	assJmpBrkSyntax6
 1		LDA	#1
 assBitLp	DECB
 		BMI	1F
@@ -784,17 +848,18 @@ assBitLp	DECB
 		CALL	skipSpacesCheckCommaAtYStepBack
 		BEQ	assPushPullRegsLoop
 		LDA	,S+				; get postbyte
-		LBEQ	assJmpBrkSyntax3
+		BEQ	assJmpBrkSyntax6
 		JUMP	assPostByteThenScanEndOfStmt
 
 	IF ASSEMBLER_6309
 
 assModesBitBit
-assModesTFM
 		DO_BRK_B
 		FCB	$FF, "NotImp",0
 	ENDIF
 
+assJmpBrkSyntax6
+		JUMP	assJmpBrkSyntax4
 
 
 assDecIntWa2
@@ -920,7 +985,7 @@ assSkNowtToStore					; L8AA5
 		RTS
 
 assJmpBrkSyntax5
-		CALL	assJmpBrkSyntax4
+		JUMP	assJmpBrkSyntax4
 
 
 assClass_DIR_parse
@@ -1011,14 +1076,7 @@ tblRegRegCodes						; index is push/pull bit, terminator is reg,reg code
 		FCB	"A", 	$80 + $08
 		FCB	"B", 	$80 + $09
 		FCB	"DP", 	$80 + $0B
-		FCB	"X", 	$80 + $01
-		FCB	"Y", 	$80 + $02
-		FCB	"S", 	$80 + $04
-		FCB	"U", 	$80 + $03
 		FCB	"PC",	$80 + $05
-
-		FCB	"D", 	$80 + $00
-
 
 	IF ASSEMBLER_6309
 		FCB	"W", 	$80 + $06 + ASS_BITS_6309
@@ -1027,4 +1085,13 @@ tblRegRegCodes						; index is push/pull bit, terminator is reg,reg code
 		FCB	"F", 	$80 + $0F + ASS_BITS_6309
 		FCB	"0", 	$80 + $0C + ASS_BITS_6309
 	ENDIF
+
+tblRegRegCodesTFM
+		FCB	"D", 	$80 + $00
+		FCB	"X", 	$80 + $01
+		FCB	"Y", 	$80 + $02
+		FCB	"S", 	$80 + $04
+		FCB	"U", 	$80 + $03
+
+
 		FCB	$FF

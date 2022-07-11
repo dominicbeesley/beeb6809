@@ -11,3 +11,5 @@ TIM%	dp,ex,ix
 #BOR	bb		TODO: not tested
 #LDBT	bb		TODO: not tested
 #STBT	bb		TODO: not tested
+
+TFM	tt
