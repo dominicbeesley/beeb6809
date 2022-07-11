@@ -83,25 +83,35 @@ $(BEEBOUT)/test-asm-xroar-63-%.bin:$(BEEBOUT)/test-asm-xroar-63-%.asm
 
 
 $(BEEBOUT)/test-asm-beeb-1.bbc: SAVE=C.BBC681
+$(BEEBOUT)/test-asm-beeb-1.bbc: CHAIN=C.BBC682
 $(BEEBOUT)/test-asm-beeb-2.bbc: SAVE=C.BBC682
+$(BEEBOUT)/test-asm-beeb-2.bbc: CHAIN=C.BBC683
 $(BEEBOUT)/test-asm-beeb-3.bbc: SAVE=C.BBC683
+$(BEEBOUT)/test-asm-beeb-3.bbc: CHAIN=C.BBC684
 $(BEEBOUT)/test-asm-beeb-4.bbc: SAVE=C.BBC684
 
 $(BEEBOUT)/test-asm-beeb-63-1.bbc: SAVE=C.BBC631
+$(BEEBOUT)/test-asm-beeb-63-1.bbc: CHAIN=B.ASM632
 $(BEEBOUT)/test-asm-beeb-63-2.bbc: SAVE=C.BBC632
+$(BEEBOUT)/test-asm-beeb-63-2.bbc: CHAIN=B.ASM633
 $(BEEBOUT)/test-asm-beeb-63-3.bbc: SAVE=C.BBC633
+$(BEEBOUT)/test-asm-beeb-63-3.bbc: CHAIN=B.ASM634
 $(BEEBOUT)/test-asm-beeb-63-4.bbc: SAVE=C.BBC634
+$(BEEBOUT)/test-asm-beeb-63-4.bbc: CHAIN=B.ASM635
 $(BEEBOUT)/test-asm-beeb-63-5.bbc: SAVE=C.BBC635
+$(BEEBOUT)/test-asm-beeb-63-5.bbc: CHAIN=B.ASM636
 $(BEEBOUT)/test-asm-beeb-63-6.bbc: SAVE=C.BBC636
+$(BEEBOUT)/test-asm-beeb-63-6.bbc: CHAIN=B.ASM637
 $(BEEBOUT)/test-asm-beeb-63-7.bbc: SAVE=C.BBC637
+$(BEEBOUT)/test-asm-beeb-63-7.bbc: CHAIN=B.ASM638
 $(BEEBOUT)/test-asm-beeb-63-8.bbc: SAVE=C.BBC638
 
 $(BEEBOUT)/test-asm-beeb-%.bbc:asm-test-%.txt mkasmtest.pl
-	perl mkasmtest.pl -S "$(SAVE)" -B $< $@
+	perl mkasmtest.pl -S "$(SAVE)" -C "$(CHAIN)" -B $< $@
 
 
 $(BEEBOUT)/test-asm-beeb-63-%.bbc:asm-test-%.txt mkasmtest.pl
-	perl mkasmtest.pl -3 -S "$(SAVE)" -B $< $@
+	perl mkasmtest.pl -3 -S "$(SAVE)" -C "$(CHAIN)" -B $< $@
 
 
 $(BEEBOUT)/test-asm-beeb-%.ffb:$(BEEBOUT)/test-asm-beeb-%.bbc
