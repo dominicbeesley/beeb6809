@@ -69,10 +69,10 @@ sizelog6309.txt: $(BEEBOUT)/6809BAS.sym
 
 
 $(BEEBOUT)/test-asm-xroar-%.asm:asm-test-%.txt mkasmtest.pl
-	./mkasmtest.pl -A $< $@
+	perl mkasmtest.pl -A $< $@
 
 $(BEEBOUT)/test-asm-xroar-63-%.asm:asm-test-%.txt mkasmtest.pl
-	./mkasmtest.pl -3 -A $< $@
+	perl mkasmtest.pl -3 -A $< $@
 
 
 $(BEEBOUT)/test-asm-xroar-%.bin:$(BEEBOUT)/test-asm-xroar-%.asm
@@ -97,11 +97,11 @@ $(BEEBOUT)/test-asm-beeb-63-7.bbc: SAVE=C.BBC637
 $(BEEBOUT)/test-asm-beeb-63-8.bbc: SAVE=C.BBC638
 
 $(BEEBOUT)/test-asm-beeb-%.bbc:asm-test-%.txt mkasmtest.pl
-	./mkasmtest.pl -S "$(SAVE)" -B $< $@
+	perl mkasmtest.pl -S "$(SAVE)" -B $< $@
 
 
 $(BEEBOUT)/test-asm-beeb-63-%.bbc:asm-test-%.txt mkasmtest.pl
-	./mkasmtest.pl -3 -S "$(SAVE)" -B $< $@
+	perl mkasmtest.pl -3 -S "$(SAVE)" -B $< $@
 
 
 $(BEEBOUT)/test-asm-beeb-%.ffb:$(BEEBOUT)/test-asm-beeb-%.bbc
