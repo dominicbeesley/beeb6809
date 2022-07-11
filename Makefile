@@ -44,7 +44,6 @@ clean:
 	$(MAKE) -C games clean
 	$(MAKE) -C demos clean
 	$(MAKE) -C ssds clean
-	$(MAKE) -C hostfsdirs clean
 	$(MAKE) -C other-tests all
 	-rm ROMIMAGE.BIN	
 	
