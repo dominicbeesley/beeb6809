@@ -255,7 +255,7 @@ assParseTrySuffix
 		; if a match return CY=1, A=flags, B=opcode delta, else X,B preserved
 
 		PSHS	B,X,U
-		ANDB	#$3F				; ignore tail / end bits
+		ANDB	#$7F				; ignore tail / end bits
 		STB	7+ASS_VAR_SUFFIX,S
 
 
@@ -296,11 +296,11 @@ assMatchXY	; match strings at X, U (X is >$80 terminated) return Cy=1 for match 
 4		CLC	
 		RTS
 2		; check to see if at end of register i.e. <A >Z
-		PSHS	A
-		LDA	,U
-		CALL	checkIsValidVariableNameChar
-		PULS	A
-		BCS	4B				; return no match
+;;	PSHS	A
+;;	LDA	,U
+;;	CALL	checkIsValidVariableNameChar
+;;	PULS	A
+;;	BCS	4B				; return no match
 		SEC
 		RTS
 
@@ -713,10 +713,9 @@ assModesTblAccIX
 		FCB	0
 
 
-assModesRegReg	LDX	#tblRegRegCodes
-		LDB	#$FF
+assModesRegReg	LDB	#$FF
 assModesRegReg2		
-		PSHS	X,B
+		PSHS	B
 		CALL	skipSpacesYStepBack
 		CALL	assModesRegRegScan
 		ASLA
@@ -726,16 +725,20 @@ assModesRegReg2
 		PSHS	A
 		TST	1,S
 		BMI	1F
+		CMPA	#$40
+		BHI	assJmpBrkSyntax3
 		CALL	TFMPM
 1		CALL	skipSpacesCheckCommaAtY
 		BNE	assJmpBrkSyntax3
-		LDX	2,S
 		CALL	assModesRegRegScan
 		ANDA	#$0F
 		ORA	,S
 		STA	,S
 		TST	1,S
 		BMI	1F
+		ANDA	#$0F
+		CMPA	#$04
+		BHI	assJmpBrkSyntax3
 		CALL	TFMPM
 
 		; 1,S will contain:
@@ -766,7 +769,7 @@ assModesRegReg2
 		BRA	assJmpBrkSyntax3
 2		ADDA	4+ASS_VAR_OP,S				; add to OPCODE
 		STA	4+ASS_VAR_OP,S
-1		PULS	A,B,X
+1		PULS	A,B
 		JUMP	assPostByteThenScanEndOfStmt
 
 tblTFMOP	FCB	$A,$F,$8,$2
@@ -791,13 +794,13 @@ TFMPM		; look for plus/minus after TFM reg and ROL into bottom 2 bits of 3,S
 		RTS
 
 assModesTFM
-		LDX	#tblRegRegCodesTFM
 		CLRB
 		BRA	assModesRegReg2
 
 assModesRegRegScan
 		CLRB
 		PSHS	U
+		LDX	#tblRegRegCodes
 1		CALL	assMatchXY
 		BCS	1F
 		LDU	,S
@@ -1071,12 +1074,22 @@ assJmpBrkSyntax4					; L8A35
 		JUMP	 brkSyntax
 
 
-tblRegRegCodes						; index is push/pull bit, terminator is reg,reg code
+		; DO NOT re-order this table order 
+		; index is push/pull bit, terminator is reg,reg code
+tblRegRegCodes						
 		FCB	"CC", 	$80 + $0A
 		FCB	"A", 	$80 + $08
 		FCB	"B", 	$80 + $09
 		FCB	"DP", 	$80 + $0B
+
+		FCB	"X", 	$80 + $01
+		FCB	"Y", 	$80 + $02
+		FCB	"S", 	$80 + $04
+		FCB	"U", 	$80 + $03
 		FCB	"PC",	$80 + $05
+
+		FCB	"D", 	$80 + $00
+
 
 	IF ASSEMBLER_6309
 		FCB	"W", 	$80 + $06 + ASS_BITS_6309
@@ -1085,13 +1098,6 @@ tblRegRegCodes						; index is push/pull bit, terminator is reg,reg code
 		FCB	"F", 	$80 + $0F + ASS_BITS_6309
 		FCB	"0", 	$80 + $0C + ASS_BITS_6309
 	ENDIF
-
-tblRegRegCodesTFM
-		FCB	"D", 	$80 + $00
-		FCB	"X", 	$80 + $01
-		FCB	"Y", 	$80 + $02
-		FCB	"S", 	$80 + $04
-		FCB	"U", 	$80 + $03
 
 
 		FCB	$FF
