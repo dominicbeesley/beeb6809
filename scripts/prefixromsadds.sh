@@ -1,3 +1,4 @@
+#!/bin/bash
 FILE=$1
 ROMNO=$2
 

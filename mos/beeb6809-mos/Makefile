@@ -1,3 +1,4 @@
+SHELL=bash
 ASFLAGS=-3 -v
 TARGETS=
 TARGETS_CHIPKIT=	mosrom.bin

@@ -111,7 +111,7 @@ if [[ -e "$FOLDER/include.lst" ]]; then
       if [[ "$f" == *.hex ]]; then     
         tmpf=`mktemp`
         checkstat "mktemp"
-      	start=`$MY_DIR/hex2bin.pl "$f" "$tmpf"`
+      	start=`perl $MY_DIR/hex2bin.pl "$f" "$tmpf"`
 
       	checkstat "converting hex file $f to binary"
       	if [[ -n "$start" ]]; then
