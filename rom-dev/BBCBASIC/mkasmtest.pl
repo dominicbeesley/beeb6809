@@ -196,14 +196,14 @@ for my $op (@instr) {
 				emit($mne,"\[A,S]");
 				emit($mne,"\[B,X]");
 				emit($mne,"\[D,U]");
-#				if ($do6309) {
-#					emit($mne,"E,X");
-#					emit($mne,"F,Y");
-#					emit($mne,"W,U");
-#					emit($mne,"\[E,S]");
-#					emit($mne,"\[F,X]");
-#					emit($mne,"\[W,U]");
-#				}
+				if ($do6309) {
+					emit($mne,"E,X");
+					emit($mne,"F,Y");
+					emit($mne,"W,U");
+					emit($mne,"\[E,S]");
+					emit($mne,"\[F,X]");
+					emit($mne,"\[W,U]");
+				}
 			} elsif ($m eq "re") {
 				emit($mne,"*-10");
 				emit($mne,"*+10");
