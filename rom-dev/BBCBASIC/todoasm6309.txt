@@ -3,6 +3,7 @@ Known Issues with 6309 assembler
 
 Incorrectly encoded instructions
  - LDQ
+ - STQ - flaky!
 
 Missing addressing modes:
  - E,ix
