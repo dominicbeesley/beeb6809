@@ -3,13 +3,3 @@ EIM%	dp,ex,ix
 OIM%	dp,ex,ix
 TIM%	dp,ex,ix
 
-#BAND	bb		TODO: not tested
-#BEOR	bb		TODO: not tested
-#BIAND	bb		TODO: not tested
-#BIEOR	bb		TODO: not tested
-#BIO	bb		TODO: not tested
-#BOR	bb		TODO: not tested
-#LDBT	bb		TODO: not tested
-#STBT	bb		TODO: not tested
-
-TFM	tt
