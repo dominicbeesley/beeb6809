@@ -1,17 +1,7 @@
 Known Issues with 6309 assembler
 ================================
 
-Incorrectly encoded instructions
- - LDQ
- - STQ - flaky!
 
-Missing addressing modes:
- - E,ix
- - F,ix
- - W,ix
- - [E,ix]
- - [F,ix]
- - [W,ix]
 
 Not tested:
  - BAND
@@ -37,6 +27,20 @@ Desirable?
 
  Fixed
  =====
+
+ 2022/7/13
+
+Incorrectly encoded instructions
+ - LDQ
+
+Missing addressing modes:
+ - E,ix
+ - F,ix
+ - W,ix
+ - [E,ix]
+ - [F,ix]
+ - [W,ix]
+
 
  2022/7/12
 
