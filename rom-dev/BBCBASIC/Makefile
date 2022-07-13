@@ -83,11 +83,11 @@ $(BEEBOUT)/test-asm-xroar-63-%.bin:$(BEEBOUT)/test-asm-xroar-63-%.asm
 
 
 $(BEEBOUT)/test-asm-beeb-1.bbc: SAVE=C.BBC681
-$(BEEBOUT)/test-asm-beeb-1.bbc: CHAIN=C.BBC682
+$(BEEBOUT)/test-asm-beeb-1.bbc: CHAIN=B.ASM682
 $(BEEBOUT)/test-asm-beeb-2.bbc: SAVE=C.BBC682
-$(BEEBOUT)/test-asm-beeb-2.bbc: CHAIN=C.BBC683
+$(BEEBOUT)/test-asm-beeb-2.bbc: CHAIN=B.ASM683
 $(BEEBOUT)/test-asm-beeb-3.bbc: SAVE=C.BBC683
-$(BEEBOUT)/test-asm-beeb-3.bbc: CHAIN=C.BBC684
+$(BEEBOUT)/test-asm-beeb-3.bbc: CHAIN=B.ASM684
 $(BEEBOUT)/test-asm-beeb-4.bbc: SAVE=C.BBC684
 
 $(BEEBOUT)/test-asm-beeb-63-1.bbc: SAVE=C.BBC631

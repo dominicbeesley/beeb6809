@@ -30,7 +30,7 @@ INCW
 LDE	dp,ex,im,ix
 LDF	dp,ex,im,ix
 LDW	dp,ex,im,ix
-#LDQ	dp,ex,im,ix	TODO: LDQ prefix incorrect?
+LDQ	dp,ex,im,ix	
 
 LSLD
 

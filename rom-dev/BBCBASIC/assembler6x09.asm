@@ -228,8 +228,12 @@ assClass_SuffSetSingle
 		TSTB	
 		BPL	assClass_SuffSetLp		; not at end of suffix set yet try again
 		; no suffix matched - if "both" flag is set then error out
+	IF CPU_6309
+		TIM	#ASS_BITS_BOTH,ASS_VAR_FLAGS,S
+	ELSE
 		LDA	#ASS_BITS_BOTH
 		BITA	ASS_VAR_FLAGS,S
+	ENDIF
 		BNE	assJmpBrkSyntax2
 
 assModesParse
@@ -246,8 +250,12 @@ assModesParse
 assClass_suffixMatched
 		
 		; check to see if this is a "both" type opcode
+	IF CPU_6309
+		TIM	#ASS_BITS_BOTH,ASS_VAR_FLAGS,S
+	ELSE
 		LDA	#ASS_BITS_BOTH
 		BITA	ASS_VAR_FLAGS,S
+	ENDIF
 		BNE	assModesParse		
 jmpAssScanEndOfStmt
 		JUMP	assScanEndOfStmt
@@ -378,13 +386,20 @@ assModesParseMem
 assModeImmed
 		CALL	evalForceINT
 		LDB	#-1		
-		LDA	ASS_VAR_MODESET,S
-		CMPA	#ASS_MODESET_ANY_LDQ		; if LDQ then 32 bit immeds
+		LDA	ASS_VAR_OP,S
+		CMPA	#$CD		; if LDQ then 32 bit immeds
 		BNE	2F
 		LDB	#-4
+		AIM	#~ASS_BITS_PRE,ASS_VAR_FLAGS,S
 		BRA	1F
-2		LDA	ASS_VAR_FLAGS,S
+2		
+	IF CPU_6309
+		TIM	#ASS_BITS_16B,ASS_VAR_FLAGS,S	; if 16 bit immeds
+	ELSE
+		LDA	ASS_VAR_FLAGS,S
 		BITA	#ASS_BITS_16B			; if 16 bit immeds
+	ENDIF
+
 		BEQ	1F					
 		DECB
 1		LDX	#ZP_INT_WA+4
@@ -437,31 +452,35 @@ brkIllMode
 		DO_BRK_B
 		FCB	$3, "Illegal Mode", 0
 
-assModesParseMem_NotImmed
-		; now look for any of the memory addressing modes
-		CLR	ASS_VAR_MODEP,S			; clear flags
+assTblMEMPBSZ	FCB	'<',ASS_MEMPB_SZ8
+		FCB	'[',ASS_MEMPB_IND
+		FCB	'>',ASS_MEMPB_SZ16
+		FCB	0
 
-		; check for any <,>,[
-4		CMPA	#'<'
+assModesParseMem_NotImmed
+
+		LDB	ASS_VAR_OP,S
+		CMPB	#$CD		; if LDQ then bodge the opcode 
 		BNE	1F
-		; got an DP indicator
-		LDA	#ASS_MEMPB_SZ8
-		BRA	2F
-1		CMPA	#'['
-		BNE	1F
-		; got an DP indicator
-		LDA	#ASS_MEMPB_IND
-		BRA	2F
-1		CMPA	#'>'
-		BNE	4F
-		LDA	#ASS_MEMPB_SZ16
-		; got an DP indicator
-2		ORA	ASS_VAR_MODEP,S
-		STA	ASS_VAR_MODEP,S
-3		CALL	skipSpacesY
+		DEC	ASS_VAR_OP,S
+1
+		; now look for any of the memory addressing modes
+		CLRB			; clear flags
+
+4		LDX	#assTblMEMPBSZ-1
+		
+1		LEAX	1,X
+		TST	,X
+		BEQ	4F				; no match skip forwards
+		CMPA	,X+		
+		BNE	1B
+
+2		ORB	,X
+		CALL	skipSpacesY
 		BRA	4B
 
-4		CMPA	#','
+4		STB	ASS_VAR_MODEP,S
+		CMPA	#','
 		LBEQ	assModeZeroIX
 
 		; now check for R,IX form
@@ -478,8 +497,7 @@ assModesParseMem_NotImmed
 		; check for 6309 mode
 		TSTB	
 		BPL	1F
-		LDA	#$10
-		BITA	ZP_OPT
+		TIM	#$10,ZP_OPT
 		LBEQ	assModexParseNotRegIX		; skip it, we're not in 6309 mode!
 1		
 	ENDIF
