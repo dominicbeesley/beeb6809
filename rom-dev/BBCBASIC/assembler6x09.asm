@@ -191,7 +191,9 @@ assClassFound
 		CALL	skipSpacesCheckHashAtY		
 		BNE	assJmpBrkSyntax2
 		; got an immediate
+		PSHS	X
 		CALL	evalForceINT
+		PULS	X
 		LDA	ZP_INT_WA+3
 		CALL	assPostByte			; immed byte
 		CALL	skipSpacesCheckCommaAtY
