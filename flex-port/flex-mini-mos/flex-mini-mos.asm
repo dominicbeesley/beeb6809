@@ -1370,7 +1370,7 @@ LCBC1_clear_whole_screen
 		lda	B,X				; get # bytes to clear (high in A)
 		clrb
 		tfr	D,Y
-;		lda	vduvar_TXT_BACK
+		lda	vduvar_TXT_BACK
 		lda	#$A5
 		ldx	vduvar_6845_SCREEN_START
 1		sta	,X+
