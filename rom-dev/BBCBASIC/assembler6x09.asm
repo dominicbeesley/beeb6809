@@ -532,7 +532,9 @@ assModeParseIXRegAfterComma
 		; PCR, subtract P% from INT_WA		
 		; calculate length of instruction in ZP_INT_WA+0,1
 		CLR	ZP_INT_WA
-		LDA	#3				; room for op, post byte, 8 bit offset 
+		LDA	2+ASS_VAR_OPLEN,S			; room for op, post byte, 8 bit offset 
+		INCA
+		INCA
 		LDB	#ASS_BITS_PRE
 		BITB	2+ASS_VAR_FLAGS,S
 		BEQ	1F
