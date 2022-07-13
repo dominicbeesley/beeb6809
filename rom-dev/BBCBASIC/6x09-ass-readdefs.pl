@@ -138,9 +138,6 @@ my %modedefs2 = (
 	'# dp ix ex' => {
 		name => "ANY1",		code => 0x1F
 	},
-	'LDQ # dp ix ex' => {
-		name => "ANY_LDQ",	code => 0x2F
-	},
 	'dp ix ex' => {
 		name => "MEM1",		code => 0x3E
 	},
@@ -188,12 +185,6 @@ my %modedefs = (
 		{	mode => 'dp',			op => 0x10},
 		{	mode => 'ix',			op => 0x20},
 		{	mode => 'ex',			op => 0x30}
-	],
-	'LDQ # dp ix ex' => [
-		{	mode => '#',			op => 0x00},
-		{	mode => 'dp',	pre => 0x10,	op => 0x0F},
-		{	mode => 'ix',	pre => 0x10,	op => 0x1F},
-		{	mode => 'ex',	pre => 0x10,	op => 0x2F}
 	],
 	'dp ix ex' => [
 		{	mode => 'dp',			op => 0x00},
@@ -291,7 +282,7 @@ my %sufdefs = (
 	],
 	'LD ABDSUXY*EFWQ BT MD' => [
 		{	suf => 'MD',	pre => 0x11,	op => 0x3C-0x85,		3 => 1,		mode => '#'},
-		{	suf => 'Q',			op => 0xCD-0x86,		3 => 1,		mode => 'LDQ # dp ix ex'},
+		{	suf => 'Q',		pre => 0x10,	op => 0xCD-0x86,		3 => 1},
 		{	suf => 'BT',	pre => 0x11,	op => 0x36-0x86,		3 => 1,		mode => 'rr.n,qq.k'},
 		{	suf => 'A'},
 		{	suf => 'B',			op => 0x40},
@@ -1019,7 +1010,7 @@ foreach my $ms (sort keys %activemodes) {
 			my $flags = $mdi->{pre} | ($mdi->{3})?$FLAGS_6309:0;
 
 			if ($op || $flags) {
-				printf $fh_asm "\t\tfcb\t\$%02.02X\t; %s %s\n", ($md2->{code} & 0x70) + ($modeitem_flag), $ms, $mdi->{mode};
+				printf $fh_asm "\t\tfcb\t\$%02.02X\t; %s [%s]\n", ($md2->{code} & 0x70) + ($modeitem_flag), $ms, $mdi->{mode};
 				printf $fh_asm "\t\tfcb\t\$%02.02X\t; OP\n", $op;
 				printf $fh_asm "\t\tfcb\t\$%02.02X\t; FLAGS\n", $flags;
 			}

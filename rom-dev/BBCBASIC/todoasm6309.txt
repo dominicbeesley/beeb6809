@@ -1,17 +1,37 @@
 Known Issues with 6309 assembler
 ================================
 
+
+
+Not tested:
+ - BAND
+ - BEOR
+ - BIAND
+ - BIEOR
+ - BIO
+ - BOR
+
+ Not tested due to poss. problems with XRoar
+ - LDBT
+ - STBT
+ - PSHS #
+ - PSHU #
+ - ASLW
+ - ASRW
+ - NEGW
+
+
+Desirable?
+ - Little endian EQUD/EQUW
+
+
+ Fixed
+ =====
+
+ 2022/7/13
+
 Incorrectly encoded instructions
  - LDQ
-
-
-Missing instructions:
- - pshsw
- - pshuw
- - pulsw
- - puluw
- - tfm
-
 
 Missing addressing modes:
  - E,ix
@@ -21,22 +41,15 @@ Missing addressing modes:
  - [F,ix]
  - [W,ix]
 
-Not tested:
- - BAND
- - BEOR
- - BIAND
- - BIEOR
- - BIO
- - BOR
- - LDBT
- - STBT
 
-Desirable?
- - Little endian EQUD/EQUW
+ 2022/7/12
 
+ - pshsw
+ - pshuw
+ - pulsw
+ - puluw
+ - tfm
 
- Fixed
- =====
 
  2022/7/10
 

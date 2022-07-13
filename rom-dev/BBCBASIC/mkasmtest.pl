@@ -10,6 +10,7 @@ use strict;
 my $do6309=0;
 my $target=0;
 my $save;
+my $chain;
 
 while (@ARGV[0] =~ /^-/) {
 	my $sw = shift;
@@ -24,6 +25,8 @@ while (@ARGV[0] =~ /^-/) {
 		$target = 2;
 	} elsif ($sw eq '-S' || $sw eq '--save') {
 		$save = shift;
+	} elsif ($sw eq '-C' || $sw eq '--chain') {
+		$chain = shift;
 	} else {
 		usage(*stderr);
 		die "Bad command line option \"$sw\"";
@@ -193,14 +196,14 @@ for my $op (@instr) {
 				emit($mne,"\[A,S]");
 				emit($mne,"\[B,X]");
 				emit($mne,"\[D,U]");
-#				if ($do6309) {
-#					emit($mne,"E,X");
-#					emit($mne,"F,Y");
-#					emit($mne,"W,U");
-#					emit($mne,"\[E,S]");
-#					emit($mne,"\[F,X]");
-#					emit($mne,"\[W,U]");
-#				}
+				if ($do6309) {
+					emit($mne,"E,X");
+					emit($mne,"F,Y");
+					emit($mne,"W,U");
+					emit($mne,"\[E,S]");
+					emit($mne,"\[F,X]");
+					emit($mne,"\[W,U]");
+				}
 			} elsif ($m eq "re") {
 				emit($mne,"*-10");
 				emit($mne,"*+10");
@@ -250,6 +253,9 @@ if ($target == 1) {
 	print $fhout "\]\n";
 	if ($save) {
 		print $fhout "OSCLI(\"SAVE $save 5000+\"+STR\$~(P%-&5000))\n";
+	}
+	if ($chain) {
+		print $fhout "CHAIN\"$chain\"\n";
 	}
 }
 

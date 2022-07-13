@@ -15,9 +15,9 @@ DEPS=../../includes/hardware.inc ../../includes/common.inc ../../includes/mosrom
 $(FLEXOUT)/drv_wd177x.hex:	$(wildcard ../drivers/wd177x/*)
 
 $(FLEXOUT)/FLEX.SYS.hex:	FLEX.SYS
-	../../scripts/flex/flexbin2hex.pl <$< >$@
+	../../scripts/flex/flexbin2hex.pl $< >$@
 $(FLEXOUT)/FLEX.COR.hex:	FLEX.COR
-	../../scripts/flex/flexbin2hex.pl <$< >$@
+	../../scripts/flex/flexbin2hex.pl $< >$@
 
 $(FLEXOUT)/boot.noi: $(FLEXOUT)/FLEX.COR.hex	$(FLEXOUT)/FLEX.SYS.hex	
 	echo "L $(shell cygpath -w "$(FLEXOUT)/FLEX.COR.hex")" >$(FLEXOUT)/boot.noi.tmp

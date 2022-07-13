@@ -191,7 +191,9 @@ assClassFound
 		CALL	skipSpacesCheckHashAtY		
 		BNE	assJmpBrkSyntax2
 		; got an immediate
+		PSHS	X
 		CALL	evalForceINT
+		PULS	X
 		LDA	ZP_INT_WA+3
 		CALL	assPostByte			; immed byte
 		CALL	skipSpacesCheckCommaAtY
@@ -226,8 +228,12 @@ assClass_SuffSetSingle
 		TSTB	
 		BPL	assClass_SuffSetLp		; not at end of suffix set yet try again
 		; no suffix matched - if "both" flag is set then error out
+	IF CPU_6309
+		TIM	#ASS_BITS_BOTH,ASS_VAR_FLAGS,S
+	ELSE
 		LDA	#ASS_BITS_BOTH
 		BITA	ASS_VAR_FLAGS,S
+	ENDIF
 		BNE	assJmpBrkSyntax2
 
 assModesParse
@@ -244,8 +250,12 @@ assModesParse
 assClass_suffixMatched
 		
 		; check to see if this is a "both" type opcode
+	IF CPU_6309
+		TIM	#ASS_BITS_BOTH,ASS_VAR_FLAGS,S
+	ELSE
 		LDA	#ASS_BITS_BOTH
 		BITA	ASS_VAR_FLAGS,S
+	ENDIF
 		BNE	assModesParse		
 jmpAssScanEndOfStmt
 		JUMP	assScanEndOfStmt
@@ -255,7 +265,7 @@ assParseTrySuffix
 		; if a match return CY=1, A=flags, B=opcode delta, else X,B preserved
 
 		PSHS	B,X,U
-		ANDB	#$3F				; ignore tail / end bits
+		ANDB	#$7F				; ignore tail / end bits
 		STB	7+ASS_VAR_SUFFIX,S
 
 
@@ -296,11 +306,11 @@ assMatchXY	; match strings at X, U (X is >$80 terminated) return Cy=1 for match 
 4		CLC	
 		RTS
 2		; check to see if at end of register i.e. <A >Z
-		PSHS	A
-		LDA	,U
-		CALL	checkIsValidVariableNameChar
-		PULS	A
-		BCS	4B				; return no match
+;;	PSHS	A
+;;	LDA	,U
+;;	CALL	checkIsValidVariableNameChar
+;;	PULS	A
+;;	BCS	4B				; return no match
 		SEC
 		RTS
 
@@ -376,13 +386,20 @@ assModesParseMem
 assModeImmed
 		CALL	evalForceINT
 		LDB	#-1		
-		LDA	ASS_VAR_MODESET,S
-		CMPA	#ASS_MODESET_ANY_LDQ		; if LDQ then 32 bit immeds
+		LDA	ASS_VAR_OP,S
+		CMPA	#$CD		; if LDQ then 32 bit immeds
 		BNE	2F
 		LDB	#-4
+		AIM	#~ASS_BITS_PRE,ASS_VAR_FLAGS,S
 		BRA	1F
-2		LDA	ASS_VAR_FLAGS,S
+2		
+	IF CPU_6309
+		TIM	#ASS_BITS_16B,ASS_VAR_FLAGS,S	; if 16 bit immeds
+	ELSE
+		LDA	ASS_VAR_FLAGS,S
 		BITA	#ASS_BITS_16B			; if 16 bit immeds
+	ENDIF
+
 		BEQ	1F					
 		DECB
 1		LDX	#ZP_INT_WA+4
@@ -435,31 +452,35 @@ brkIllMode
 		DO_BRK_B
 		FCB	$3, "Illegal Mode", 0
 
-assModesParseMem_NotImmed
-		; now look for any of the memory addressing modes
-		CLR	ASS_VAR_MODEP,S			; clear flags
+assTblMEMPBSZ	FCB	'<',ASS_MEMPB_SZ8
+		FCB	'[',ASS_MEMPB_IND
+		FCB	'>',ASS_MEMPB_SZ16
+		FCB	0
 
-		; check for any <,>,[
-4		CMPA	#'<'
+assModesParseMem_NotImmed
+
+		LDB	ASS_VAR_OP,S
+		CMPB	#$CD		; if LDQ then bodge the opcode 
 		BNE	1F
-		; got an DP indicator
-		LDA	#ASS_MEMPB_SZ8
-		BRA	2F
-1		CMPA	#'['
-		BNE	1F
-		; got an DP indicator
-		LDA	#ASS_MEMPB_IND
-		BRA	2F
-1		CMPA	#'>'
-		BNE	4F
-		LDA	#ASS_MEMPB_SZ16
-		; got an DP indicator
-2		ORA	ASS_VAR_MODEP,S
-		STA	ASS_VAR_MODEP,S
-3		CALL	skipSpacesY
+		DEC	ASS_VAR_OP,S
+1
+		; now look for any of the memory addressing modes
+		CLRB			; clear flags
+
+4		LDX	#assTblMEMPBSZ-1
+		
+1		LEAX	1,X
+		TST	,X
+		BEQ	4F				; no match skip forwards
+		CMPA	,X+		
+		BNE	1B
+
+2		ORB	,X
+		CALL	skipSpacesY
 		BRA	4B
 
-4		CMPA	#','
+4		STB	ASS_VAR_MODEP,S
+		CMPA	#','
 		LBEQ	assModeZeroIX
 
 		; now check for R,IX form
@@ -476,8 +497,7 @@ assModesParseMem_NotImmed
 		; check for 6309 mode
 		TSTB	
 		BPL	1F
-		LDA	#$10
-		BITA	ZP_OPT
+		TIM	#$10,ZP_OPT
 		LBEQ	assModexParseNotRegIX		; skip it, we're not in 6309 mode!
 1		
 	ENDIF
@@ -532,7 +552,9 @@ assModeParseIXRegAfterComma
 		; PCR, subtract P% from INT_WA		
 		; calculate length of instruction in ZP_INT_WA+0,1
 		CLR	ZP_INT_WA
-		LDA	#3				; room for op, post byte, 8 bit offset 
+		LDA	2+ASS_VAR_OPLEN,S			; room for op, post byte, 8 bit offset 
+		INCA
+		INCA
 		LDB	#ASS_BITS_PRE
 		BITB	2+ASS_VAR_FLAGS,S
 		BEQ	1F
@@ -713,20 +735,91 @@ assModesTblAccIX
 		FCB	0
 
 
-assModesRegReg	CALL	skipSpacesYStepBack
+assModesRegReg	LDB	#$FF
+assModesRegReg2		
+		PSHS	B
+		CALL	skipSpacesYStepBack
 		CALL	assModesRegRegScan
 		ASLA
 		ASLA
 		ASLA
 		ASLA
 		PSHS	A
-		CALL	skipSpacesCheckCommaAtY
+		TST	1,S
+		BMI	1F
+		CMPA	#$40
+		BHI	assJmpBrkSyntax3
+		CALL	TFMPM
+1		CALL	skipSpacesCheckCommaAtY
 		BNE	assJmpBrkSyntax3
 		CALL	assModesRegRegScan
 		ANDA	#$0F
-		ORA	,S+
+		ORA	,S
+		STA	,S
+		TST	1,S
+		BMI	1F
+		OIM	#ASS_BITS_PRE_11,2+ASS_VAR_FLAGS,S; set 10 prefix
+		ANDA	#$0F
+		CMPA	#$04
+		BHI	assJmpBrkSyntax3
+		CALL	TFMPM
+
+		; 1,S will contain:
+		; $0	invalid
+		; $1	invalid
+		; $2	,+		+3 => B
+		; $3	invalid
+		; $4	invalid
+		; $5	invalid
+		; $6	invalid
+		; $7	invalid
+		; $8	+,		+2 => A
+		; $9	invalid
+		; $A	+,+		+0 => 8
+		; $B	invalid
+		; $C	invalid
+		; $D	invalid
+		; $E	invalid
+		; $F	-,-		+1 => 9
+
+		; translate to number to add to opcode using table
+		LDX	#tblTFMOP
+		LDA	#3
+		LDB	1,S
+4		CMPB	A,X
+		BEQ	2F
+		DECA
+		BPL	4B
+		BRA	assJmpBrkSyntax3
+2		ADDA	2+ASS_VAR_OP,S				; add to OPCODE
+		STA	2+ASS_VAR_OP,S
+1		PULS	A,B
 		JUMP	assPostByteThenScanEndOfStmt
-		
+
+tblTFMOP	FCB	$A,$F,$8,$2
+
+TFMPM		; look for plus/minus after TFM reg and ROL into bottom 2 bits of 3,S 
+		; encoded as 00 = no plus/minus, 10 = +, 11 = -
+		CLRB
+		LDA	,U+
+		CMPA	#'+'
+		BNE	1F
+		LDB	#$80
+		BRA	2F
+1		CMPA	#'-'
+		BNE	1F
+		LDB	#$C0
+		BRA	2F
+1		LEAU	-1,U
+2		ROLB
+		ROL	3,S
+		ROLB
+		ROL	3,S
+		RTS
+
+assModesTFM
+		CLRB
+		BRA	assModesRegReg2
 
 assModesRegRegScan
 		CLRB
@@ -738,11 +831,9 @@ assModesRegRegScan
 		INCB
 		BRA	1B
 1		CMPA	#$FF
-		BEQ	assJmpBrkSyntax3
+		BEQ	assJmpBrkSyntax6
 		LEAS	2,S				; discard stacked U
 		RTS
-
-
 
 
 
@@ -773,7 +864,7 @@ assPushPullRegsLoop
 		BLS	1F
 		DECB
 		CMPB	#8
-		BHS	assJmpBrkSyntax3
+		BHS	assJmpBrkSyntax6
 1		LDA	#1
 assBitLp	DECB
 		BMI	1F
@@ -784,17 +875,18 @@ assBitLp	DECB
 		CALL	skipSpacesCheckCommaAtYStepBack
 		BEQ	assPushPullRegsLoop
 		LDA	,S+				; get postbyte
-		LBEQ	assJmpBrkSyntax3
+		BEQ	assJmpBrkSyntax6
 		JUMP	assPostByteThenScanEndOfStmt
 
 	IF ASSEMBLER_6309
 
 assModesBitBit
-assModesTFM
 		DO_BRK_B
 		FCB	$FF, "NotImp",0
 	ENDIF
 
+assJmpBrkSyntax6
+		JUMP	assJmpBrkSyntax4
 
 
 assDecIntWa2
@@ -920,7 +1012,7 @@ assSkNowtToStore					; L8AA5
 		RTS
 
 assJmpBrkSyntax5
-		CALL	assJmpBrkSyntax4
+		JUMP	assJmpBrkSyntax4
 
 
 assClass_DIR_parse
@@ -1006,11 +1098,14 @@ assJmpBrkSyntax4					; L8A35
 		JUMP	 brkSyntax
 
 
-tblRegRegCodes						; index is push/pull bit, terminator is reg,reg code
+		; DO NOT re-order this table order 
+		; index is push/pull bit, terminator is reg,reg code
+tblRegRegCodes						
 		FCB	"CC", 	$80 + $0A
 		FCB	"A", 	$80 + $08
 		FCB	"B", 	$80 + $09
 		FCB	"DP", 	$80 + $0B
+
 		FCB	"X", 	$80 + $01
 		FCB	"Y", 	$80 + $02
 		FCB	"S", 	$80 + $04
@@ -1027,4 +1122,6 @@ tblRegRegCodes						; index is push/pull bit, terminator is reg,reg code
 		FCB	"F", 	$80 + $0F + ASS_BITS_6309
 		FCB	"0", 	$80 + $0C + ASS_BITS_6309
 	ENDIF
+
+
 		FCB	$FF

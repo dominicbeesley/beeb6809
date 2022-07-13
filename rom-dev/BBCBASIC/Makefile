@@ -83,25 +83,37 @@ $(BEEBOUT)/test-asm-xroar-63-%.bin:$(BEEBOUT)/test-asm-xroar-63-%.asm
 
 
 $(BEEBOUT)/test-asm-beeb-1.bbc: SAVE=C.BBC681
+$(BEEBOUT)/test-asm-beeb-1.bbc: CHAIN=B.ASM682
 $(BEEBOUT)/test-asm-beeb-2.bbc: SAVE=C.BBC682
+$(BEEBOUT)/test-asm-beeb-2.bbc: CHAIN=B.ASM683
 $(BEEBOUT)/test-asm-beeb-3.bbc: SAVE=C.BBC683
+$(BEEBOUT)/test-asm-beeb-3.bbc: CHAIN=B.ASM684
 $(BEEBOUT)/test-asm-beeb-4.bbc: SAVE=C.BBC684
 
 $(BEEBOUT)/test-asm-beeb-63-1.bbc: SAVE=C.BBC631
+$(BEEBOUT)/test-asm-beeb-63-1.bbc: CHAIN=B.ASM632
 $(BEEBOUT)/test-asm-beeb-63-2.bbc: SAVE=C.BBC632
+$(BEEBOUT)/test-asm-beeb-63-2.bbc: CHAIN=B.ASM633
 $(BEEBOUT)/test-asm-beeb-63-3.bbc: SAVE=C.BBC633
+$(BEEBOUT)/test-asm-beeb-63-3.bbc: CHAIN=B.ASM634
 $(BEEBOUT)/test-asm-beeb-63-4.bbc: SAVE=C.BBC634
+$(BEEBOUT)/test-asm-beeb-63-4.bbc: CHAIN=B.ASM635
 $(BEEBOUT)/test-asm-beeb-63-5.bbc: SAVE=C.BBC635
+$(BEEBOUT)/test-asm-beeb-63-5.bbc: CHAIN=B.ASM636
 $(BEEBOUT)/test-asm-beeb-63-6.bbc: SAVE=C.BBC636
+$(BEEBOUT)/test-asm-beeb-63-6.bbc: CHAIN=B.ASM637
 $(BEEBOUT)/test-asm-beeb-63-7.bbc: SAVE=C.BBC637
+$(BEEBOUT)/test-asm-beeb-63-7.bbc: CHAIN=B.ASM638
 $(BEEBOUT)/test-asm-beeb-63-8.bbc: SAVE=C.BBC638
+$(BEEBOUT)/test-asm-beeb-63-8.bbc: CHAIN=B.ASM639
+$(BEEBOUT)/test-asm-beeb-63-9.bbc: SAVE=C.BBC639
 
 $(BEEBOUT)/test-asm-beeb-%.bbc:asm-test-%.txt mkasmtest.pl
-	perl mkasmtest.pl -S "$(SAVE)" -B $< $@
+	perl mkasmtest.pl -S "$(SAVE)" -C "$(CHAIN)" -B $< $@
 
 
 $(BEEBOUT)/test-asm-beeb-63-%.bbc:asm-test-%.txt mkasmtest.pl
-	perl mkasmtest.pl -3 -S "$(SAVE)" -B $< $@
+	perl mkasmtest.pl -3 -S "$(SAVE)" -C "$(CHAIN)" -B $< $@
 
 
 $(BEEBOUT)/test-asm-beeb-%.ffb:$(BEEBOUT)/test-asm-beeb-%.bbc
@@ -111,8 +123,8 @@ $(BEEBOUT)/test-asm-beeb-%.ffb:$(BEEBOUT)/test-asm-beeb-%.bbc
 XROARASMTEST=$(BEEBOUT)/test-asm-xroar-1.bin $(BEEBOUT)/test-asm-xroar-2.bin $(BEEBOUT)/test-asm-xroar-3.bin  $(BEEBOUT)/test-asm-xroar-4.bin 
 BBCASMTEST=$(BEEBOUT)/test-asm-beeb-1.ffb $(BEEBOUT)/test-asm-beeb-2.ffb $(BEEBOUT)/test-asm-beeb-3.ffb $(BEEBOUT)/test-asm-beeb-4.ffb
 
-XROARASMTEST63=$(BEEBOUT)/test-asm-xroar-63-1.bin $(BEEBOUT)/test-asm-xroar-63-2.bin $(BEEBOUT)/test-asm-xroar-63-3.bin $(BEEBOUT)/test-asm-xroar-63-4.bin $(BEEBOUT)/test-asm-xroar-63-5.bin  $(BEEBOUT)/test-asm-xroar-63-6.bin $(BEEBOUT)/test-asm-xroar-63-7.bin $(BEEBOUT)/test-asm-xroar-63-8.bin 
-BBCASMTEST63=$(BEEBOUT)/test-asm-beeb-63-1.ffb $(BEEBOUT)/test-asm-beeb-63-2.ffb $(BEEBOUT)/test-asm-beeb-63-3.ffb $(BEEBOUT)/test-asm-beeb-63-4.ffb $(BEEBOUT)/test-asm-beeb-63-5.ffb $(BEEBOUT)/test-asm-beeb-63-6.ffb $(BEEBOUT)/test-asm-beeb-63-7.ffb $(BEEBOUT)/test-asm-beeb-63-8.ffb
+XROARASMTEST63=$(BEEBOUT)/test-asm-xroar-63-1.bin $(BEEBOUT)/test-asm-xroar-63-2.bin $(BEEBOUT)/test-asm-xroar-63-3.bin $(BEEBOUT)/test-asm-xroar-63-4.bin $(BEEBOUT)/test-asm-xroar-63-5.bin  $(BEEBOUT)/test-asm-xroar-63-6.bin $(BEEBOUT)/test-asm-xroar-63-7.bin $(BEEBOUT)/test-asm-xroar-63-8.bin $(BEEBOUT)/test-asm-xroar-63-9.bin 
+BBCASMTEST63=$(BEEBOUT)/test-asm-beeb-63-1.ffb $(BEEBOUT)/test-asm-beeb-63-2.ffb $(BEEBOUT)/test-asm-beeb-63-3.ffb $(BEEBOUT)/test-asm-beeb-63-4.ffb $(BEEBOUT)/test-asm-beeb-63-5.ffb $(BEEBOUT)/test-asm-beeb-63-6.ffb $(BEEBOUT)/test-asm-beeb-63-7.ffb $(BEEBOUT)/test-asm-beeb-63-8.ffb $(BEEBOUT)/test-asm-beeb-63-9.ffb
 
 
 .PRECIOUS: $(addsuffix .asm, $(basename $(XROARASMTEST63) $(XROARASMTEST)))
@@ -142,6 +154,7 @@ $(BEEBOUT)/TESTAS63.ssd: $(BBCASMTEST63) $(XROARASMTEST63)
 	dfs add -f "C.XRR636" $@ $(BEEBOUT)/test-asm-xroar-63-6.bin
 	dfs add -f "C.XRR637" $@ $(BEEBOUT)/test-asm-xroar-63-7.bin
 	dfs add -f "C.XRR638" $@ $(BEEBOUT)/test-asm-xroar-63-8.bin
+	dfs add -f "C.XRR639" $@ $(BEEBOUT)/test-asm-xroar-63-9.bin
 	dfs add -f "B.ASM631" $@ $(BEEBOUT)/test-asm-beeb-63-1.ffb
 	dfs add -f "B.ASM632" $@ $(BEEBOUT)/test-asm-beeb-63-2.ffb
 	dfs add -f "B.ASM633" $@ $(BEEBOUT)/test-asm-beeb-63-3.ffb
@@ -150,6 +163,7 @@ $(BEEBOUT)/TESTAS63.ssd: $(BBCASMTEST63) $(XROARASMTEST63)
 	dfs add -f "B.ASM636" $@ $(BEEBOUT)/test-asm-beeb-63-6.ffb
 	dfs add -f "B.ASM637" $@ $(BEEBOUT)/test-asm-beeb-63-7.ffb
 	dfs add -f "B.ASM638" $@ $(BEEBOUT)/test-asm-beeb-63-8.ffb
+	dfs add -f "B.ASM639" $@ $(BEEBOUT)/test-asm-beeb-63-9.ffb
 
 
 $(BEEBOUT)/loadbasicandsyms.noi: $(BEEBOUT)/6809BAS.bin

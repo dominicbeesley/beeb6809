@@ -48,7 +48,7 @@ my $FMT_IHX = 1;
 my $FMT_BIN = 2;
 my $bin_end_addr = -1;
 my $bin_start_addr = -1;
-my $fh_o = *STDIN;
+my $fh_o = *STDOUT;
 
 my @used = (0) x 0x10000;
 my @mem = (chr(0xFF)) x 0x10000;
@@ -184,6 +184,7 @@ if ($format == $FMT_BIN) {
 		if (!@used[$i]) {
 			$i++;
 		} else {
+
 			my $l = 1;
 			while ($i+$l < 65535 && $l < $MAXRECLEN && @used[$i+$l]) {
 				$l++;
