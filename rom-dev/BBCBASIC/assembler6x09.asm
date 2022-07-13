@@ -736,6 +736,7 @@ assModesRegReg2
 		STA	,S
 		TST	1,S
 		BMI	1F
+		OIM	#ASS_BITS_PRE_11,2+ASS_VAR_FLAGS,S; set 10 prefix
 		ANDA	#$0F
 		CMPA	#$04
 		BHI	assJmpBrkSyntax3
@@ -759,6 +760,7 @@ assModesRegReg2
 		; $E	invalid
 		; $F	-,-		+1 => 9
 
+		; translate to number to add to opcode using table
 		LDX	#tblTFMOP
 		LDA	#3
 		LDB	1,S
@@ -767,8 +769,8 @@ assModesRegReg2
 		DECA
 		BPL	4B
 		BRA	assJmpBrkSyntax3
-2		ADDA	4+ASS_VAR_OP,S				; add to OPCODE
-		STA	4+ASS_VAR_OP,S
+2		ADDA	2+ASS_VAR_OP,S				; add to OPCODE
+		STA	2+ASS_VAR_OP,S
 1		PULS	A,B
 		JUMP	assPostByteThenScanEndOfStmt
 
