@@ -361,7 +361,7 @@ fll_sk_nomatch
 		;  On exit,  ZP_FPB + 2 =>program line, or next line
 		;	     CS = line found
 		;	     CC = line not found
-		;	    NOTE: Y = 2 always - TODO: Remove ?
+		;	    U, ZP_FPB+2 point to found line, or line after
 		
 findProgLineNewAPI	
 		LDA	ZP_PAGE_H		; X points at start of Program
@@ -379,36 +379,6 @@ flp_sk1		STX	ZP_FPB + 2
 		LEAU	,X
 		RTS
 ;		
-;		
-;;findProgLineNewAPI: 
-;;		STZ ZP_FPB + 2
-;;		LDA ZP_PAGE_H
-;;		STA ZP_FPB + 3			;  Start at PAGE
-;;@lp1:		LDU #$01
-;;		LDA (ZP_FPB + 2),Y			;  Check line number high byte
-;;		CMP ZP_INT_WA + 1
-;;		BCS @sk1				;  Partial match, jump to check low byte
-;;@lp2:		LDU #$03
-;;		LDA (ZP_FPB + 2),Y			;  Get line length
-;;		ADC ZP_FPB + 2
-;;		STA ZP_FPB + 2			;  Step to next line
-;;		BCC @lp1
-;;		INC ZP_FPB + 3
-;;		BRA @lp1				;  Loop back to check next line
-;;@sk1:		BNE @sk2				;  Gone past target, jump to return CC and Y=2
-;;		INY
-;;		LDA (ZP_FPB + 2),Y			;  Check line number low byte
-;;		CMP ZP_INT_WA
-;;		BCC @lp2				;  line < target, step to next line
-;;		BNE @sk2				;  Line not equal, jump to return CC
-;;		RTS					;  Line found, return CS and Y=2
-;;@sk2:		LDU #$02
-;;		CLC
-;;		RTS					;  Line not found, return CC and Y=2
-;
-;			
-;			
-;			
 ;			
 ;		;  Integer division
 ;		;  ================
