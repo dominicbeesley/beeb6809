@@ -364,8 +364,6 @@ assSuffItemMatch
 		RTS
 
 
-
-
 assModesTbl
 		FDB	assModesRel
 		FDB	assModesImmed
@@ -379,22 +377,21 @@ assModesParseMem
 		CALL	skipSpacesY
 		; a "standard memory type"
 		; immed?
-		BITB	#1
+		BITB	#ASS_MEMPB_IMM
 		BEQ	assModesParseMem_NotImmed	; if bit 0 set try immed
 		CMPA	#'#'
 		BNE	assModesParseMem_NotImmed
 assModeImmed
 		CALL	evalForceINT
 		LDB	#-1		
+	IF CPU_6309
 		LDA	ASS_VAR_OP,S
-		CMPA	#$CD		; if LDQ then 32 bit immeds
+		CMPA	#$CD				; if LDQ then 32 bit immed
 		BNE	2F
 		LDB	#-4
-		AIM	#~ASS_BITS_PRE,ASS_VAR_FLAGS,S
+		AIM	#~ASS_BITS_PRE,ASS_VAR_FLAGS,S	; clear prefix for LDQ immed
 		BRA	1F
-2		
-	IF CPU_6309
-		TIM	#ASS_BITS_16B,ASS_VAR_FLAGS,S	; if 16 bit immeds
+2		TIM	#ASS_BITS_16B,ASS_VAR_FLAGS,S	; if 16 bit immeds
 	ELSE
 		LDA	ASS_VAR_FLAGS,S
 		BITA	#ASS_BITS_16B			; if 16 bit immeds
@@ -408,9 +405,15 @@ assModeImmed
 		CALL	assCopyBBytesToOpBuf
 		LDB	#ASS_MEMPB_IMM
 assMemModeCheckValid
-		PSHS	B
 		LDA	ASS_VAR_MODEP,S
+
+	IF CPU_6309
+		ORR	B,A
+	ELSE
+		PSHS	B
 		ORA	,S+
+	ENDIF
+
 		ANDB	ASS_VAR_MODESET,S
 		ANDB	#$0F
 		BEQ	brkIllMode
@@ -596,8 +599,12 @@ assModexParseNotRegIX
 		BEQ	assModeParseOffsIX
 		; not , so either a DP or EXT or [indir]
 		; first check for indir
+	IF CPU_6309
+		TIM	#ASS_MEMPB_IND,ASS_VAR_MODEP,S
+	ELSE
 		LDA	#ASS_MEMPB_IND
 		BITA	ASS_VAR_MODEP,S
+	ENDIF
 		BEQ	assModexDpOrExt
 		; it is indir
 		LDD	#$9F00 + ASS_MEMPB_IX		; special number for indirect
