@@ -53,10 +53,10 @@ $(HOSTFSDIR)/%.bin: $(BEEBOUT)/%.bin
 	cp $< $@
 
 6809-assembler.gen.asm:	 6x09-ass-readdefs.pl 6x09-assembler.defs.txt
-		perl 6x09-ass-readdefs.pl
+		perl 6x09-ass-readdefs.pl 6x09-assembler.defs.txt 6809-assembler.defs.rpt 6809-assembler.gen.asm
 
 6309-assembler.gen.asm:	 6x09-ass-readdefs.pl 6x09-assembler.defs.txt
-		perl 6x09-ass-readdefs.pl --6309
+		perl 6x09-ass-readdefs.pl --6309 6x09-assembler.defs.txt 6309-assembler.defs.rpt 6309-assembler.gen.asm
 
 
 all: sizelog.txt sizelog6309.txt

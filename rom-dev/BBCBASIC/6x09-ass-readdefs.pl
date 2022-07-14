@@ -29,18 +29,19 @@ my $ASS_OPTBL_OF_MNE	= 0x00;
 my $ASS_OPTBL_OF_OP	= 0x02;
 
 
-my $ASS_MEMPB_IND	= 0x10;				# indirect flag
-my $ASS_MEMPB_SZ8	= 0x20;				# indirect flag
-my $ASS_MEMPB_SZ16	= 0x40;				# indirect flag
-my $ASS_MEMPB_IMM	= 0x01;				# immediate
-my $ASS_MEMPB_DP	= 0x02;				# immediate
-my $ASS_MEMPB_IX	= 0x04;				# immediate
-my $ASS_MEMPB_EXT	= 0x08;				# immediate
+my $MEMPB_SZ16	= 0x40;				# indirect flag
+my $MEMPB_SZ8	= 0x20;				# indirect flag
+my $MEMPB_IND	= 0x10;				# indirect flag
+my $MEMPB_EXT	= 0x08;				# immediate
+my $MEMPB_DP	= 0x02;				# immediate
+my $MEMPB_IX	= 0x04;				# immediate
+my $MEMPB_IMM	= 0x01;				# immediate
 
 
 my $opt_6309 = 0;
 
-while (my $opt=shift) {
+while (@ARGV[0] =~ /^--/) {
+	my $opt=shift;
 	if ($opt eq "--6309") {
 		$opt_6309 = 1;
 	} else {
@@ -55,15 +56,19 @@ if ($opt_6309) {
 	$asspre = "6809";
 }
 
+scalar @ARGV == 3 or die "Incorrect number of parameters";
+
+my $fn_in=shift;
+my $fn_rpt=shift;
+my $fn_asm=shift;
 
 
-my $fn_in="6x09-assembler.defs.txt";
-my $fn_rpt="$asspre-assembler.defs.rpt";
-my $fn_asm="$asspre-assembler.gen.asm";
+-e $fn_in or die "$fn_in doesn't exist";
+
 
 open(my $fh_in, "<", "$fn_in") or die "$! \"$fn_in\"";
-open(my $fh_rpt, ">", "$fn_rpt") or die "$1 \"$fn_rpt\"";
-open(my $fh_asm, ">", "$fn_asm") or die "$1 \"$fn_asm\"";
+open(my $fh_rpt, ">", "$fn_rpt") or die "$! \"$fn_rpt\"";
+open(my $fh_asm, ">", "$fn_asm") or die "$! \"$fn_asm\"";
 
 my @opcodes=();
 my @opcodes10=();
@@ -133,16 +138,16 @@ my %modedefs2 = (
 		name => "IMPLIED", 	code => 0x00
 	},
 	'ix' => {
-		name => "INDEXONLY", 	code => 0x04
+		name => "INDEXONLY", 	code => 								$MEMPB_IX
 	},
 	'# dp ix ex' => {
-		name => "ANY1",		code => 0x1F
+		name => "ANY1",		code =>                           $MEMPB_IND | $MEMPB_EXT | $MEMPB_DP | $MEMPB_IX | $MEMPB_IMM
 	},
 	'dp ix ex' => {
-		name => "MEM1",		code => 0x3E
+		name => "MEM1",		code => 	     $MEMPB_SZ8 | $MEMPB_IND | $MEMPB_EXT | $MEMPB_DP | $MEMPB_IX
 	},
 	'ST dp ix ex' => {
-		name => "MEM2",		code => 0x4E
+		name => "MEM2",		code => $MEMPB_SZ16                          | $MEMPB_EXT | $MEMPB_DP | $MEMPB_IX | $MEMPB_IMM
 	},
 	'rel' => {
 		name => "REL",		code => 0x80
@@ -513,9 +518,9 @@ sub OpXlate {
 	my (%hash) = @_;
 
 	printf $fh_asm "\t\tfcb\t\$%02.02X\t; size\n", scalar keys %hash;
-	foreach my $k (keys %hash) {
-		printf $fh_asm "\t\tfcb\t\$%02.02X\t; op org\n", $k;
-		printf $fh_asm "\t\tfcb\t\$%02.02X\t; op new\n", $hash{$k};
+	printf $fh_asm "\t\t;    org  new\n";
+	foreach my $k (sort keys %hash) {
+		printf $fh_asm "\t\tfcb\t\$%02.02X, \$%02.02X\n", $k, $hash{$k};
 	}
 }
 
@@ -751,8 +756,8 @@ foreach my $sd (keys %activesufs) {
 my $ix = 1;
 foreach my $suf (sort keys %sufs_items_by_suf) {
 	my %x = %{ $sufs_items_by_suf{$suf} };
-	foreach my $k (keys %x) {
-	print "--------- $ix $suf $k -------------\n";
+	foreach my $k (sort keys %x) {
+		print "--------- $ix $suf [$k] -------------\n";
 		my $sdi = $x{$k};
 		@sufdef_items[$ix] = $sdi;
 		$sufdef_item_ixs{$k} = $ix++;
@@ -977,8 +982,10 @@ print $fh_asm "assClassTbl_END\n\n\n";
 print $fh_asm "\n\n*********************************************************\n* M O D E    T A B L E \n*********************************************************\n\n";
 
 print $fh_asm "assModeTbl\n";
+print $fh_asm ";\t\t    MODE   OP FLAGS\n";
 
 foreach my $ms (sort keys %activemodes) {
+	print $fh_asm ";$ms\n";
 	my $md2 = $modedefs2{$ms};
 	my @md = @{ $modedefs{$ms} };
 
@@ -990,16 +997,16 @@ foreach my $ms (sort keys %activemodes) {
 			my $modelbl = $mdi->{mode};
 			switch ($modelbl) {
 				case "#" {
-					$modeitem_flag = $ASS_MEMPB_IMM;
+					$modeitem_flag = $MEMPB_IMM;
 				}
 				case "dp" {
-					$modeitem_flag = $ASS_MEMPB_DP;					
+					$modeitem_flag = $MEMPB_DP;					
 				}
 				case "ix" {
-					$modeitem_flag = $ASS_MEMPB_IX;					
+					$modeitem_flag = $MEMPB_IX;					
 				}
 				case "ex" {
-					$modeitem_flag = $ASS_MEMPB_EXT;					
+					$modeitem_flag = $MEMPB_EXT;					
 				}
 				else {
 					die "unrecognized mode \"$modelbl\"";
@@ -1010,9 +1017,7 @@ foreach my $ms (sort keys %activemodes) {
 			my $flags = $mdi->{pre} | ($mdi->{3})?$FLAGS_6309:0;
 
 			if ($op || $flags) {
-				printf $fh_asm "\t\tfcb\t\$%02.02X\t; %s [%s]\n", ($md2->{code} & 0x70) + ($modeitem_flag), $ms, $mdi->{mode};
-				printf $fh_asm "\t\tfcb\t\$%02.02X\t; OP\n", $op;
-				printf $fh_asm "\t\tfcb\t\$%02.02X\t; FLAGS\n", $flags;
+				printf $fh_asm "\t\tfcb\t\$%02.02X, \$%02.02X, \$%02.02X\t; %s [%s]\n", ($md2->{code} & 0x70) + ($modeitem_flag), $op, $flags, $ms, $mdi->{mode};
 			}
 		}
 	}
@@ -1069,10 +1074,10 @@ printf $fh_asm "ASS_OPTBL_OF_MNE\tequ\t\$%02.02X\t; offset mne hash (2)\n", $ASS
 printf $fh_asm "ASS_OPTBL_OF_OP\tequ\t\$%02.02X\t; offset base opcode\n", $ASS_OPTBL_OF_OP;
 
 print $fh_asm "\n";
-printf $fh_asm "ASS_MEMPB_IND\tequ\t\$%02.02X\t;IX,INDIRECT FLAG\n", $ASS_MEMPB_IND;
-printf $fh_asm "ASS_MEMPB_SZ8\tequ\t\$%02.02X\t;IX,FORCE 8\n", $ASS_MEMPB_SZ8;
-printf $fh_asm "ASS_MEMPB_SZ16\tequ\t\$%02.02X\t;IX,FORCE 16\n", $ASS_MEMPB_SZ16;
-printf $fh_asm "ASS_MEMPB_IMM\tequ\t\$%02.02X\t;IMMEDIATE\n", $ASS_MEMPB_IMM;
-printf $fh_asm "ASS_MEMPB_DP\tequ\t\$%02.02X\t;DIRECT PAGE\n", $ASS_MEMPB_DP;
-printf $fh_asm "ASS_MEMPB_IX\tequ\t\$%02.02X\t;INDEX/INDIRECT\n", $ASS_MEMPB_IX;
-printf $fh_asm "ASS_MEMPB_EXT\tequ\t\$%02.02X\t;EXTENDED\n", $ASS_MEMPB_EXT;
+printf $fh_asm "ASS_MEMPB_IND\tequ\t\$%02.02X\t;IX,INDIRECT FLAG\n", $MEMPB_IND;
+printf $fh_asm "ASS_MEMPB_SZ8\tequ\t\$%02.02X\t;IX,FORCE 8\n", $MEMPB_SZ8;
+printf $fh_asm "ASS_MEMPB_SZ16\tequ\t\$%02.02X\t;IX,FORCE 16\n", $MEMPB_SZ16;
+printf $fh_asm "ASS_MEMPB_IMM\tequ\t\$%02.02X\t;IMMEDIATE\n", $MEMPB_IMM;
+printf $fh_asm "ASS_MEMPB_DP\tequ\t\$%02.02X\t;DIRECT PAGE\n", $MEMPB_DP;
+printf $fh_asm "ASS_MEMPB_IX\tequ\t\$%02.02X\t;INDEX/INDIRECT\n", $MEMPB_IX;
+printf $fh_asm "ASS_MEMPB_EXT\tequ\t\$%02.02X\t;EXTENDED\n", $MEMPB_EXT;
