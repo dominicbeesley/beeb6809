@@ -133,6 +133,8 @@ my %classdefs = (
 	'DIR'	=>	{ sufs => '',				modes => '~'}
 );
 
+
+
 my %modedefs2 = (
 	'~' => {
 		name => "IMPLIED", 	code => 0x00
@@ -287,7 +289,7 @@ my %sufdefs = (
 	],
 	'LD ABDSUXY*EFWQ BT MD' => [
 		{	suf => 'MD',	pre => 0x11,	op => 0x3C-0x85,		3 => 1,		mode => '#'},
-		{	suf => 'Q',		pre => 0x10,	op => 0xCD-0x86,		3 => 1},
+		{	suf => 'Q',	pre => 0x10,	op => 0xCD-0x86,		3 => 1},
 		{	suf => 'BT',	pre => 0x11,	op => 0x36-0x86,		3 => 1,		mode => 'rr.n,qq.k'},
 		{	suf => 'A'},
 		{	suf => 'B',			op => 0x40},
@@ -449,14 +451,14 @@ sub printop {
 		# mode is uppercase, promote to op-suffix
 		my $suf2 = $1;
 		$mode = $2;
-		printf $fh_rpt "%s%s%s\t%s%s\t%s\n", $mne, $suf, $suf2, $mode, (length $mode <8)?"\t":"", $opcodes_str, ($b6309||$op->{6309})?"*":"";
+		printf $fh_rpt "%s[%s][%s]\t%s%s\t%s\n", $mne, $suf, $suf2, $mode, (length $mode <8)?"\t":"", $opcodes_str, ($b6309||$op->{6309})?"*":"";
 		$tblent = {
 			mne => $mne . $suf . $suf2,
 			mode => $mode,
 			6309 => $b6309||$op->{6309}
 		};
 	} else {
-		printf $fh_rpt "%s%s\t%s\t%s%s\t%s\n", $mne, $suf, $mode, (length $mode <8)?"\t":"", $opcodes_str, ($b6309||$op->{6309})?"*":"";
+		printf $fh_rpt "%s[%s]\t%s\t%s%s\t%s\n", $mne, $suf, $mode, (length $mode <8)?"\t":"", $opcodes_str, ($b6309||$op->{6309})?"*":"";
 		$tblent = {
 			mne => $mne . $suf,
 			mode => $mode,
@@ -868,64 +870,90 @@ print "££££££ " . scalar @sufdef_items . "\n";
 
 for (my $ix = 1; $ix < scalar @sufdef_items; $ix++) {
 	my $sdi = @sufdef_items[$ix];
-	printf $fh_asm "\t\t* SUFITEM [%02.02X] - %s\n", $ix, $sdi->{suf};
+	if ($sdi->{opmap_name}) {
+		printf $fh_asm "ASS_REGS_%s_IX\tEQU\t\$%02.02X\n", $sdi->{opmap_name}, $ix;
+	}
+	printf $fh_asm "\t\t* SUFITEM [%02.02X] - \"%s\"\n", $ix, $sdi->{suf};
 	
 	if ($sdi->{suf}) {
 		printf $fh_asm "\t\tFCB\t";
 
 		my $fst=1;
+		my $bop=0;
 		for my $c (split //, $sdi->{suf})
 		{
-			if ($fst) {
-				$fst = 0;
+
+			if ($c ge '1' && $c le '9') {
+				# numeric needs to be anded with $DF
+				if ($bop) {
+					print $fh_asm "\"";
+					if ($fst) {
+						$fst = 0;
+					} else {
+						print $fh_asm ", ";
+					}
+
+				}
+				print $fh_asm "\"$c\" & \$DF";
+
+			} elsif ($c ge 'A' && $c le 'Z') {
+				if (!$bop) {
+					if ($fst) {
+						$fst = 0;
+					} else {
+						print $fh_asm ", ";
+					}
+
+					print $fh_asm "\"";
+					$bop = 1;
+				} 
+				print $fh_asm $c;
 			} else {
-				print $fh_asm ",";
+				die "LOWERCASE or odd suffix !? \"$c\"";
 			}
-			printf $fh_asm "\$%02.02X", ord($c) & 0xDF		# convert to "upper case" - numbers get mangled
 		}
 
-		printf $fh_asm "\t; \"%s\"\n", $sdi->{suf};
+		if ($bop) {
+			print $fh_asm "\"";
+		}
+
+		print $fh_asm "\n";
+
 	} else {
 		printf $fh_asm "\t\t\t\t; no suff\n";
 	}
 
-	my $flags = $FLAGS_ALWAYS;
-	my @flags_str = ();
+	my @flags_str = ("\$80");
 	my $md2=0;
 
-	if ($sdi->{pre}) {
-		$flags |= $sdi->{pre};
-		push @flags_str, sprintf "%02.02X", $sdi->{pre};
+	if ($sdi->{pre} == $FLAGS_PRE_10) {
+		push @flags_str, "ASS_BITS_PRE_10";
+	}
+	if ($sdi->{pre} == $FLAGS_PRE_11) {
+		push @flags_str, "ASS_BITS_PRE_11";
 	}
 	if ($sdi->{3}) {
-		$flags |= $FLAGS_6309;
-		push @flags_str, "6309";
+		push @flags_str, "ASS_BITS_6309";
 	}
 	if ($sdi->{16}) {
-		$flags |= $FLAGS_16B;
-		push @flags_str, "#16";
+		push @flags_str, "ASS_BITS_16B";
 	}
 	if ($sdi->{op}) {
-		$flags |= $FLAGS_SUF_OP;		
-		push @flags_str, "SUF-OP";
+		push @flags_str, "FLAGS_SUF_OP";
 	}
 	if ($sdi->{mode}) {
-		$flags |= $FLAGS_SUF_MODE;		
 		$md2 = $modedefs2{$sdi->{mode}};
 		$md2 or die "No modedefs2 for \"$sdi->{mode}\"";
-		push @flags_str, "SUF-MODE";
+		push @flags_str, "FLAGS_SUF_MODE";
 	}
 	if ($sdi->{opmap}) {
-		$flags |= $FLAGS_EXTRA0;		
-		push @flags_str, "EXTRA0-OPMAP";
+		push @flags_str, "ASS_BITS_EXTRA0";
 
 	}
 
-	if ($sdi->{opmap_name}) {
-		printf $fh_asm "ASS_REGS_%s_IX\tEQU\t\$%02.02X\n", $sdi->{opmap_name}, $ix;
-	}
 
-	printf $fh_asm "\t\tFCB\t\$%02.02X\t; FLAGS - %s\n", $flags, join(' ', @flags_str);
+	printf $fh_asm "\t\tFCB\t\%s\t; FLAGS\n", join('|', @flags_str);
+
 	if ($sdi->{op}) {
 		printf $fh_asm "\t\tFCB\t\$%02.02X\t; OP\n", $sdi->{op} & 0xFF;
 	}
@@ -985,7 +1013,7 @@ print $fh_asm "assModeTbl\n";
 print $fh_asm ";\t\t    MODE   OP FLAGS\n";
 
 foreach my $ms (sort keys %activemodes) {
-	print $fh_asm ";$ms\n";
+print $fh_asm ";$ms\n";
 	my $md2 = $modedefs2{$ms};
 	my @md = @{ $modedefs{$ms} };
 
