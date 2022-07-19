@@ -140,16 +140,16 @@ my %modedefs2 = (
 		name => "IMPLIED", 	code => 0x00
 	},
 	'ix' => {
-		name => "INDEXONLY", 	code => 								$MEMPB_IX
+		name => "INDEXONLY", 	code => 0x40 |				$MEMPB_IX
 	},
 	'# dp ix ex' => {
-		name => "ANY1",		code =>                           $MEMPB_IND | $MEMPB_EXT | $MEMPB_DP | $MEMPB_IX | $MEMPB_IMM
+		name => "ANY1",		code => 0x10 | $MEMPB_EXT | $MEMPB_DP | $MEMPB_IX | $MEMPB_IMM
 	},
 	'dp ix ex' => {
-		name => "MEM1",		code => 	     $MEMPB_SZ8 | $MEMPB_IND | $MEMPB_EXT | $MEMPB_DP | $MEMPB_IX
+		name => "MEM1",		code => 0x20 | $MEMPB_EXT | $MEMPB_DP | $MEMPB_IX
 	},
 	'ST dp ix ex' => {
-		name => "MEM2",		code => $MEMPB_SZ16                          | $MEMPB_EXT | $MEMPB_DP | $MEMPB_IX | $MEMPB_IMM
+		name => "MEM2",		code => 0x30 | $MEMPB_EXT | $MEMPB_DP | $MEMPB_IX | $MEMPB_IMM
 	},
 	'rel' => {
 		name => "REL",		code => 0x80
@@ -199,9 +199,9 @@ my %modedefs = (
 		{	mode => 'ex',			op => 0x70}
 	],
 	'ST dp ix ex' => [
-		{	mode => 'dp',			op => 0x00},
-		{	mode => 'ix',			op => 0x10},
-		{	mode => 'ex',			op => 0x20}
+		{	mode => 'dp',			op => 0x10},
+		{	mode => 'ix',			op => 0x20},
+		{	mode => 'ex',			op => 0x30}
 	],
 	'tfm' => [
 		{	mode => 'r+,r+',		op => 0x00},
@@ -211,7 +211,7 @@ my %modedefs = (
 	],
 	'W' => [
 		{	mode => 'st',			op => 0x00},
-		{	mode => 'W,st',pre => 0x10,	op => 0x04,	3 => '1'}		# "uppercase," mode means treat as 2nd suffix
+		{	mode => 'W,st',			op => 0x04}		# "uppercase," mode means treat as 2nd suffix
 	],
 	'rel' => [
 		{	mode => 'rel',},
@@ -289,7 +289,7 @@ my %sufdefs = (
 	],
 	'LD ABDSUXY*EFWQ BT MD' => [
 		{	suf => 'MD',	pre => 0x11,	op => 0x3C-0x85,		3 => 1,		mode => '#'},
-		{	suf => 'Q',	pre => 0x10,	op => 0xCD-0x86,		3 => 1},
+		{	suf => 'Q',	pre => 0x10,	op => 0xCC-0x86,		3 => 1},
 		{	suf => 'BT',	pre => 0x11,	op => 0x36-0x86,		3 => 1,		mode => 'rr.n,qq.k'},
 		{	suf => 'A'},
 		{	suf => 'B',			op => 0x40},
@@ -304,7 +304,7 @@ my %sufdefs = (
 	],
 	'ST ABDSUXY*EFWQ BT' => [
 		{	suf => 'Q',	pre => 0x10,	op => 0x46,			3 => 1},
-		{	suf => 'BT',	pre => 0x11,	op => 0x37-0x97,		3 => 1,		mode => 'rr.n,qq.k'},
+		{	suf => 'BT',	pre => 0x11,	op => 0x37-0x87,		3 => 1,		mode => 'rr.n,qq.k'},
 		{	suf => 'A'},
 		{	suf => 'B',			op => 0x40},
 		{	suf => 'D',			op => 0x46,	16 => 1},
@@ -752,6 +752,11 @@ foreach my $sd (keys %activesufs) {
 			};
 			$sufs_items_by_suf{$sdi->{suf}} = $x;
 		}
+
+		my $modes = $sdi->{mode};
+		if ($modes) {
+			$activemodes{$modes} = 1;
+		}
 	}
 }
 
@@ -1042,10 +1047,9 @@ print $fh_asm ";$ms\n";
 			}
 
 			my $op = $mdi->{op};
-			my $flags = $mdi->{pre} | ($mdi->{3})?$FLAGS_6309:0;
 
-			if ($op || $flags) {
-				printf $fh_asm "\t\tfcb\t\$%02.02X, \$%02.02X, \$%02.02X\t; %s [%s]\n", ($md2->{code} & 0x70) + ($modeitem_flag), $op, $flags, $ms, $mdi->{mode};
+			if ($op) {
+				printf $fh_asm "\t\tfcb\t\$%02.02X, \$%02.02X\t; %s [%s]\n", ($md2->{code} & 0x70) + ($modeitem_flag), $op, $ms, $mdi->{mode};
 			}
 		}
 	}

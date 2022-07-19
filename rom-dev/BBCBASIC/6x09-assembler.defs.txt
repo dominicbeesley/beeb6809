@@ -137,8 +137,8 @@ TFR=1F
 JMP=0E
 
 !!OPCLASS=M!!
-#mode dp=$+00, ix=+$10, ex=+$20
-JSR=9D
+#mode dp=$+00, ix=+$10, ex=+$20 NOTE: OP should be 9D but uses ST mode set
+JSR=8D
 
 !!OPCLASS=N!!
 # reg A=+$00, B=+$40, D=+$48, E(3)=11 +$00, F(3)=11 +$40, S=10 +$48, U=+$48 W(3)=10 +$00, X=+$08, Y=10 +$08
@@ -171,8 +171,8 @@ PUL=35
 
 !!OPCLASS=T!!
 # reg A=+$00, B=+$40, D=10 +$46, E(3)=11 +$00, F(3)=11 +$40, S=10 +$48, U=+$48 W(3)=10 +$00, X=+$08, Y=10 +$08
-# mode dp=+$10, ix=+$20, ex=+$30
-ST=97
+# mode dp=+$10, ix=+$20, ex=+$30 NOTE: OP should be 97 but uses ST MODE SET
+ST=87
 # *STBT=11 37
 # *STQ=10 DD
 

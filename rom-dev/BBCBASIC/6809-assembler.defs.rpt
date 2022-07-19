@@ -1,442 +1,442 @@
 ############### A ###################
-ABX	~		3A	
-DAA	~		19	
-NOP	~		12	
-RTI	~		3B	
-RTS	~		39	
+ABX[]	~		3A	
+DAA[]	~		19	
+NOP[]	~		12	
+RTI[]	~		3B	
+RTS[]	~		39	
 ############### A1 ###################
-SYNC	~		13	
+SYN[C]	~		13	
 ############### A2 ###################
-SEXW	~		14	*
-SEX	~		1D	
+SEX[W]	~		14	*
+SEX[]	~		1D	
 ############### B ###################
-ADCR	r,r		10 31	*
-ADCA	#		89	
-ADCA	dp		99	
-ADCA	ix		A9	
-ADCA	ex		B9	
-ADCB	#		C9	
-ADCB	dp		D9	
-ADCB	ix		E9	
-ADCB	ex		F9	
-ADCD	#		10 89	*
-ADCD	dp		10 99	*
-ADCD	ix		10 A9	*
-ADCD	ex		10 B9	*
-EORR	r,r		10 36	*
-EORA	#		88	
-EORA	dp		98	
-EORA	ix		A8	
-EORA	ex		B8	
-EORB	#		C8	
-EORB	dp		D8	
-EORB	ix		E8	
-EORB	ex		F8	
-EORD	#		10 88	*
-EORD	dp		10 98	*
-EORD	ix		10 A8	*
-EORD	ex		10 B8	*
-SBCR	r,r		10 33	*
-SBCA	#		82	
-SBCA	dp		92	
-SBCA	ix		A2	
-SBCA	ex		B2	
-SBCB	#		C2	
-SBCB	dp		D2	
-SBCB	ix		E2	
-SBCB	ex		F2	
-SBCD	#		10 82	*
-SBCD	dp		10 92	*
-SBCD	ix		10 A2	*
-SBCD	ex		10 B2	*
+ADC[R]	r,r		10 31	*
+ADC[A]	#		89	
+ADC[A]	dp		99	
+ADC[A]	ix		A9	
+ADC[A]	ex		B9	
+ADC[B]	#		C9	
+ADC[B]	dp		D9	
+ADC[B]	ix		E9	
+ADC[B]	ex		F9	
+ADC[D]	#		10 89	*
+ADC[D]	dp		10 99	*
+ADC[D]	ix		10 A9	*
+ADC[D]	ex		10 B9	*
+EOR[R]	r,r		10 36	*
+EOR[A]	#		88	
+EOR[A]	dp		98	
+EOR[A]	ix		A8	
+EOR[A]	ex		B8	
+EOR[B]	#		C8	
+EOR[B]	dp		D8	
+EOR[B]	ix		E8	
+EOR[B]	ex		F8	
+EOR[D]	#		10 88	*
+EOR[D]	dp		10 98	*
+EOR[D]	ix		10 A8	*
+EOR[D]	ex		10 B8	*
+SBC[R]	r,r		10 33	*
+SBC[A]	#		82	
+SBC[A]	dp		92	
+SBC[A]	ix		A2	
+SBC[A]	ex		B2	
+SBC[B]	#		C2	
+SBC[B]	dp		D2	
+SBC[B]	ix		E2	
+SBC[B]	ex		F2	
+SBC[D]	#		10 82	*
+SBC[D]	dp		10 92	*
+SBC[D]	ix		10 A2	*
+SBC[D]	ex		10 B2	*
 ############### B2 ###################
-ANDCC	#		1C	
-ANDR	r,r		10 34	*
-ANDA	#		84	
-ANDA	dp		94	
-ANDA	ix		A4	
-ANDA	ex		B4	
-ANDB	#		C4	
-ANDB	dp		D4	
-ANDB	ix		E4	
-ANDB	ex		F4	
-ANDD	#		10 84	*
-ANDD	dp		10 94	*
-ANDD	ix		10 A4	*
-ANDD	ex		10 B4	*
-ORCC	#		1A	
-ORR	r,r		10 35	*
-ORA	#		8A	
-ORA	dp		9A	
-ORA	ix		AA	
-ORA	ex		BA	
-ORB	#		CA	
-ORB	dp		DA	
-ORB	ix		EA	
-ORB	ex		FA	
-ORD	#		10 8A	*
-ORD	dp		10 9A	*
-ORD	ix		10 AA	*
-ORD	ex		10 BA	*
+AND[CC]	#		1C	
+AND[R]	r,r		10 34	*
+AND[A]	#		84	
+AND[A]	dp		94	
+AND[A]	ix		A4	
+AND[A]	ex		B4	
+AND[B]	#		C4	
+AND[B]	dp		D4	
+AND[B]	ix		E4	
+AND[B]	ex		F4	
+AND[D]	#		10 84	*
+AND[D]	dp		10 94	*
+AND[D]	ix		10 A4	*
+AND[D]	ex		10 B4	*
+OR[CC]	#		1A	
+OR[R]	r,r		10 35	*
+OR[A]	#		8A	
+OR[A]	dp		9A	
+OR[A]	ix		AA	
+OR[A]	ex		BA	
+OR[B]	#		CA	
+OR[B]	dp		DA	
+OR[B]	ix		EA	
+OR[B]	ex		FA	
+OR[D]	#		10 8A	*
+OR[D]	dp		10 9A	*
+OR[D]	ix		10 AA	*
+OR[D]	ex		10 BA	*
 ############### C ###################
-ADDD	#		C3	
-ADDD	dp		D3	
-ADDD	ix		E3	
-ADDD	ex		F3	
-ADDA	#		8B	
-ADDA	dp		9B	
-ADDA	ix		AB	
-ADDA	ex		BB	
-ADDB	#		CB	
-ADDB	dp		DB	
-ADDB	ix		EB	
-ADDB	ex		FB	
-ADDE	#		11 8B	*
-ADDE	dp		11 9B	*
-ADDE	ix		11 AB	*
-ADDE	ex		11 BB	*
-ADDF	#		11 CB	*
-ADDF	dp		11 DB	*
-ADDF	ix		11 EB	*
-ADDF	ex		11 FB	*
-ADDW	#		10 8B	*
-ADDW	dp		10 9B	*
-ADDW	ix		10 AB	*
-ADDW	ex		10 BB	*
-ADDR	r,r		10 30	*
+ADD[D]	#		C3	
+ADD[D]	dp		D3	
+ADD[D]	ix		E3	
+ADD[D]	ex		F3	
+ADD[A]	#		8B	
+ADD[A]	dp		9B	
+ADD[A]	ix		AB	
+ADD[A]	ex		BB	
+ADD[B]	#		CB	
+ADD[B]	dp		DB	
+ADD[B]	ix		EB	
+ADD[B]	ex		FB	
+ADD[E]	#		11 8B	*
+ADD[E]	dp		11 9B	*
+ADD[E]	ix		11 AB	*
+ADD[E]	ex		11 BB	*
+ADD[F]	#		11 CB	*
+ADD[F]	dp		11 DB	*
+ADD[F]	ix		11 EB	*
+ADD[F]	ex		11 FB	*
+ADD[W]	#		10 8B	*
+ADD[W]	dp		10 9B	*
+ADD[W]	ix		10 AB	*
+ADD[W]	ex		10 BB	*
+ADD[R]	r,r		10 30	*
 ############### E ###################
-CWAI	#		3C	
+CWA[I]	#		3C	
 ############### F ###################
-NEGA	~		40	
-NEGB	~		50	
-NEGD	~		10 40	*
-NEG	dp		00	
-NEG	ix		60	
-NEG	ex		70	
-ASLA	~		48	
-ASLB	~		58	
-ASLD	~		10 48	*
-ASL	dp		08	
-ASL	ix		68	
-ASL	ex		78	
-ASRA	~		47	
-ASRB	~		57	
-ASRD	~		10 47	*
-ASR	dp		07	
-ASR	ix		67	
-ASR	ex		77	
-LSLA	~		48	
-LSLB	~		58	
-LSLD	~		10 48	*
-LSL	dp		08	
-LSL	ix		68	
-LSL	ex		78	
+NEG[A]	~		40	
+NEG[B]	~		50	
+NEG[D]	~		10 40	*
+NEG[]	dp		00	
+NEG[]	ix		60	
+NEG[]	ex		70	
+ASL[A]	~		48	
+ASL[B]	~		58	
+ASL[D]	~		10 48	*
+ASL[]	dp		08	
+ASL[]	ix		68	
+ASL[]	ex		78	
+ASR[A]	~		47	
+ASR[B]	~		57	
+ASR[D]	~		10 47	*
+ASR[]	dp		07	
+ASR[]	ix		67	
+ASR[]	ex		77	
+LSL[A]	~		48	
+LSL[B]	~		58	
+LSL[D]	~		10 48	*
+LSL[]	dp		08	
+LSL[]	ix		68	
+LSL[]	ex		78	
 ############### G ###################
-BITMD	#		11 3C	*
-BITA	#		85	
-BITA	dp		95	
-BITA	ix		A5	
-BITA	ex		B5	
-BITB	#		C5	
-BITB	dp		D5	
-BITB	ix		E5	
-BITB	ex		F5	
-BITD	#		10 85	
-BITD	dp		10 95	
-BITD	ix		10 A5	
-BITD	ex		10 B5	
+BIT[MD]	#		11 3C	*
+BIT[A]	#		85	
+BIT[A]	dp		95	
+BIT[A]	ix		A5	
+BIT[A]	ex		B5	
+BIT[B]	#		C5	
+BIT[B]	dp		D5	
+BIT[B]	ix		E5	
+BIT[B]	ex		F5	
+BIT[D]	#		10 85	
+BIT[D]	dp		10 95	
+BIT[D]	ix		10 A5	
+BIT[D]	ex		10 B5	
 ############### H ###################
-CLRA	~		4F	
-CLRB	~		5F	
-CLRD	~		10 4F	
-CLRE	~		11 4F	*
-CLRF	~		11 5F	*
-CLRW	~		10 5F	*
-CLR	dp		0F	
-CLR	ix		6F	
-CLR	ex		7F	
-COMA	~		43	
-COMB	~		53	
-COMD	~		10 43	
-COME	~		11 43	*
-COMF	~		11 53	*
-COMW	~		10 53	*
-COM	dp		03	
-COM	ix		63	
-COM	ex		73	
-DECA	~		4A	
-DECB	~		5A	
-DECD	~		10 4A	
-DECE	~		11 4A	*
-DECF	~		11 5A	*
-DECW	~		10 5A	*
-DEC	dp		0A	
-DEC	ix		6A	
-DEC	ex		7A	
-INCA	~		4C	
-INCB	~		5C	
-INCD	~		10 4C	
-INCE	~		11 4C	*
-INCF	~		11 5C	*
-INCW	~		10 5C	*
-INC	dp		0C	
-INC	ix		6C	
-INC	ex		7C	
-TSTA	~		4D	
-TSTB	~		5D	
-TSTD	~		10 4D	
-TSTE	~		11 4D	*
-TSTF	~		11 5D	*
-TSTW	~		10 5D	*
-TST	dp		0D	
-TST	ix		6D	
-TST	ex		7D	
+CLR[A]	~		4F	
+CLR[B]	~		5F	
+CLR[D]	~		10 4F	
+CLR[E]	~		11 4F	*
+CLR[F]	~		11 5F	*
+CLR[W]	~		10 5F	*
+CLR[]	dp		0F	
+CLR[]	ix		6F	
+CLR[]	ex		7F	
+COM[A]	~		43	
+COM[B]	~		53	
+COM[D]	~		10 43	
+COM[E]	~		11 43	*
+COM[F]	~		11 53	*
+COM[W]	~		10 53	*
+COM[]	dp		03	
+COM[]	ix		63	
+COM[]	ex		73	
+DEC[A]	~		4A	
+DEC[B]	~		5A	
+DEC[D]	~		10 4A	
+DEC[E]	~		11 4A	*
+DEC[F]	~		11 5A	*
+DEC[W]	~		10 5A	*
+DEC[]	dp		0A	
+DEC[]	ix		6A	
+DEC[]	ex		7A	
+INC[A]	~		4C	
+INC[B]	~		5C	
+INC[D]	~		10 4C	
+INC[E]	~		11 4C	*
+INC[F]	~		11 5C	*
+INC[W]	~		10 5C	*
+INC[]	dp		0C	
+INC[]	ix		6C	
+INC[]	ex		7C	
+TST[A]	~		4D	
+TST[B]	~		5D	
+TST[D]	~		10 4D	
+TST[E]	~		11 4D	*
+TST[F]	~		11 5D	*
+TST[W]	~		10 5D	*
+TST[]	dp		0D	
+TST[]	ix		6D	
+TST[]	ex		7D	
 ############### I ###################
-CMPS	#		11 8C	
-CMPS	dp		11 9C	
-CMPS	ix		11 AC	
-CMPS	ex		11 BC	
-CMPU	#		11 83	
-CMPU	dp		11 93	
-CMPU	ix		11 A3	
-CMPU	ex		11 B3	
-CMPX	#		8C	
-CMPX	dp		9C	
-CMPX	ix		AC	
-CMPX	ex		BC	
-CMPY	#		10 8C	
-CMPY	dp		10 9C	
-CMPY	ix		10 AC	
-CMPY	ex		10 BC	
-CMPD	#		10 83	
-CMPD	dp		10 93	
-CMPD	ix		10 A3	
-CMPD	ex		10 B3	
-CMPA	#		81	
-CMPA	dp		91	
-CMPA	ix		A1	
-CMPA	ex		B1	
-CMPB	#		C1	
-CMPB	dp		D1	
-CMPB	ix		E1	
-CMPB	ex		F1	
-CMPE	#		11 81	*
-CMPE	dp		11 91	*
-CMPE	ix		11 A1	*
-CMPE	ex		11 B1	*
-CMPF	#		11 C1	*
-CMPF	dp		11 D1	*
-CMPF	ix		11 E1	*
-CMPF	ex		11 F1	*
-CMPW	#		10 81	*
-CMPW	dp		10 91	*
-CMPW	ix		10 A1	*
-CMPW	ex		10 B1	*
-CMPR	r,r		10 37	*
+CMP[S]	#		11 8C	
+CMP[S]	dp		11 9C	
+CMP[S]	ix		11 AC	
+CMP[S]	ex		11 BC	
+CMP[U]	#		11 83	
+CMP[U]	dp		11 93	
+CMP[U]	ix		11 A3	
+CMP[U]	ex		11 B3	
+CMP[X]	#		8C	
+CMP[X]	dp		9C	
+CMP[X]	ix		AC	
+CMP[X]	ex		BC	
+CMP[Y]	#		10 8C	
+CMP[Y]	dp		10 9C	
+CMP[Y]	ix		10 AC	
+CMP[Y]	ex		10 BC	
+CMP[D]	#		10 83	
+CMP[D]	dp		10 93	
+CMP[D]	ix		10 A3	
+CMP[D]	ex		10 B3	
+CMP[A]	#		81	
+CMP[A]	dp		91	
+CMP[A]	ix		A1	
+CMP[A]	ex		B1	
+CMP[B]	#		C1	
+CMP[B]	dp		D1	
+CMP[B]	ix		E1	
+CMP[B]	ex		F1	
+CMP[E]	#		11 81	*
+CMP[E]	dp		11 91	*
+CMP[E]	ix		11 A1	*
+CMP[E]	ex		11 B1	*
+CMP[F]	#		11 C1	*
+CMP[F]	dp		11 D1	*
+CMP[F]	ix		11 E1	*
+CMP[F]	ex		11 F1	*
+CMP[W]	#		10 81	*
+CMP[W]	dp		10 91	*
+CMP[W]	ix		10 A1	*
+CMP[W]	ex		10 B1	*
+CMP[R]	r,r		10 37	*
 ############### K ###################
-EXG	r,r		1E	
-TFR	r,r		1F	
+EXG[]	r,r		1E	
+TFR[]	r,r		1F	
 ############### L ###################
-JMP	dp		0E	
-JMP	ix		6E	
-JMP	ex		7E	
+JMP[]	dp		0E	
+JMP[]	ix		6E	
+JMP[]	ex		7E	
 ############### M ###################
-JSR	dp		9D	
-JSR	ix		AD	
-JSR	ex		BD	
+JSR[]	dp		9D	
+JSR[]	ix		AD	
+JSR[]	ex		BD	
 ############### N ###################
-LDMD	#		11 3D	*
-LDQ	#		10 CD	*
-LDQ	dp		10 DD	*
-LDQ	ix		10 ED	*
-LDQ	ex		10 FD	*
-LDBT	rr.n,qq.k	11 36	*
-LDA	#		86	
-LDA	dp		96	
-LDA	ix		A6	
-LDA	ex		B6	
-LDB	#		C6	
-LDB	dp		D6	
-LDB	ix		E6	
-LDB	ex		F6	
-LDD	#		CC	
-LDD	dp		DC	
-LDD	ix		EC	
-LDD	ex		FC	
-LDE	#		11 86	*
-LDE	dp		11 96	*
-LDE	ix		11 A6	*
-LDE	ex		11 B6	*
-LDF	#		11 C6	*
-LDF	dp		11 D6	*
-LDF	ix		11 E6	*
-LDF	ex		11 F6	*
-LDW	#		10 86	*
-LDW	dp		10 96	*
-LDW	ix		10 A6	*
-LDW	ex		10 B6	*
-LDS	#		10 CE	
-LDS	dp		10 DE	
-LDS	ix		10 EE	
-LDS	ex		10 FE	
-LDU	#		CE	
-LDU	dp		DE	
-LDU	ix		EE	
-LDU	ex		FE	
-LDX	#		8E	
-LDX	dp		9E	
-LDX	ix		AE	
-LDX	ex		BE	
-LDY	#		10 8E	
-LDY	dp		10 9E	
-LDY	ix		10 AE	
-LDY	ex		10 BE	
+LD[MD]	#		11 3D	*
+LD[Q]	#		10 CC	*
+LD[Q]	dp		10 DC	*
+LD[Q]	ix		10 EC	*
+LD[Q]	ex		10 FC	*
+LD[BT]	rr.n,qq.k	11 36	*
+LD[A]	#		86	
+LD[A]	dp		96	
+LD[A]	ix		A6	
+LD[A]	ex		B6	
+LD[B]	#		C6	
+LD[B]	dp		D6	
+LD[B]	ix		E6	
+LD[B]	ex		F6	
+LD[D]	#		CC	
+LD[D]	dp		DC	
+LD[D]	ix		EC	
+LD[D]	ex		FC	
+LD[E]	#		11 86	*
+LD[E]	dp		11 96	*
+LD[E]	ix		11 A6	*
+LD[E]	ex		11 B6	*
+LD[F]	#		11 C6	*
+LD[F]	dp		11 D6	*
+LD[F]	ix		11 E6	*
+LD[F]	ex		11 F6	*
+LD[W]	#		10 86	*
+LD[W]	dp		10 96	*
+LD[W]	ix		10 A6	*
+LD[W]	ex		10 B6	*
+LD[S]	#		10 CE	
+LD[S]	dp		10 DE	
+LD[S]	ix		10 EE	
+LD[S]	ex		10 FE	
+LD[U]	#		CE	
+LD[U]	dp		DE	
+LD[U]	ix		EE	
+LD[U]	ex		FE	
+LD[X]	#		8E	
+LD[X]	dp		9E	
+LD[X]	ix		AE	
+LD[X]	ex		BE	
+LD[Y]	#		10 8E	
+LD[Y]	dp		10 9E	
+LD[Y]	ix		10 AE	
+LD[Y]	ex		10 BE	
 ############### P ###################
-LEAS	ix		32	
-LEAU	ix		33	
-LEAX	ix		30	
-LEAY	ix		31	
+LEA[S]	ix		32	
+LEA[U]	ix		33	
+LEA[X]	ix		30	
+LEA[Y]	ix		31	
 ############### Q ###################
-LSRA	~		44	
-LSRB	~		54	
-LSRD	~		10 44	*
-LSRW	~		10 54	*
-LSR	dp		04	
-LSR	ix		64	
-LSR	ex		74	
-ROLA	~		49	
-ROLB	~		59	
-ROLD	~		10 49	*
-ROLW	~		10 59	*
-ROL	dp		09	
-ROL	ix		69	
-ROL	ex		79	
-RORA	~		46	
-RORB	~		56	
-RORD	~		10 46	*
-RORW	~		10 56	*
-ROR	dp		06	
-ROR	ix		66	
-ROR	ex		76	
+LSR[A]	~		44	
+LSR[B]	~		54	
+LSR[D]	~		10 44	*
+LSR[W]	~		10 54	*
+LSR[]	dp		04	
+LSR[]	ix		64	
+LSR[]	ex		74	
+ROL[A]	~		49	
+ROL[B]	~		59	
+ROL[D]	~		10 49	*
+ROL[W]	~		10 59	*
+ROL[]	dp		09	
+ROL[]	ix		69	
+ROL[]	ex		79	
+ROR[A]	~		46	
+ROR[B]	~		56	
+ROR[D]	~		10 46	*
+ROR[W]	~		10 56	*
+ROR[]	dp		06	
+ROR[]	ix		66	
+ROR[]	ex		76	
 ############### R ###################
-MULD	#		11 8F	*
-MULD	dp		11 9F	*
-MULD	ix		11 AF	*
-MULD	ex		11 BF	*
-MUL	~		3D	
+MUL[D]	#		11 8F	*
+MUL[D]	dp		11 9F	*
+MUL[D]	ix		11 AF	*
+MUL[D]	ex		11 BF	*
+MUL[]	~		3D	
 ############### S ###################
-PSHS	st		34	
-PSHSW	st		10 38
-PSHU	st		36	
-PSHUW	st		10 3A
-PULS	st		35	
-PULSW	st		10 39
-PULU	st		37	
-PULUW	st		10 3B
+PSH[S]	st		34	
+PSH[S][W]	st		38
+PSH[U]	st		36	
+PSH[U][W]	st		3A
+PUL[S]	st		35	
+PUL[S][W]	st		39
+PUL[U]	st		37	
+PUL[U][W]	st		3B
 ############### T ###################
-STQ	dp		10 DD	*
-STQ	ix		10 ED	*
-STQ	ex		10 FD	*
-STBT	rr.n,qq.k	11 37	*
-STA	dp		97	
-STA	ix		A7	
-STA	ex		B7	
-STB	dp		D7	
-STB	ix		E7	
-STB	ex		F7	
-STD	dp		DD	
-STD	ix		ED	
-STD	ex		FD	
-STE	dp		11 97	*
-STE	ix		11 A7	*
-STE	ex		11 B7	*
-STF	dp		11 D7	*
-STF	ix		11 E7	*
-STF	ex		11 F7	*
-STW	dp		10 97	*
-STW	ix		10 A7	*
-STW	ex		10 B7	*
-STS	dp		10 DF	
-STS	ix		10 EF	
-STS	ex		10 FF	
-STU	dp		DF	
-STU	ix		EF	
-STU	ex		FF	
-STX	dp		9F	
-STX	ix		AF	
-STX	ex		BF	
-STY	dp		10 9F	
-STY	ix		10 AF	
-STY	ex		10 BF	
+ST[Q]	dp		10 DD	*
+ST[Q]	ix		10 ED	*
+ST[Q]	ex		10 FD	*
+ST[BT]	rr.n,qq.k	11 37	*
+ST[A]	dp		97	
+ST[A]	ix		A7	
+ST[A]	ex		B7	
+ST[B]	dp		D7	
+ST[B]	ix		E7	
+ST[B]	ex		F7	
+ST[D]	dp		DD	
+ST[D]	ix		ED	
+ST[D]	ex		FD	
+ST[E]	dp		11 97	*
+ST[E]	ix		11 A7	*
+ST[E]	ex		11 B7	*
+ST[F]	dp		11 D7	*
+ST[F]	ix		11 E7	*
+ST[F]	ex		11 F7	*
+ST[W]	dp		10 97	*
+ST[W]	ix		10 A7	*
+ST[W]	ex		10 B7	*
+ST[S]	dp		10 DF	
+ST[S]	ix		10 EF	
+ST[S]	ex		10 FF	
+ST[U]	dp		DF	
+ST[U]	ix		EF	
+ST[U]	ex		FF	
+ST[X]	dp		9F	
+ST[X]	ix		AF	
+ST[X]	ex		BF	
+ST[Y]	dp		10 9F	
+ST[Y]	ix		10 AF	
+ST[Y]	ex		10 BF	
 ############### U ###################
-BCC	rel		24	
-LBCC	rel16		24	
-BCS	rel		25	
-LBCS	rel16		25	
-BEQ	rel		27	
-LBEQ	rel16		27	
-BGE	rel		2C	
-LBGE	rel16		2C	
-BGT	rel		2E	
-LBGT	rel16		2E	
-BHI	rel		22	
-LBHI	rel16		22	
-BHS	rel		24	
-LBHS	rel16		24	
-BLE	rel		2F	
-LBLE	rel16		2F	
-BLO	rel		25	
-LBLO	rel16		25	
-BLS	rel		23	
-LBLS	rel16		23	
-BLT	rel		2D	
-LBLT	rel16		2D	
-BMI	rel		2B	
-LBMI	rel16		2B	
-BNE	rel		26	
-LBNE	rel16		26	
-BPL	rel		2A	
-LBPL	rel16		2A	
-BRA	rel		20	
-LBRA	rel16		16	
-BRN	rel		21	
-LBRN	rel16		21	
-BSR	rel		8D	
-LBSR	rel16		17	
-BVC	rel		28	
-LBVC	rel16		28	
-BVS	rel		29	
-LBVS	rel16		29	
+BCC[]	rel		24	
+LBCC[]	rel16		24	
+BCS[]	rel		25	
+LBCS[]	rel16		25	
+BEQ[]	rel		27	
+LBEQ[]	rel16		27	
+BGE[]	rel		2C	
+LBGE[]	rel16		2C	
+BGT[]	rel		2E	
+LBGT[]	rel16		2E	
+BHI[]	rel		22	
+LBHI[]	rel16		22	
+BHS[]	rel		24	
+LBHS[]	rel16		24	
+BLE[]	rel		2F	
+LBLE[]	rel16		2F	
+BLO[]	rel		25	
+LBLO[]	rel16		25	
+BLS[]	rel		23	
+LBLS[]	rel16		23	
+BLT[]	rel		2D	
+LBLT[]	rel16		2D	
+BMI[]	rel		2B	
+LBMI[]	rel16		2B	
+BNE[]	rel		26	
+LBNE[]	rel16		26	
+BPL[]	rel		2A	
+LBPL[]	rel16		2A	
+BRA[]	rel		20	
+LBRA[]	rel16		16	
+BRN[]	rel		21	
+LBRN[]	rel16		21	
+BSR[]	rel		8D	
+LBSR[]	rel16		17	
+BVC[]	rel		28	
+LBVC[]	rel16		28	
+BVS[]	rel		29	
+LBVS[]	rel16		29	
 ############### Y ###################
-SWI2	~		10 3F	
-SWI3	~		11 3F	
-SWI	~		3F	
+SWI[2]	~		10 3F	
+SWI[3]	~		11 3F	
+SWI[]	~		3F	
 ############### Z ###################
-SUBD	#		83	
-SUBD	dp		93	
-SUBD	ix		A3	
-SUBD	ex		B3	
-SUBA	#		80	
-SUBA	dp		90	
-SUBA	ix		A0	
-SUBA	ex		B0	
-SUBB	#		C0	
-SUBB	dp		D0	
-SUBB	ix		E0	
-SUBB	ex		F0	
-SUBE	#		11 80	*
-SUBE	dp		11 90	*
-SUBE	ix		11 A0	*
-SUBE	ex		11 B0	*
-SUBF	#		11 C0	*
-SUBF	dp		11 D0	*
-SUBF	ix		11 E0	*
-SUBF	ex		11 F0	*
-SUBW	#		10 80	*
-SUBW	dp		10 90	*
-SUBW	ix		10 A0	*
-SUBW	ex		10 B0	*
-SUBR	r,r		10 32	*
+SUB[D]	#		83	
+SUB[D]	dp		93	
+SUB[D]	ix		A3	
+SUB[D]	ex		B3	
+SUB[A]	#		80	
+SUB[A]	dp		90	
+SUB[A]	ix		A0	
+SUB[A]	ex		B0	
+SUB[B]	#		C0	
+SUB[B]	dp		D0	
+SUB[B]	ix		E0	
+SUB[B]	ex		F0	
+SUB[E]	#		11 80	*
+SUB[E]	dp		11 90	*
+SUB[E]	ix		11 A0	*
+SUB[E]	ex		11 B0	*
+SUB[F]	#		11 C0	*
+SUB[F]	dp		11 D0	*
+SUB[F]	ix		11 E0	*
+SUB[F]	ex		11 F0	*
+SUB[W]	#		10 80	*
+SUB[W]	dp		10 90	*
+SUB[W]	ix		10 A0	*
+SUB[W]	ex		10 B0	*
+SUB[R]	r,r		10 32	*
 
 
 +------+-------+-----------+------+      +------+-------+-----------+------+
@@ -490,13 +490,13 @@ SUBR	r,r		10 32	*
 +------+-------+-----------+------+      +------+-------+-----------+------+
 | 0017 |  LBSR |     rel16 |      |      | 0037 |  PULU |        st |      |
 +------+-------+-----------+------+      +------+-------+-----------+------+
-| 0018 |                          |      | 0038 |                          |
+| 0018 |                          |      | 0038 | PSHSW |        st |      |
 +------+-------+-----------+------+      +------+-------+-----------+------+
-| 0019 |   DAA |         ~ |      |      | 0039 |   RTS |         ~ |      |
+| 0019 |   DAA |         ~ |      |      | 0039 | PULSW |        st |      |
 +------+-------+-----------+------+      +------+-------+-----------+------+
-| 001A |  ORCC |         # |      |      | 003A |   ABX |         ~ |      |
+| 001A |  ORCC |         # |      |      | 003A | PSHUW |        st |      |
 +------+-------+-----------+------+      +------+-------+-----------+------+
-| 001B |                          |      | 003B |   RTI |         ~ |      |
+| 001B |                          |      | 003B | PULUW |        st |      |
 +------+-------+-----------+------+      +------+-------+-----------+------+
 | 001C | ANDCC |         # |      |      | 003C |  CWAI |         # |      |
 +------+-------+-----------+------+      +------+-------+-----------+------+
@@ -766,13 +766,13 @@ SUBR	r,r		10 32	*
 +------+-------+-----------+------+      +------+-------+-----------+------+
 | 1017 |                          |      | 1037 |  CMPR |       r,r |    * |
 +------+-------+-----------+------+      +------+-------+-----------+------+
-| 1018 |                          |      | 1038 | PSHSW |        st |    * |
+| 1018 |                          |      | 1038 |                          |
 +------+-------+-----------+------+      +------+-------+-----------+------+
-| 1019 |                          |      | 1039 | PULSW |        st |    * |
+| 1019 |                          |      | 1039 |                          |
 +------+-------+-----------+------+      +------+-------+-----------+------+
-| 101A |                          |      | 103A | PSHUW |        st |    * |
+| 101A |                          |      | 103A |                          |
 +------+-------+-----------+------+      +------+-------+-----------+------+
-| 101B |                          |      | 103B | PULUW |        st |    * |
+| 101B |                          |      | 103B |                          |
 +------+-------+-----------+------+      +------+-------+-----------+------+
 | 101C |                          |      | 103C |                          |
 +------+-------+-----------+------+      +------+-------+-----------+------+
@@ -949,9 +949,9 @@ SUBR	r,r		10 32	*
 +------+-------+-----------+------+      +------+-------+-----------+------+
 | 10CB |                          |      | 10EB |                          |
 +------+-------+-----------+------+      +------+-------+-----------+------+
-| 10CC |                          |      | 10EC |                          |
+| 10CC |   LDQ |         # |    * |      | 10EC |   LDQ |        ix |    * |
 +------+-------+-----------+------+      +------+-------+-----------+------+
-| 10CD |   LDQ |         # |    * |      | 10ED |   STQ |        ix |    * |
+| 10CD |                          |      | 10ED |   STQ |        ix |    * |
 +------+-------+-----------+------+      +------+-------+-----------+------+
 | 10CE |   LDS |         # |      |      | 10EE |   LDS |        ix |      |
 +------+-------+-----------+------+      +------+-------+-----------+------+
@@ -981,7 +981,7 @@ SUBR	r,r		10 32	*
 +------+-------+-----------+------+      +------+-------+-----------+------+
 | 10DB |                          |      | 10FB |                          |
 +------+-------+-----------+------+      +------+-------+-----------+------+
-| 10DC |                          |      | 10FC |                          |
+| 10DC |   LDQ |        dp |    * |      | 10FC |   LDQ |        ex |    * |
 +------+-------+-----------+------+      +------+-------+-----------+------+
 | 10DD |   STQ |        dp |    * |      | 10FD |   STQ |        ex |    * |
 +------+-------+-----------+------+      +------+-------+-----------+------+

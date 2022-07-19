@@ -384,12 +384,16 @@ assModesParseMem
 assModeImmed
 		CALL	evalForceINT
 		LDB	#-1		
-	IF CPU_6309
+	IF ASSEMBLER_6309
+		; check for LDQ 10 CC
+		TIM	#ASS_BITS_PRE_10,ASS_VAR_FLAGS,S
+		BEQ	2F
 		LDA	ASS_VAR_OP,S
-		CMPA	#$CD				; if LDQ then 32 bit immed
+		CMPA	#$CC				; if LDQ then 32 bit immed
 		BNE	2F
 		LDB	#-4
 		AIM	#~ASS_BITS_PRE,ASS_VAR_FLAGS,S	; clear prefix for LDQ immed
+		INC	ASS_VAR_OP,S
 		BRA	1F
 2		TIM	#ASS_BITS_16B,ASS_VAR_FLAGS,S	; if 16 bit immeds
 	ELSE
@@ -432,15 +436,12 @@ assMemModeCheckValid
 		BEQ	2F				; end of table
 		CMPA	ZP_INT_WA
 		BEQ	3F
-		LEAX	2,X
+		LEAX	1,X
 		BRA	1B
 3		; got a match update flags and opcode
 		LDA	,X+
 		ADDA	ASS_VAR_OP,S
 		STA	ASS_VAR_OP,S
-		LDA	,X+
-		ORA	ASS_VAR_FLAGS,S
-		STA	ASS_VAR_FLAGS,S
 
 2		
 		; final mode check
@@ -455,18 +456,9 @@ brkIllMode
 		DO_BRK_B
 		FCB	$3, "Illegal Mode", 0
 
-assTblMEMPBSZ	FCB	'<',ASS_MEMPB_SZ8
-		FCB	'[',ASS_MEMPB_IND
-		FCB	'>',ASS_MEMPB_SZ16
-		FCB	0
 
 assModesParseMem_NotImmed
 
-		LDB	ASS_VAR_OP,S
-		CMPB	#$CD		; if LDQ then bodge the opcode 
-		BNE	1F
-		DEC	ASS_VAR_OP,S
-1
 		; now look for any of the memory addressing modes
 		CLRB			; clear flags
 
@@ -534,6 +526,12 @@ assPostByte	PSHS	B
 		STA	B,S
 		INC	3+ASS_VAR_OPLEN,S
 		PULS	B,PC
+
+assTblMEMPBSZ	FCB	'<',ASS_MEMPB_SZ8
+		FCB	'[',ASS_MEMPB_IND
+		FCB	'>',ASS_MEMPB_SZ16
+		FCB	0
+
 
 assModeParseIXRegAfterComma
 ; enter with index type (i.e. low 4 bits of post byte) in B

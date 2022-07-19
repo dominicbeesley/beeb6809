@@ -215,7 +215,7 @@ assParseTbl_M
 assParseTbl_JSR
 assParseTbl_JSR_IX	EQU	$27
 		FDB	$2A72		; [27] - JSR
-		FCB	$9D		; base op
+		FCB	$8D		; base op
 
 	********** N **********
 assParseTbl_N
@@ -269,7 +269,7 @@ assParseTbl_T
 assParseTbl_ST
 assParseTbl_ST_IX	EQU	$30
 		FDB	$0274		; [30] - ST
-		FCB	$97		; base op
+		FCB	$87		; base op
 
 	********** U **********
 assParseTbl_U
@@ -425,52 +425,49 @@ assParseTbl_END	FCB	$FF	; end of table marker
 assSuffSetsTbl
 		* SUFLIST [01] - LD ABDSUXY*EFWQ BT MD
 		* MD Q BT A B D E F W S U X Y
-		FCB	$1C,$21,$08,$04,$06,$11,$17,$19,$2E,$27,$2A,$30,$B3
-		* SUFLIST [0E] - ST ABDSUXY*EFWQ BT
-		* Q BT
-		FCB	$20,$09,$FF,$04
-		* SUFLIST [12] - ADC AB*D R CC
+		FCB	$1B,$1F,$08,$04,$06,$10,$16,$18,$2C,$25,$28,$2E,$B1
+		* SUFLIST [0E] - ADC AB*D R CC
 		* CC R A B D
-		FCB	$0B,$22,$04,$06,$94
-		* SUFLIST [17] - ABD MD
+		FCB	$0A,$20,$04,$06,$93
+		* SUFLIST [13] - ABD MD
 		* MD A B D
-		FCB	$1C,$04,$06,$92
-		* SUFLIST [1B] - SEXW
+		FCB	$1B,$04,$06,$91
+		* SUFLIST [17] - SEXW
 		* W 
-		FCB	$2D,$81
-		* SUFLIST [1D] - MULD
+		FCB	$2B,$81
+		* SUFLIST [19] - MULD
 		* D 
-		FCB	$0D,$81
-		* SUFLIST [1F] - SUXY
+		FCB	$0C,$81
+		* SUFLIST [1B] - SUXY
 		* S U X Y
-		FCB	$25,$29,$2F,$B2
-		* SUFLIST [23] - AB*DW
+		FCB	$23,$27,$2D,$B0
+		* SUFLIST [1F] - AB*DW
 		* A B D W
-		FCB	$05,$07,$0C,$AC
-		* SUFLIST [27] - 23
+		FCB	$05,$07,$0B,$AA
+		* SUFLIST [23] - 23
 		* 2 3 
 		FCB	$02,$03,$81
-		* SUFLIST [2A] - DQ
+		* SUFLIST [26] - DQ
 		* D Q
-		FCB	$13,$9F
-		* SUFLIST [2C] - ADD ABD*EFW R
+		FCB	$12,$9E
+		* SUFLIST [28] - ADD ABD*EFW R
 		* D A B E F W R
-		FCB	$10,$04,$06,$17,$19,$2E,$A2
-		* SUFLIST [33] - ABD*EFW
+		FCB	$0F,$04,$06,$16,$18,$2C,$A0
+		* SUFLIST [2F] - ABD*EFW
 		* A B D E F W
-		FCB	$05,$07,$16,$18,$1A,$AC
-		* SUFLIST [39] - CMP ABDSUXY*EFW R
+		FCB	$05,$07,$15,$17,$19,$AA
+		* SUFLIST [35] - CMP ABDSUXY*EFW R
 		* S U X Y D
-		FCB	$26,$2B,$31,$34,$15,$FF,$2D
-		* SUFLIST [40] - AB*D
+		FCB	$24,$29,$2F,$32,$14,$FF,$29
+		* SUFLIST [3C] - AB*D
 		* A B D
-		FCB	$05,$07,$8C
-		* SUFLIST [43] - SUB ABD*EFW R
+		FCB	$05,$07,$8B
+		* SUFLIST [3F] - SUB ABD*EFW R
 		* D
-		FCB	$0F,$FF,$2D
-		* SUFLIST [46] - SU
+		FCB	$0E,$FF,$29
+		* SUFLIST [42] - SU
 		* S U
-		FCB	$24,$A8
+		FCB	$22,$A6
 
 
 
@@ -479,202 +476,193 @@ assSuffSetsTbl
 *********************************************************
 
 assSuffItemTbl
-		* SUFITEM [01] - 
+		* SUFITEM [01] - ""
 				; no suff
-		FCB	$80	; FLAGS - 
-		* SUFITEM [02] - 2
-		FCB	$12	; "2"
-		FCB	$90	; FLAGS - 10
-		* SUFITEM [03] - 3
-		FCB	$13	; "3"
-		FCB	$91	; FLAGS - 11
-		* SUFITEM [04] - A
-		FCB	$41	; "A"
-		FCB	$80	; FLAGS - 
-		* SUFITEM [05] - A
-		FCB	$41	; "A"
-		FCB	$84	; FLAGS - SUF-OP
+		FCB	$80	; FLAGS
+		* SUFITEM [02] - "2"
+		FCB	"2" & $DF
+		FCB	$80|ASS_BITS_PRE_10	; FLAGS
+		* SUFITEM [03] - "3"
+		FCB	"3" & $DF
+		FCB	$80|ASS_BITS_PRE_11	; FLAGS
+		* SUFITEM [04] - "A"
+		FCB	"A"
+		FCB	$80	; FLAGS
+		* SUFITEM [05] - "A"
+		FCB	"A"
+		FCB	$80|FLAGS_SUF_OP	; FLAGS
 		FCB	$40	; OP
-		* SUFITEM [06] - B
-		FCB	$42	; "B"
-		FCB	$84	; FLAGS - SUF-OP
+		* SUFITEM [06] - "B"
+		FCB	"B"
+		FCB	$80|FLAGS_SUF_OP	; FLAGS
 		FCB	$40	; OP
-		* SUFITEM [07] - B
-		FCB	$42	; "B"
-		FCB	$84	; FLAGS - SUF-OP
+		* SUFITEM [07] - "B"
+		FCB	"B"
+		FCB	$80|FLAGS_SUF_OP	; FLAGS
 		FCB	$50	; OP
-		* SUFITEM [08] - BT
-		FCB	$42,$54	; "BT"
-		FCB	$BD	; FLAGS - 11 6309 SUF-OP SUF-MODE
+		* SUFITEM [08] - "BT"
+		FCB	"BT"
+		FCB	$80|ASS_BITS_PRE_11|ASS_BITS_6309|FLAGS_SUF_OP|FLAGS_SUF_MODE	; FLAGS
 		FCB	$B0	; OP
 		FCB	$84	; MODE rr.n,qq.k
-		* SUFITEM [09] - BT
-		FCB	$42,$54	; "BT"
-		FCB	$BD	; FLAGS - 11 6309 SUF-OP SUF-MODE
-		FCB	$A0	; OP
-		FCB	$84	; MODE rr.n,qq.k
-		* SUFITEM [0A] - C
-		FCB	$43	; "C"
-		FCB	$80	; FLAGS - 
-		* SUFITEM [0B] - CC
-		FCB	$43,$43	; "CC"
-ASS_REGS_CC_IX	EQU	$0B
-		FCB	$C8	; FLAGS - SUF-MODE EXTRA0-OPMAP
+		* SUFITEM [09] - "C"
+		FCB	"C"
+		FCB	$80	; FLAGS
+ASS_REGS_CC_IX	EQU	$0A
+		* SUFITEM [0A] - "CC"
+		FCB	"CC"
+		FCB	$80|FLAGS_SUF_MODE|ASS_BITS_EXTRA0	; FLAGS
 		FCB	$81	; MODE #
-		* SUFITEM [0C] - D
-		FCB	$44	; "D"
-		FCB	$B6	; FLAGS - 10 6309 #16 SUF-OP
+		* SUFITEM [0B] - "D"
+		FCB	"D"
+		FCB	$80|ASS_BITS_PRE_10|ASS_BITS_6309|ASS_BITS_16B|FLAGS_SUF_OP	; FLAGS
 		FCB	$40	; OP
-		* SUFITEM [0D] - D
-		FCB	$44	; "D"
-		FCB	$BF	; FLAGS - 11 6309 #16 SUF-OP SUF-MODE
+		* SUFITEM [0C] - "D"
+		FCB	"D"
+		FCB	$80|ASS_BITS_PRE_11|ASS_BITS_6309|ASS_BITS_16B|FLAGS_SUF_OP|FLAGS_SUF_MODE	; FLAGS
 		FCB	$52	; OP
 		FCB	$1F	; MODE # dp ix ex
-		* SUFITEM [0E] - D
-		FCB	$44	; "D"
-		FCB	$80	; FLAGS - 
-		* SUFITEM [0F] - D
-		FCB	$44	; "D"
-		FCB	$86	; FLAGS - #16 SUF-OP
+		* SUFITEM [0D] - "D"
+		FCB	"D"
+		FCB	$80	; FLAGS
+		* SUFITEM [0E] - "D"
+		FCB	"D"
+		FCB	$80|ASS_BITS_16B|FLAGS_SUF_OP	; FLAGS
 		FCB	$03	; OP
-		* SUFITEM [10] - D
-		FCB	$44	; "D"
-		FCB	$86	; FLAGS - #16 SUF-OP
+		* SUFITEM [0F] - "D"
+		FCB	"D"
+		FCB	$80|ASS_BITS_16B|FLAGS_SUF_OP	; FLAGS
 		FCB	$38	; OP
-		* SUFITEM [11] - D
-		FCB	$44	; "D"
-		FCB	$86	; FLAGS - #16 SUF-OP
+		* SUFITEM [10] - "D"
+		FCB	"D"
+		FCB	$80|ASS_BITS_16B|FLAGS_SUF_OP	; FLAGS
 		FCB	$46	; OP
-		* SUFITEM [12] - D
-		FCB	$44	; "D"
-		FCB	$92	; FLAGS - 10 #16
-		* SUFITEM [13] - D
-		FCB	$44	; "D"
-		FCB	$B1	; FLAGS - 11 6309
-		* SUFITEM [14] - D
-		FCB	$44	; "D"
-		FCB	$B2	; FLAGS - 10 6309 #16
-		* SUFITEM [15] - D
-		FCB	$44	; "D"
-		FCB	$96	; FLAGS - 10 #16 SUF-OP
+		* SUFITEM [11] - "D"
+		FCB	"D"
+		FCB	$80|ASS_BITS_PRE_10|ASS_BITS_16B	; FLAGS
+		* SUFITEM [12] - "D"
+		FCB	"D"
+		FCB	$80|ASS_BITS_PRE_11|ASS_BITS_6309	; FLAGS
+		* SUFITEM [13] - "D"
+		FCB	"D"
+		FCB	$80|ASS_BITS_PRE_10|ASS_BITS_6309|ASS_BITS_16B	; FLAGS
+		* SUFITEM [14] - "D"
+		FCB	"D"
+		FCB	$80|ASS_BITS_PRE_10|ASS_BITS_16B|FLAGS_SUF_OP	; FLAGS
 		FCB	$02	; OP
-		* SUFITEM [16] - D
-		FCB	$44	; "D"
-		FCB	$96	; FLAGS - 10 #16 SUF-OP
+		* SUFITEM [15] - "D"
+		FCB	"D"
+		FCB	$80|ASS_BITS_PRE_10|ASS_BITS_16B|FLAGS_SUF_OP	; FLAGS
 		FCB	$40	; OP
-		* SUFITEM [17] - E
-		FCB	$45	; "E"
-		FCB	$B1	; FLAGS - 11 6309
-		* SUFITEM [18] - E
-		FCB	$45	; "E"
-		FCB	$B5	; FLAGS - 11 6309 SUF-OP
+		* SUFITEM [16] - "E"
+		FCB	"E"
+		FCB	$80|ASS_BITS_PRE_11|ASS_BITS_6309	; FLAGS
+		* SUFITEM [17] - "E"
+		FCB	"E"
+		FCB	$80|ASS_BITS_PRE_11|ASS_BITS_6309|FLAGS_SUF_OP	; FLAGS
 		FCB	$40	; OP
-		* SUFITEM [19] - F
-		FCB	$46	; "F"
-		FCB	$B5	; FLAGS - 11 6309 SUF-OP
+		* SUFITEM [18] - "F"
+		FCB	"F"
+		FCB	$80|ASS_BITS_PRE_11|ASS_BITS_6309|FLAGS_SUF_OP	; FLAGS
 		FCB	$40	; OP
-		* SUFITEM [1A] - F
-		FCB	$46	; "F"
-		FCB	$B5	; FLAGS - 11 6309 SUF-OP
+		* SUFITEM [19] - "F"
+		FCB	"F"
+		FCB	$80|ASS_BITS_PRE_11|ASS_BITS_6309|FLAGS_SUF_OP	; FLAGS
 		FCB	$50	; OP
-		* SUFITEM [1B] - I
-		FCB	$49	; "I"
-		FCB	$80	; FLAGS - 
-		* SUFITEM [1C] - MD
-		FCB	$4D,$44	; "MD"
-		FCB	$BD	; FLAGS - 11 6309 SUF-OP SUF-MODE
+		* SUFITEM [1A] - "I"
+		FCB	"I"
+		FCB	$80	; FLAGS
+		* SUFITEM [1B] - "MD"
+		FCB	"MD"
+		FCB	$80|ASS_BITS_PRE_11|ASS_BITS_6309|FLAGS_SUF_OP|FLAGS_SUF_MODE	; FLAGS
 		FCB	$B7	; OP
 		FCB	$81	; MODE #
-		* SUFITEM [1D] - ND
-		FCB	$4E,$44	; "ND"
-		FCB	$80	; FLAGS - 
-		* SUFITEM [1E] - OR
-		FCB	$4F,$52	; "OR"
-		FCB	$80	; FLAGS - 
-		* SUFITEM [1F] - Q
-		FCB	$51	; "Q"
-		FCB	$B7	; FLAGS - 11 6309 #16 SUF-OP
+		* SUFITEM [1C] - "ND"
+		FCB	"ND"
+		FCB	$80	; FLAGS
+		* SUFITEM [1D] - "OR"
+		FCB	"OR"
+		FCB	$80	; FLAGS
+		* SUFITEM [1E] - "Q"
+		FCB	"Q"
+		FCB	$80|ASS_BITS_PRE_11|ASS_BITS_6309|ASS_BITS_16B|FLAGS_SUF_OP	; FLAGS
 		FCB	$01	; OP
-		* SUFITEM [20] - Q
-		FCB	$51	; "Q"
-		FCB	$B4	; FLAGS - 10 6309 SUF-OP
+		* SUFITEM [1F] - "Q"
+		FCB	"Q"
+		FCB	$80|ASS_BITS_PRE_10|ASS_BITS_6309|FLAGS_SUF_OP	; FLAGS
 		FCB	$46	; OP
-		* SUFITEM [21] - Q
-		FCB	$51	; "Q"
-		FCB	$B4	; FLAGS - 10 6309 SUF-OP
-		FCB	$47	; OP
-		* SUFITEM [22] - R
-		FCB	$52	; "R"
-ASS_REGS_REGREG_IX	EQU	$22
-		FCB	$F8	; FLAGS - 10 6309 SUF-MODE EXTRA0-OPMAP
+ASS_REGS_REGREG_IX	EQU	$20
+		* SUFITEM [20] - "R"
+		FCB	"R"
+		FCB	$80|ASS_BITS_PRE_10|ASS_BITS_6309|FLAGS_SUF_MODE|ASS_BITS_EXTRA0	; FLAGS
 		FCB	$82	; MODE r,r
-		* SUFITEM [23] - R
-		FCB	$52	; "R"
-		FCB	$80	; FLAGS - 
-		* SUFITEM [24] - S
-		FCB	$53	; "S"
-		FCB	$82	; FLAGS - #16
-		* SUFITEM [25] - S
-		FCB	$53	; "S"
-		FCB	$86	; FLAGS - #16 SUF-OP
+		* SUFITEM [21] - "R"
+		FCB	"R"
+		FCB	$80	; FLAGS
+		* SUFITEM [22] - "S"
+		FCB	"S"
+		FCB	$80|ASS_BITS_16B	; FLAGS
+		* SUFITEM [23] - "S"
+		FCB	"S"
+		FCB	$80|ASS_BITS_16B|FLAGS_SUF_OP	; FLAGS
 		FCB	$02	; OP
-		* SUFITEM [26] - S
-		FCB	$53	; "S"
-		FCB	$97	; FLAGS - 11 #16 SUF-OP
+		* SUFITEM [24] - "S"
+		FCB	"S"
+		FCB	$80|ASS_BITS_PRE_11|ASS_BITS_16B|FLAGS_SUF_OP	; FLAGS
 		FCB	$0B	; OP
-		* SUFITEM [27] - S
-		FCB	$53	; "S"
-		FCB	$96	; FLAGS - 10 #16 SUF-OP
+		* SUFITEM [25] - "S"
+		FCB	"S"
+		FCB	$80|ASS_BITS_PRE_10|ASS_BITS_16B|FLAGS_SUF_OP	; FLAGS
 		FCB	$48	; OP
-		* SUFITEM [28] - U
-		FCB	$55	; "U"
-		FCB	$86	; FLAGS - #16 SUF-OP
+		* SUFITEM [26] - "U"
+		FCB	"U"
+		FCB	$80|ASS_BITS_16B|FLAGS_SUF_OP	; FLAGS
 		FCB	$02	; OP
-		* SUFITEM [29] - U
-		FCB	$55	; "U"
-		FCB	$86	; FLAGS - #16 SUF-OP
+		* SUFITEM [27] - "U"
+		FCB	"U"
+		FCB	$80|ASS_BITS_16B|FLAGS_SUF_OP	; FLAGS
 		FCB	$03	; OP
-		* SUFITEM [2A] - U
-		FCB	$55	; "U"
-		FCB	$86	; FLAGS - #16 SUF-OP
+		* SUFITEM [28] - "U"
+		FCB	"U"
+		FCB	$80|ASS_BITS_16B|FLAGS_SUF_OP	; FLAGS
 		FCB	$48	; OP
-		* SUFITEM [2B] - U
-		FCB	$55	; "U"
-		FCB	$97	; FLAGS - 11 #16 SUF-OP
+		* SUFITEM [29] - "U"
+		FCB	"U"
+		FCB	$80|ASS_BITS_PRE_11|ASS_BITS_16B|FLAGS_SUF_OP	; FLAGS
 		FCB	$02	; OP
-		* SUFITEM [2C] - W
-		FCB	$57	; "W"
-		FCB	$B6	; FLAGS - 10 6309 #16 SUF-OP
+		* SUFITEM [2A] - "W"
+		FCB	"W"
+		FCB	$80|ASS_BITS_PRE_10|ASS_BITS_6309|ASS_BITS_16B|FLAGS_SUF_OP	; FLAGS
 		FCB	$50	; OP
-		* SUFITEM [2D] - W
-		FCB	$57	; "W"
-		FCB	$A4	; FLAGS - 6309 SUF-OP
+		* SUFITEM [2B] - "W"
+		FCB	"W"
+		FCB	$80|ASS_BITS_6309|FLAGS_SUF_OP	; FLAGS
 		FCB	$F7	; OP
-		* SUFITEM [2E] - W
-		FCB	$57	; "W"
-		FCB	$B2	; FLAGS - 10 6309 #16
-		* SUFITEM [2F] - X
-		FCB	$58	; "X"
-		FCB	$82	; FLAGS - #16
-		* SUFITEM [30] - X
-		FCB	$58	; "X"
-		FCB	$86	; FLAGS - #16 SUF-OP
+		* SUFITEM [2C] - "W"
+		FCB	"W"
+		FCB	$80|ASS_BITS_PRE_10|ASS_BITS_6309|ASS_BITS_16B	; FLAGS
+		* SUFITEM [2D] - "X"
+		FCB	"X"
+		FCB	$80|ASS_BITS_16B	; FLAGS
+		* SUFITEM [2E] - "X"
+		FCB	"X"
+		FCB	$80|ASS_BITS_16B|FLAGS_SUF_OP	; FLAGS
 		FCB	$08	; OP
-		* SUFITEM [31] - X
-		FCB	$58	; "X"
-		FCB	$86	; FLAGS - #16 SUF-OP
+		* SUFITEM [2F] - "X"
+		FCB	"X"
+		FCB	$80|ASS_BITS_16B|FLAGS_SUF_OP	; FLAGS
 		FCB	$0B	; OP
-		* SUFITEM [32] - Y
-		FCB	$59	; "Y"
-		FCB	$86	; FLAGS - #16 SUF-OP
+		* SUFITEM [30] - "Y"
+		FCB	"Y"
+		FCB	$80|ASS_BITS_16B|FLAGS_SUF_OP	; FLAGS
 		FCB	$01	; OP
-		* SUFITEM [33] - Y
-		FCB	$59	; "Y"
-		FCB	$96	; FLAGS - 10 #16 SUF-OP
+		* SUFITEM [31] - "Y"
+		FCB	"Y"
+		FCB	$80|ASS_BITS_PRE_10|ASS_BITS_16B|FLAGS_SUF_OP	; FLAGS
 		FCB	$08	; OP
-		* SUFITEM [34] - Y
-		FCB	$59	; "Y"
-		FCB	$96	; FLAGS - 10 #16 SUF-OP
+		* SUFITEM [32] - "Y"
+		FCB	"Y"
+		FCB	$80|ASS_BITS_PRE_10|ASS_BITS_16B|FLAGS_SUF_OP	; FLAGS
 		FCB	$0B	; OP
 
 
@@ -691,33 +679,33 @@ assClass_A_ix	equ	$00	; class #assClassTbl_A
 assClass_A1_ix	equ	$01	; class #assClassTbl_A1
 		FCB	$06	; max index
 		FCB	$88	; flags
-		FCB	$8A	; suffix set
+		FCB	$89	; suffix set
 		FCB	$00	; mode set
 assClass_A2_ix	equ	$02	; class #assClassTbl_A2
 		FCB	$07	; max index
 		FCB	$88	; flags
-		FCB	$1B	; suffix set
+		FCB	$17	; suffix set
 		FCB	$00	; mode set
 assClass_B_ix	equ	$03	; class #assClassTbl_B
 		FCB	$0A	; max index
 		FCB	$88	; flags
-		FCB	$13	; suffix set
+		FCB	$0F	; suffix set
 		FCB	$1F	; mode set
 assClass_B2_ix	equ	$04	; class #assClassTbl_B2
 		FCB	$0C	; max index
 		FCB	$88	; flags
-		FCB	$12	; suffix set
+		FCB	$0E	; suffix set
 		FCB	$1F	; mode set
 assClass_C_ix	equ	$05	; class #assClassTbl_C
 		FCB	$0D	; max index
 		FCB	$88	; flags
-		FCB	$2C	; suffix set
+		FCB	$28	; suffix set
 		FCB	$1F	; mode set
 assClass_D_ix	equ	$06	; class #assClassTbl_D
 		FCB	$11	; max index
 		FCB	$A0	; flags
 		FCB	$00	; suffix set
-		FCB	$3E	; mode set
+		FCB	$2E	; mode set
 assClass_DIR_ix	equ	$07	; class #assClassTbl_DIR
 		FCB	$17	; max index
 		FCB	$80	; flags
@@ -726,32 +714,32 @@ assClass_DIR_ix	equ	$07	; class #assClassTbl_DIR
 assClass_E_ix	equ	$08	; class #assClassTbl_E
 		FCB	$18	; max index
 		FCB	$88	; flags
-		FCB	$9B	; suffix set
+		FCB	$9A	; suffix set
 		FCB	$81	; mode set
 assClass_F_ix	equ	$09	; class #assClassTbl_F
 		FCB	$1C	; max index
 		FCB	$80	; flags
-		FCB	$40	; suffix set
-		FCB	$3E	; mode set
+		FCB	$3C	; suffix set
+		FCB	$2E	; mode set
 assClass_G_ix	equ	$0A	; class #assClassTbl_G
 		FCB	$1D	; max index
 		FCB	$88	; flags
-		FCB	$17	; suffix set
+		FCB	$13	; suffix set
 		FCB	$1F	; mode set
 assClass_H_ix	equ	$0B	; class #assClassTbl_H
 		FCB	$22	; max index
 		FCB	$80	; flags
-		FCB	$33	; suffix set
-		FCB	$3E	; mode set
+		FCB	$2F	; suffix set
+		FCB	$2E	; mode set
 assClass_I_ix	equ	$0C	; class #assClassTbl_I
 		FCB	$23	; max index
 		FCB	$88	; flags
-		FCB	$39	; suffix set
+		FCB	$35	; suffix set
 		FCB	$1F	; mode set
 assClass_J_ix	equ	$0D	; class #assClassTbl_J
 		FCB	$24	; max index
 		FCB	$A8	; flags
-		FCB	$2A	; suffix set
+		FCB	$26	; suffix set
 		FCB	$1F	; mode set
 assClass_K_ix	equ	$0E	; class #assClassTbl_K
 		FCB	$26	; max index
@@ -762,12 +750,12 @@ assClass_L_ix	equ	$0F	; class #assClassTbl_L
 		FCB	$27	; max index
 		FCB	$80	; flags
 		FCB	$00	; suffix set
-		FCB	$3E	; mode set
+		FCB	$2E	; mode set
 assClass_M_ix	equ	$10	; class #assClassTbl_M
 		FCB	$28	; max index
 		FCB	$80	; flags
 		FCB	$00	; suffix set
-		FCB	$4F	; mode set
+		FCB	$3F	; mode set
 assClass_N_ix	equ	$11	; class #assClassTbl_N
 		FCB	$29	; max index
 		FCB	$88	; flags
@@ -776,28 +764,28 @@ assClass_N_ix	equ	$11	; class #assClassTbl_N
 assClass_P_ix	equ	$12	; class #assClassTbl_P
 		FCB	$2A	; max index
 		FCB	$88	; flags
-		FCB	$1F	; suffix set
-		FCB	$04	; mode set
+		FCB	$1B	; suffix set
+		FCB	$44	; mode set
 assClass_Q_ix	equ	$13	; class #assClassTbl_Q
 		FCB	$2D	; max index
 		FCB	$80	; flags
-		FCB	$23	; suffix set
-		FCB	$3E	; mode set
+		FCB	$1F	; suffix set
+		FCB	$2E	; mode set
 assClass_R_ix	equ	$14	; class #assClassTbl_R
 		FCB	$2E	; max index
 		FCB	$88	; flags
-		FCB	$1D	; suffix set
+		FCB	$19	; suffix set
 		FCB	$00	; mode set
 assClass_S_ix	equ	$15	; class #assClassTbl_S
 		FCB	$30	; max index
 		FCB	$88	; flags
-		FCB	$46	; suffix set
+		FCB	$42	; suffix set
 		FCB	$83	; mode set
 assClass_T_ix	equ	$16	; class #assClassTbl_T
 		FCB	$31	; max index
 		FCB	$88	; flags
-		FCB	$0E	; suffix set
-		FCB	$4F	; mode set
+		FCB	$02	; suffix set
+		FCB	$3F	; mode set
 assClass_U_ix	equ	$17	; class #assClassTbl_U
 		FCB	$44	; max index
 		FCB	$80	; flags
@@ -811,27 +799,27 @@ assClass_W_ix	equ	$18	; class #assClassTbl_W
 assClass_W1_ix	equ	$19	; class #assClassTbl_W1
 		FCB	$46	; max index
 		FCB	$A8	; flags
-		FCB	$8E	; suffix set
+		FCB	$8D	; suffix set
 		FCB	$84	; mode set
 assClass_W2_ix	equ	$1A	; class #assClassTbl_W2
 		FCB	$47	; max index
 		FCB	$A8	; flags
-		FCB	$9D	; suffix set
+		FCB	$9C	; suffix set
 		FCB	$84	; mode set
 assClass_W3_ix	equ	$1B	; class #assClassTbl_W3
 		FCB	$48	; max index
 		FCB	$A8	; flags
-		FCB	$A3	; suffix set
+		FCB	$A1	; suffix set
 		FCB	$84	; mode set
 assClass_W4_ix	equ	$1C	; class #assClassTbl_W4
 		FCB	$49	; max index
 		FCB	$A8	; flags
-		FCB	$A3	; suffix set
+		FCB	$A1	; suffix set
 		FCB	$84	; mode set
 assClass_W5_ix	equ	$1D	; class #assClassTbl_W5
 		FCB	$4A	; max index
 		FCB	$A8	; flags
-		FCB	$9E	; suffix set
+		FCB	$9D	; suffix set
 		FCB	$84	; mode set
 assClass_X_ix	equ	$1E	; class #assClassTbl_X
 		FCB	$4B	; max index
@@ -841,12 +829,12 @@ assClass_X_ix	equ	$1E	; class #assClassTbl_X
 assClass_Y_ix	equ	$1F	; class #assClassTbl_Y
 		FCB	$4C	; max index
 		FCB	$88	; flags
-		FCB	$27	; suffix set
+		FCB	$23	; suffix set
 		FCB	$00	; mode set
 assClass_Z_ix	equ	$20	; class #assClassTbl_Z
 		FCB	$4D	; max index
 		FCB	$88	; flags
-		FCB	$43	; suffix set
+		FCB	$3F	; suffix set
 		FCB	$1F	; mode set
 assClassTbl_END
 
@@ -861,16 +849,17 @@ assModeTbl
 ;		    MODE   OP FLAGS
 ;#
 ;# dp ix ex
-		fcb	$12, $10, $00	; # dp ix ex [dp]
-		fcb	$14, $20, $00	; # dp ix ex [ix]
-		fcb	$18, $30, $00	; # dp ix ex [ex]
+		fcb	$12, $10	; # dp ix ex [dp]
+		fcb	$14, $20	; # dp ix ex [ix]
+		fcb	$18, $30	; # dp ix ex [ex]
 ;ST dp ix ex
-		fcb	$44, $10, $00	; ST dp ix ex [ix]
-		fcb	$48, $20, $00	; ST dp ix ex [ex]
+		fcb	$32, $10	; ST dp ix ex [dp]
+		fcb	$34, $20	; ST dp ix ex [ix]
+		fcb	$38, $30	; ST dp ix ex [ex]
 ;W
 ;dp ix ex
-		fcb	$34, $60, $00	; dp ix ex [ix]
-		fcb	$38, $70, $00	; dp ix ex [ex]
+		fcb	$24, $60	; dp ix ex [ix]
+		fcb	$28, $70	; dp ix ex [ex]
 ;ix
 ;r,r
 ;rel
@@ -882,10 +871,10 @@ assModeTbl
 
 ASS_MODESET_IMMEDONLY	equ	$81
 ASS_MODESET_ANY1	equ	$1F
-ASS_MODESET_MEM2	equ	$4F
+ASS_MODESET_MEM2	equ	$3F
 ASS_MODESET_W	equ	$83
-ASS_MODESET_MEM1	equ	$3E
-ASS_MODESET_INDEXONLY	equ	$04
+ASS_MODESET_MEM1	equ	$2E
+ASS_MODESET_INDEXONLY	equ	$44
 ASS_MODESET_REGREG	equ	$82
 ASS_MODESET_REL	equ	$80
 ASS_MODESET_BITBIT	equ	$84
