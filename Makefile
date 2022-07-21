@@ -37,6 +37,9 @@ all_flex:
 	$(MAKE) -C rom-dev all_flex
 	$(MAKE) -C flex-port all_flex
 
+all_sbc09:
+	$(MAKE) -C rom-dev all_sbc09
+
 clean:
 	$(MAKE) -C rom-dev clean
 	$(MAKE) -C mos clean
@@ -45,5 +48,5 @@ clean:
 	$(MAKE) -C demos clean
 	$(MAKE) -C ssds clean
 	$(MAKE) -C other-tests all
-	-rm ROMIMAGE.BIN	
+	-rm -f ROMIMAGE.BIN	
 	
