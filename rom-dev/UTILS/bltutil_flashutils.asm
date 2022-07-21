@@ -133,7 +133,7 @@ FlashCmd_S1
 		lda	1,S
 		sta	JIM + $55
 
-		puls	D,X,PC		
+1		puls	D,X,PC		
 
 FlashCmdShort	CLC
 		bra	FlashCmd_S1
