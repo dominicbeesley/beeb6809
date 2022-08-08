@@ -1,23 +1,72 @@
 ;; *************************************************************
+;; Memory
+;; *************************************************************
+
+ZP_TIME      EQU  $00f0
+ZP_RX_HEAD   EQU  $00f4
+ZP_RX_TAIL   EQU  $00f5
+ZP_ERRPTR    EQU  $00fd
+ZP_ESCFLAG   EQU  $00ff
+
+BRKV         EQU  $0202
+
+
+;; 0x300-0x3FF - Set in middle as B,X addressing is used (B is signed)
+
+RX_BUFFER    EQU  $380
+
+
+;; *************************************************************
 ;; UART
 ;; *************************************************************
 
 UART         EQU  $A000
 
-; 6850 ACIA CONTROL REGISTER:
-; RX INT DISABLED, RTS LOW, TX INT DISABLED, 8N1, CLK/16
-UART_INIT    EQU  $15
+UART_INIT
+      ; 6850 ACIA CONTROL REGISTER:
+      ; RX INT ENABLED, RTS LOW, TX INT DISABLED, 8N1, CLK/16
+      LDA   #$95
+      STA   UART
+      CLR   <ZP_RX_HEAD
+      CLR   <ZP_RX_TAIL
+      CLI
+      RTS
 
+IRQ_HANDLER
+      PSHS CC,A,B,X
+      LDA  UART            ; Read UART status register
+      BITA #$01            ; Test bit 0 (RxFull)
+      BEQ  IRQ_EXIT        ; Exit if no character
+      LDA  UART+1          ; Read UART Rx Data (and clear interrupt)
+      CMPA #$1B            ; Test for escape
+      BNE  IRQ_NOESC
+      LDB  #$80            ; Set the escape flag
+      STB  <ZP_ESCFLAG
+IRQ_NOESC
+      LDB  <ZP_RX_TAIL     ; B = keyboard buffer tail index
+      LDX  #RX_BUFFER      ; X = keyboard buffer base address
+      STA  B,X             ; store the character in the buffer
+      INCB                 ; increment the tail pointer
+      CMPB <ZP_RX_HEAD     ; has it hit the head (buffer full?)
+      BEQ  IRQ_EXIT        ; yes, then drop characters
+      STB  <ZP_RX_TAIL     ; no, then save the incremented tail pointer
+IRQ_EXIT
+      PULS CC,A,B,X
+      RTI
 
-;; *************************************************************
-;; Memory
-;; *************************************************************
-
-ZP_TIME      EQU  $00f0
-ZP_ERRPTR    EQU  $00fd
-ZP_ESCFLAG   EQU  $00ff
-
-BRKV         EQU  $0202
+OSRDCH
+      PSHS  B,X
+1     LDB   <ZP_RX_HEAD
+      CMPB  <ZP_RX_TAIL
+      BEQ   1B
+      LDX   #RX_BUFFER
+      LDA   B,X
+      INCB
+      STB   <ZP_RX_HEAD
+      LDB   <ZP_ESCFLAG
+      ROLB
+      PULS  B,X
+      RTS
 
 ;; *************************************************************
 ;; OS Interface
@@ -27,7 +76,7 @@ OSINIT
 		LDA	#$00           ;; Big Endian Flag
       LDX   #BRKV
 		LDY	#ZP_ESCFLAG
-		CLR	ZP_ESCFLAG
+		CLR	<ZP_ESCFLAG
       RTS
 
 ;; *************************************************************
@@ -101,8 +150,9 @@ CNOTDEL
       BRA   CLOOP1
 CEXIT_OK
       JSR   OSNEWL
-      ANDCC #$FE
 CEXIT_ERR
+      LDA   <ZP_ESCFLAG
+      ROL   A
       RTS
 
 OSWORD_READSYSCLK
@@ -135,7 +185,6 @@ OSWORD_WRITESYSCLK
       STA  <ZP_TIME+3
       RTS
 
-
 OSWORD_ENVELOPE
 OSWORD_SOUND
       RTS
@@ -145,6 +194,25 @@ OSWORD_SOUND
 ;; *************************************************************
 
 OSBYTE
+      CMPA  #$7C
+      BNE   1F
+      CLR   <ZP_ESCFLAG
+      RTS
+1
+      CMPA  #$7D
+      BNE   1F
+      CLR   <ZP_ESCFLAG
+      COM   <ZP_ESCFLAG
+      RTS
+1
+      CMPA  #$7E
+      BNE   1F
+      CLR   <ZP_ESCFLAG
+      CLR   <ZP_RX_HEAD
+      CLR   <ZP_RX_TAIL
+      LDX   #$00FF
+      RTS
+1
       CMPA  #$83
       BNE   1F
       LDX   #$0800
@@ -180,19 +248,6 @@ OSWRCH
       STA   UART+1
       RTS
 
-OSRDCH
-      LDA   UART
-      ANDA  #$01
-      BEQ   OSRDCH
-      LDA   UART + 1
-      CMPA  #$1B
-      BNE   1F
-      ORCC  #$01
-      RTS
-1
-      ANDCC #$FE
-      RTS
-
 PRSTRING
       LDA	,X+
 		BEQ	1F
@@ -210,7 +265,6 @@ ILL_HANDLER
 SWI_HANDLER
 SWI2_HANDLER
 FIRQ_HANDLER
-IRQ_HANDLER
 NMI_HANDLER
       RTI
 
@@ -222,7 +276,7 @@ SWI3_HANDLER
 	ELSE
 		ldx	14,S					; points at byte after SWI instruction
 	ENDIF
-		stx   ZP_ERRPTR
+		stx   <ZP_ERRPTR
 		stx	2,S					; set X on return to this
 		puls	CC,A,X			   ; restore A,X,CC
 		jmp	[BRKV]				; and JUMP via BRKV (normally into current language)
@@ -245,9 +299,7 @@ RESET_HANDLER
       LDX   #BRKV
       STD   ,X
       ;; Initialize the UART
-      LDX   #UART
-      LDA   #UART_INIT
-      STA   ,X
+      JSR   UART_INIT
       ;; Print the reset message
       LDX   #RESET_MSG
       JSR   PRSTRING
