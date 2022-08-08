@@ -247,7 +247,7 @@ OSBYTE
 1
       CMPA  #$84
       BNE   1F
-      LDX   #$8000
+      LDX   #$7E00
       RTS
 1
       LDX   #$0000
