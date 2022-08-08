@@ -5,15 +5,19 @@
 ZP_TIME      EQU  $00f0
 ZP_RX_HEAD   EQU  $00f4
 ZP_RX_TAIL   EQU  $00f5
+ZP_TX_HEAD   EQU  $00f6
+ZP_TX_TAIL   EQU  $00f7
 ZP_ERRPTR    EQU  $00fd
 ZP_ESCFLAG   EQU  $00ff
 
 BRKV         EQU  $0202
 
 
-;; 0x300-0x3FF - Set in middle as B,X addressing is used (B is signed)
+;; Rx Buffer is 0x7e00-0x7eFF - Set in middle as B,X addressing is used (B is signed)
+RX_BUFFER    EQU  $7E80
 
-RX_BUFFER    EQU  $380
+;; Tx Buffer is 0x7f00-0x7FFF - Set in middle as B,X addressing is used (B is signed)
+TX_BUFFER    EQU  $7F80
 
 
 ;; *************************************************************
@@ -29,6 +33,8 @@ UART_INIT
       STA   UART
       CLR   <ZP_RX_HEAD
       CLR   <ZP_RX_TAIL
+      CLR   <ZP_TX_HEAD
+      CLR   <ZP_TX_TAIL
       CLI
       RTS
 
@@ -36,7 +42,8 @@ IRQ_HANDLER
       PSHS CC,A,B,X
       LDA  UART            ; Read UART status register
       BITA #$01            ; Test bit 0 (RxFull)
-      BEQ  IRQ_EXIT        ; Exit if no character
+
+      BEQ  IRQ_TX          ; no, then go on to check for a transmit interrupt
       LDA  UART+1          ; Read UART Rx Data (and clear interrupt)
       CMPA #$1B            ; Test for escape
       BNE  IRQ_NOESC
@@ -48,11 +55,31 @@ IRQ_NOESC
       STA  B,X             ; store the character in the buffer
       INCB                 ; increment the tail pointer
       CMPB <ZP_RX_HEAD     ; has it hit the head (buffer full?)
-      BEQ  IRQ_EXIT        ; yes, then drop characters
+      BEQ  IRQ_TX          ; yes, then drop characters
       STB  <ZP_RX_TAIL     ; no, then save the incremented tail pointer
+
+IRQ_TX
+      LDA  UART            ; Read UART status register
+      BITA #$02            ; Test bit 0 (TxEmpty)
+      BEQ  IRQ_EXIT        ; Not empty, so exit
+
+      LDB  <ZP_TX_HEAD     ; Is the Tx buffer empty?
+      CMPB <ZP_TX_TAIL
+      BEQ  IRQ_TX_DONE     ; Yes, then disable Tx interrupts and exit
+      LDX  #TX_BUFFER      ; No, then write the next character
+      INCB
+      LDA  B,X
+      STA  UART+1
+      STB  <ZP_TX_HEAD
+
 IRQ_EXIT
       PULS CC,A,B,X
       RTI
+
+IRQ_TX_DONE
+      LDA  #$95
+      STA  UART
+      BRA  IRQ_EXIT
 
 OSRDCH
       PSHS  B,X
@@ -240,12 +267,19 @@ OSNEWL
       LDA   #$0D
 
 OSWRCH
-      PSHS  A
-1     LDA   UART
-      ANDA  #$02
-      BEQ   1B
-      PULS  A
-      STA   UART+1
+      PSHS  B,X
+1
+      LDB   <ZP_TX_TAIL ; Is there space in the Tx buffer for one more character?
+      INCB
+      CMPB  <ZP_TX_HEAD
+      BEQ   1B          ; No, then loop back and wait for characters to drain
+
+      LDX   #TX_BUFFER  ; Write the character to the tail of the Tx buffer
+      STA   B,X
+      STB   <ZP_TX_TAIL ; Save the updated tail pointer
+      LDB   #$B5        ; Enable Tx interrupts to make sure buffer is serviced
+      STB   UART
+      PULS  B,X
       RTS
 
 PRSTRING
@@ -258,7 +292,7 @@ PRSTRING
 
 RESET_MSG
       FCB  13
-      FCC  "SBC09 BBC BASIC"
+      FCC  "SBC09"
       FCB  10,13,0
 
 ILL_HANDLER
