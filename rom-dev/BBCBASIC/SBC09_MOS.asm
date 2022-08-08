@@ -58,21 +58,52 @@ OSWORD
       BEQ   OSWORD_WRITESYSCLK
       RTS
 
+;; On Entry: X points to the parameter block
+;; 0: Buffer address
+;; 2: Max line length
+;; 3: Min ascii
+;; 4: Max ascii
+
 OSWORD_READLINE
-      LDX   ,X
-1
-      JSR   OSRDCH
+      CLRB
+      LDY   ,X
+      BRA   CLOOP2
+CLOOP0
+      INCB
+      LEAY  1,Y
+CLOOP1
       JSR   OSASCI
+CLOOP2
+      JSR   OSRDCH
+      BCS   CEXIT_ERR
       CMPA  #$08
-      BEQ   2F
-      STA   ,X+
+      BNE   CNOTDEL
+      TSTB
+      BEQ   CLOOP2
+      DECB
+      LEAY  -1,Y
+      JSR   OSASCI
+      LDA   #$20
+      JSR   OSASCI
+      LDA   #$08
+      BRA   CLOOP1
+CNOTDEL
+      STA   ,Y
       CMPA  #$0D
-      BNE   1B
+      BEQ   CEXIT_OK
+      CMPA  3,X
+      BLO   CLOOP2
+      CMPA  4,X
+      BHI   CLOOP2
+      CMPB  2,X
+      BLO   CLOOP0
+      LDA   #$07
+      BRA   CLOOP1
+CEXIT_OK
+      JSR   OSNEWL
       ANDCC #$FE
+CEXIT_ERR
       RTS
-      RTS
-2     LEAX  -1,X
-      BRA   1B
 
 OSWORD_READSYSCLK
       LDA  <ZP_TIME
@@ -154,6 +185,11 @@ OSRDCH
       ANDA  #$01
       BEQ   OSRDCH
       LDA   UART + 1
+      CMPA  #$1B
+      BNE   1F
+      ORCC  #$01
+      RTS
+1
       ANDCC #$FE
       RTS
 
