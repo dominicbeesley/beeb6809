@@ -282,9 +282,10 @@ PRSTRING
 
 
 RESET_MSG
-      FCB  13
+      FCB  $0D
       FCC  "SBC09"
-      FCB  10,13,0
+      FCB  $0A, $0D
+      FCB  $00
 
 SWI3_HANDLER
       pshs  CC,A,X
