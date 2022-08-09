@@ -1,4 +1,10 @@
 ;; *************************************************************
+;; Configuration
+;; *************************************************************
+
+USE_XON_XOFF EQU  1
+
+;; *************************************************************
 ;; Memory
 ;; *************************************************************
 
@@ -9,9 +15,9 @@ ZP_RX_HEAD   EQU  $00f4
 ZP_RX_TAIL   EQU  $00f5
 ZP_TX_HEAD   EQU  $00f6
 ZP_TX_TAIL   EQU  $00f7
+ZP_XOFF      EQU  $00f8
 ZP_ERRPTR    EQU  $00fd
 ZP_ESCFLAG   EQU  $00ff
-
 
 ZP_END       EQU  $00fF
 
@@ -54,14 +60,37 @@ IRQ_TX
       BITA #$02            ; Test bit 0 (TxEmpty)
       BEQ  IRQ_EXIT        ; Not empty, so exit
 
+   ;; Simple implementation of XON/XOFF to prevent receive buffer overflow
+   IF USE_XON_XOFF = 1
+      LDB   <ZP_RX_TAIL    ; Test whether we need to send XON or XOFF
+      SUBB  <ZP_RX_HEAD    ; Tail - Head gives the receive buffer occupancy
+      CMPB  #$C0           ; C=0 if occupancy >= 75%
+      TST   <ZP_XOFF       ; Z=0 if in XOFF state; Z=1 if in XON state (TST leaves C unchanged)
+      BCC   FULL
+
+NOTFULL
+      BEQ   IRQ_TX_CHAR    ; test if already in XON state
+      COM   <ZP_XOFF       ; toggle state to XON
+      LDA   #$11           ; 0x11 = XON character
+      BRA   SEND_A         ; Send it immediately
+
+FULL  BNE   IRQ_TX_CHAR    ; test if already in XOF state
+      COM   <ZP_XOFF       ; toggle state to XOFF
+      LDA   #$13           ; 0x13 = XOFF character
+      BRA   SEND_A         ; Send it immediately
+   ENDIF
+
+IRQ_TX_CHAR
       LDB  <ZP_TX_HEAD     ; Is the Tx buffer empty?
       CMPB <ZP_TX_TAIL
       BEQ  IRQ_TX_DONE     ; Yes, then disable Tx interrupts and exit
       LDX  #TX_BUFFER      ; No, then write the next character
       INCB
-      LDA  B,X
-      STA  UART+1
       STB  <ZP_TX_HEAD
+      LDA  B,X
+
+SEND_A
+      STA  UART+1
 
 IRQ_EXIT
 ILL_HANDLER
@@ -285,6 +314,9 @@ RESET_MSG
       FCB  $0D
       FCC  "SBC09"
       FCB  $0A, $0D
+   IF USE_XON_XOFF = 1
+      FCB  $11                ; XON
+   ENDIF
       FCB  $00
 
 SWI3_HANDLER
