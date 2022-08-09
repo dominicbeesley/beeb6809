@@ -91,9 +91,9 @@ OSRDCH
 ;; *************************************************************
 
 OSINIT
-      LDA	#$00           ;; Big Endian Flag
+      LDA   #$00           ;; Big Endian Flag
       LDX   #BRKV
-      LDY	#ZP_ESCFLAG
+      LDY   #ZP_ESCFLAG
       ;; fall through to
 
 ;; *************************************************************
@@ -272,11 +272,11 @@ OSWRCH
       RTS
 
 PRSTRING
-      LDA	,X+
-		BEQ	1F
-		JSR	OSASCI
-		BRA	PRSTRING
-1		RTS
+      LDA   ,X+
+      BEQ   1F
+      JSR   OSASCI
+      BRA   PRSTRING
+1     RTS
 
 
 RESET_MSG
@@ -293,16 +293,16 @@ NMI_HANDLER
 
 
 SWI3_HANDLER
-		pshs	CC,A,X
-	IF NATIVE
-		ldx	16,S
-	ELSE
-		ldx	14,S					; points at byte after SWI instruction
-	ENDIF
-		stx   <ZP_ERRPTR
-		stx	2,S					; set X on return to this
-		puls	CC,A,X			   ; restore A,X,CC
-		jmp	[BRKV]				; and JUMP via BRKV (normally into current language)
+      pshs  CC,A,X
+   IF NATIVE
+      ldx   16,S
+   ELSE
+      ldx   14,S              ; points at byte after SWI instruction
+   ENDIF
+      stx   <ZP_ERRPTR
+      stx   2,S               ; set X on return to this
+      puls  CC,A,X            ; restore A,X,CC
+      jmp   [BRKV]            ; and JUMP via BRKV (normally into current language)
 
 
 DEFAULT_BRK_HANDLER
