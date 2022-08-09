@@ -24,14 +24,13 @@ RX_BUFFER    EQU  $7E80
 ;; Tx Buffer is 0x7f00-0x7FFF - Set in middle as B,X addressing is used (B is signed)
 TX_BUFFER    EQU  $7F80
 
+UART         EQU  $A000
+
 ;; *************************************************************
 ;; UART
 ;; *************************************************************
 
-UART         EQU  $A000
-
 IRQ_HANDLER
-      PSHS CC,A,B,X
       LDA  UART            ; Read UART status register
       BITA #$01            ; Test bit 0 (RxFull)
 
@@ -65,7 +64,11 @@ IRQ_TX
       STB  <ZP_TX_HEAD
 
 IRQ_EXIT
-      PULS CC,A,B,X
+ILL_HANDLER
+SWI_HANDLER
+SWI2_HANDLER
+FIRQ_HANDLER
+NMI_HANDLER
       RTI
 
 IRQ_TX_DONE
@@ -91,7 +94,7 @@ OSRDCH
 ;; *************************************************************
 
 OSINIT
-      LDA   #$00           ;; Big Endian Flag
+      CLRA           ;; Big Endian Flag
       LDX   #BRKV
       LDY   #ZP_ESCFLAG
       ;; fall through to
@@ -116,9 +119,8 @@ OSFIND
 ;; *************************************************************
 
 OSWORD
-      CMPA  #$00
-      BEQ   OSWORD_READLINE
       CMPA  #$01
+      BLO   OSWORD_READLINE
       BEQ   OSWORD_READSYSCLK
       CMPA  #$02
       BEQ   OSWORD_WRITESYSCLK
@@ -283,14 +285,6 @@ RESET_MSG
       FCB  13
       FCC  "SBC09"
       FCB  10,13,0
-
-ILL_HANDLER
-SWI_HANDLER
-SWI2_HANDLER
-FIRQ_HANDLER
-NMI_HANDLER
-      RTI
-
 
 SWI3_HANDLER
       pshs  CC,A,X
