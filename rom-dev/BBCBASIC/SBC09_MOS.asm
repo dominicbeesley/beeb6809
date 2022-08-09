@@ -2,6 +2,8 @@
 ;; Memory
 ;; *************************************************************
 
+ZP_START     EQU  $00f0
+
 ZP_TIME      EQU  $00f0
 ZP_RX_HEAD   EQU  $00f4
 ZP_RX_TAIL   EQU  $00f5
@@ -9,6 +11,9 @@ ZP_TX_HEAD   EQU  $00f6
 ZP_TX_TAIL   EQU  $00f7
 ZP_ERRPTR    EQU  $00fd
 ZP_ESCFLAG   EQU  $00ff
+
+
+ZP_END       EQU  $00fF
 
 BRKV         EQU  $0202
 
@@ -19,24 +24,11 @@ RX_BUFFER    EQU  $7E80
 ;; Tx Buffer is 0x7f00-0x7FFF - Set in middle as B,X addressing is used (B is signed)
 TX_BUFFER    EQU  $7F80
 
-
 ;; *************************************************************
 ;; UART
 ;; *************************************************************
 
 UART         EQU  $A000
-
-UART_INIT
-      ; 6850 ACIA CONTROL REGISTER:
-      ; RX INT ENABLED, RTS LOW, TX INT DISABLED, 8N1, CLK/16
-      LDA   #$95
-      STA   UART
-      CLR   <ZP_RX_HEAD
-      CLR   <ZP_RX_TAIL
-      CLR   <ZP_TX_HEAD
-      CLR   <ZP_TX_TAIL
-      CLI
-      RTS
 
 IRQ_HANDLER
       PSHS CC,A,B,X
@@ -88,8 +80,7 @@ OSRDCH
       BEQ   1B
       LDX   #RX_BUFFER
       LDA   B,X
-      INCB
-      STB   <ZP_RX_HEAD
+      INC   <ZP_RX_HEAD
       LDB   <ZP_ESCFLAG
       ROLB
       PULS  B,X
@@ -100,11 +91,10 @@ OSRDCH
 ;; *************************************************************
 
 OSINIT
-		LDA	#$00           ;; Big Endian Flag
+      LDA	#$00           ;; Big Endian Flag
       LDX   #BRKV
-		LDY	#ZP_ESCFLAG
-		CLR	<ZP_ESCFLAG
-      RTS
+      LDY	#ZP_ESCFLAG
+      ;; fall through to
 
 ;; *************************************************************
 ;; File System
@@ -210,7 +200,6 @@ OSWORD_WRITESYSCLK
       STA  <ZP_TIME+2
       LDA  ,X+
       STA  <ZP_TIME+3
-      RTS
 
 OSWORD_ENVELOPE
 OSWORD_SOUND
@@ -323,17 +312,21 @@ RESET_HANDLER
       LDS   #$0200
       CLRA
       TFR   A,DP
-      ;; Initialize time
-      STA   <ZP_TIME
-      STA   <ZP_TIME+1
-      STA   <ZP_TIME+2
-      STA   <ZP_TIME+3
+      ;; Initialize Zero Page
+      LDX  #ZP_START
+1
+      STA  ,X+
+      CMPX #ZP_END+1
+      BNE  1B
       ;; Initialize the SWI Handler
       LDD   #DEFAULT_BRK_HANDLER
-      LDX   #BRKV
-      STD   ,X
+      STD   BRKV
       ;; Initialize the UART
-      JSR   UART_INIT
+      ;; RX INT ENABLED, RTS LOW, TX INT DISABLED, 8N1, CLK/16
+      LDA  #$95
+      STA  UART
+      ;; Enable interrupts
+      CLI
       ;; Print the reset message
       LDX   #RESET_MSG
       JSR   PRSTRING
