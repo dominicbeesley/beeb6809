@@ -62,20 +62,16 @@ IRQ_TX
 
    ;; Simple implementation of XON/XOFF to prevent receive buffer overflow
    IF USE_XON_XOFF = 1
-      LDA   #$13           ; 0x13 = XOFF character
-      LDB   <ZP_RX_TAIL    ; Test whether we need to send XON or XOFF
+      LDB   <ZP_RX_TAIL    ; Determine if we need to send XON or XOFF
       SUBB  <ZP_RX_HEAD    ; Tail - Head gives the receive buffer occupancy
-      CMPB  #$C0           ; C=0 if occupancy >= 75%; C=1 if occupancy < 75%
-      TST   <ZP_XOFF       ; Z=0 if in XOFF state;    Z=1 if in XON state (default)
-                           ; Note: TST doesn't affect C from CMP
-      BHI   IRQ_TX_CHAR    ;  C=0   Z=0  : Do Nothing
-      BCC   XONOFF         ;  C=0  (Z=1) : Send XOFF
-      BEQ   IRQ_TX_CHAR    ; (C=1)  Z=1  : Do Nothing
-                           ; (C=1) (Z=0) : Send XON
+      EORB  <ZP_XOFF       ; In XOFF state, complement to give some hysterisis
+      CMPB  #$C0           ; C=0 if occupancy >=75% (when in XON) or <25% (when in XOFF)
+      BCS   IRQ_TX_CHAR    ; Nothing to do...
       LDA   #$11           ; 0x11 = XON character
-XONOFF
-      COM   <ZP_XOFF       ; toggle state to XON
-      BRA   SEND_A         ; Send it immediately
+      COM   <ZP_XOFF       ; toggle the XON/XOFF state
+      BEQ   SEND_A         ; Send XON
+      LDA   #$13           ; 0x13 = XOFF character
+      BRA   SEND_A         ; Send XOFF
    ENDIF
 
 IRQ_TX_CHAR
