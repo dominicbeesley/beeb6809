@@ -15,6 +15,9 @@ TARGETS_BEEB=		TESTASM.ssd \
 
 TARGETS_FLEX= 		FLEXBAS.BIN \
 			FLEXBBC.BIN
+
+TARGETS_SBC09= 		SBC09BAS.BIN
+
 TARGETS_MATCHBOX=	6809BAS.bin \
 			6809BAS-6502ass.bin \
 
@@ -245,6 +248,8 @@ $(FLEXOUT)/FLEXBBC.BIN:	6809BAS.asm $(DEPS)
 		$(AS) -S --define FLEX=1 --define FLEXBBC=1 -o $(basename $@).hex -l $(basename $@).lst $<
 		perl $(BASEDIR)/scripts/flex/hex2bin.pl $(basename $@).hex $@
 
+$(SBC09OUT)/SBC09BAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
+		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define ASSEMBLER_6809 --define CPU_6809 -o $@ -l $(basename $@).lst $< SBC09_MOS.asm
 
 $(BEEBOUT)/6809BAS.bin: $(DEPS)
 $(BEEBOUT)/6809BAS-6309ass.bin: $(DEPS)
@@ -254,6 +259,7 @@ $(CHIPKITOUT)/6809BAS-6309ass.bin: $(DEPS)
 $(CHIPKITOUT)/6809BAS-6502ass.bin: $(DEPS)
 $(FLEXOUT)/FLEXBAS.bin: $(DEPS)
 $(FLEXOUT)/FLEXBBC.bin: $(DEPS)
+$(SBC09OUT)/SBC09BAS.bin: $(DEPS)
 $(MATCHBOXOUT)/6809BAS.bin: $(DEPS)
 
 
