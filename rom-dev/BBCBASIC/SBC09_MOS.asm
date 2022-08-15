@@ -2,6 +2,8 @@
 ;; Configuration
 ;; *************************************************************
 
+   include "SBC09VERSION.inc"
+
 USE_XON_XOFF EQU  1
 
 ;; *************************************************************
@@ -304,15 +306,6 @@ PRSTRING
 1     RTS
 
 
-RESET_MSG
-      FCB  $0D
-      FCC  "SBC09"
-      FCB  $0A, $0D
-   IF USE_XON_XOFF = 1
-      FCB  $11                ; XON
-   ENDIF
-      FCB  $00
-
 SWI3_HANDLER
       pshs  CC,A,X
    IF NATIVE
@@ -353,6 +346,19 @@ RESET_HANDLER
       JSR   PRSTRING
       ;; Enter Basic
       JMP   $C000
+
+      ;; We are placing the manually to work around a asm6809 bug
+      ;; that prevented us filling the rom completely
+      ORG   $FFDC
+
+RESET_MSG
+      FCB  $0D
+      FCC  SBC09VERSION
+      FCB  $0A, $0D
+   IF USE_XON_XOFF = 1
+      FCB  $11                ; XON
+   ENDIF
+      FCB  $00
 
 
 ;; *************************************************************
