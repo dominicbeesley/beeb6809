@@ -6,6 +6,7 @@
 
 FC_NONE      EQU 0
 FC_XON_XOFF  EQU 1
+FC_RTS_CTS   EQU 2
 
 FLOW_CONTROL EQU FC_XON_XOFF
 
@@ -40,6 +41,30 @@ UART         EQU  $A000
 ;; *************************************************************
 ;; UART
 ;; *************************************************************
+
+   IF FLOW_CONTROL == FC_RTS_CTS
+;; If Rx occupancy > 75% then
+;;     UART_CTRL = D5 (B6:5=10; RTS high; TxIRQ disabled)
+;; else if Tx occupancy > 0% then
+;;     UART_CTRL = B5 (B6:5=01; RTS low;  TxIRQ enabled)
+;; else
+;;     UART_CTRL = 95 (95: B6:5=00; RTS low;  TxIRQ disabled)
+
+UPDATE_UART_CTRL
+      LDB  <ZP_RX_TAIL    ; Determine whethe RTS needs to be raised
+      SUBB <ZP_RX_HEAD    ; Tail - Head gives the receive buffer occupancy
+      CMPB #$C0           ; C=0 if occupancy >=75%
+      LDB  #$D5
+      BCC  2F
+      LDB  <ZP_TX_HEAD    ; Is the Tx buffer empty?
+      CMPB <ZP_TX_TAIL
+      BEQ  1F
+      LDB  #$B5
+      BRA  2F
+1     LDB  #$95
+2     STB  UART
+      RTS
+   ENDIF
 
 IRQ_HANDLER
       LDA  UART            ; Read UART status register
@@ -90,13 +115,19 @@ IRQ_TX_CHAR
 
 SEND_A
       STA  UART+1
-      RTI
 
+IRQ_EXIT
+
+   IF FLOW_CONTROL == FC_RTS_CTS
+IRQ_TX_EMPTY
+      BSR UPDATE_UART_CTRL
+   ELSE
+      RTI
 IRQ_TX_EMPTY
       LDA  #$95
       STA  UART
+   ENDIF
 
-IRQ_EXIT
 ILL_HANDLER
 SWI_HANDLER
 SWI2_HANDLER
@@ -112,6 +143,9 @@ OSRDCH
       LDX   #RX_BUFFER
       LDA   B,X
       INC   <ZP_RX_HEAD
+   IF FLOW_CONTROL == FC_RTS_CTS
+      BSR   UPDATE_UART_CTRL
+   ENDIF
       LDB   <ZP_ESCFLAG
       ROLB
       PULS  B,X
@@ -296,8 +330,12 @@ OSWRCH
       LDX   #TX_BUFFER  ; Write the character to the tail of the Tx buffer
       STA   B,X
       STB   <ZP_TX_TAIL ; Save the updated tail pointer
+   IF FLOW_CONTROL == FC_RTS_CTS
+      JSR   UPDATE_UART_CTRL
+   ELSE
       LDB   #$B5        ; Enable Tx interrupts to make sure buffer is serviced
       STB   UART
+   ENDIF
       PULS  B,X
       RTS
 
@@ -341,8 +379,12 @@ RESET_HANDLER
       STD   BRKV
       ;; Initialize the UART
       ;; RX INT ENABLED, RTS LOW, TX INT DISABLED, 8N1, CLK/16
+   IF FLOW_CONTROL == FC_RTS_CTS
+      JSR  UPDATE_UART_CTRL
+   ELSE
       LDA  #$95
       STA  UART
+   ENDIF
       ;; Enable interrupts
       CLI
       ;; Print the reset message
