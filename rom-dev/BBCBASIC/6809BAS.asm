@@ -1990,12 +1990,14 @@ cmdCALL			; L92BE!
 L92CC
 		CALL	skipSpacesCheckCommaAtYStepBack
 		BNE	L92F1
+		STX	,--S
 		CALL	findVarAtYSkipSpaces
 		BEQ	L9301
-		LDA	ZP_INT_WA + 0
-		STA	,X+				; var type
+		LDX	,S++
 		LDD	ZP_INT_WA + 2		
 		STD	,X++				; var ptr
+		LDA	ZP_INT_WA + 0
+		STA	,X+				; var type
 		INC 	BAS_StrA
 		BRA	L92CC
 L92F1		CALL	scanNextStmtFromY
@@ -2005,6 +2007,7 @@ L92F1		CALL	scanNextStmtFromY
 		PULS	U
 		JUMP	continue
 L9301
+		LDX	,S++
 		JUMP	brkNoSuchVar
 callusrSetRegsEnterCode				; L9304
 		PSHS	U
