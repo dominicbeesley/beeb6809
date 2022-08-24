@@ -310,15 +310,12 @@ PRSTRING
 
 
 SWI3_HANDLER
-      pshs  CC,X
    IF NATIVE
-      ldx   15,S
+      ldx   12,S
    ELSE
-      ldx   13,S              ; points at byte after SWI instruction
+      ldx   10,S              ; points at byte after SWI instruction
    ENDIF
       stx   <ZP_ERRPTR
-      stx   1,S               ; set X on return to this
-      puls  CC,X              ; restore X,CC
       jmp   [BRKV]            ; and JUMP via BRKV (normally into current language)
 
 
