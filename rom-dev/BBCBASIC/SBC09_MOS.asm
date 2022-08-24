@@ -4,7 +4,10 @@
 
    include "SBC09VERSION.inc"
 
-USE_XON_XOFF EQU  1
+FC_NONE      EQU 0
+FC_XON_XOFF  EQU 1
+
+FLOW_CONTROL EQU FC_XON_XOFF
 
 ;; *************************************************************
 ;; Memory
@@ -63,7 +66,7 @@ IRQ_TX
       BEQ  IRQ_EXIT        ; Not empty, so exit
 
    ;; Simple implementation of XON/XOFF to prevent receive buffer overflow
-   IF USE_XON_XOFF = 1
+   IF FLOW_CONTROL == FC_XON_XOFF
       LDB   <ZP_RX_TAIL    ; Determine if we need to send XON or XOFF
       SUBB  <ZP_RX_HEAD    ; Tail - Head gives the receive buffer occupancy
       EORB  <ZP_XOFF       ; In XOFF state, complement to give some hysterisis
@@ -307,7 +310,7 @@ PRSTRING
 
 
 SWI3_HANDLER
-      pshs  CC,X  
+      pshs  CC,X
    IF NATIVE
       ldx   15,S
    ELSE
@@ -372,7 +375,7 @@ RESET_MSG
    ENDIF
       FCC  SBC09VERSION
       FCB  $0A, $0D
-   IF USE_XON_XOFF = 1
+   IF FLOW_CONTROL == FC_XON_XOFF
       FCB  $11                ; XON
    ENDIF
       FCB  $00
