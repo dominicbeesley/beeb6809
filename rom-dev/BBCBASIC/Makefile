@@ -17,7 +17,8 @@ TARGETS_FLEX= 		FLEXBAS.BIN \
 			FLEXBBC.BIN
 
 TARGETS_SBC09= 		SBC6809BAS.BIN \
-			SBC6309BAS.BIN
+			SBC6309EBAS.BIN \
+			SBC6309NBAS.BIN
 
 TARGETS_MATCHBOX=	6809BAS.bin \
 			6809BAS-6502ass.bin \
@@ -250,13 +251,18 @@ $(FLEXOUT)/FLEXBBC.BIN:	6809BAS.asm $(DEPS)
 		perl $(BASEDIR)/scripts/flex/hex2bin.pl $(basename $@).hex $@
 
 $(SBC09OUT)/SBC6809BAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
-		echo "SBC09VERSION EQU /SBC6809 `git rev-parse --short HEAD`/" > SBC09VERSION.inc
+		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
 		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define ASSEMBLER_6809 --define CPU_6809 -o $@ -l $(basename $@).lst $< SBC09_MOS.asm
 		rm -f SBC09VERSION.inc
 
-$(SBC09OUT)/SBC6309BAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
-		echo "SBC09VERSION EQU /SBC6309 `git rev-parse --short HEAD`/" > SBC09VERSION.inc
+$(SBC09OUT)/SBC6309EBAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
+		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
 		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define ASSEMBLER_6809 --define CPU_6309 -o $@ -l $(basename $@).lst $< SBC09_MOS.asm
+		rm -f SBC09VERSION.inc
+
+$(SBC09OUT)/SBC6309NBAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
+		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
+		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define ASSEMBLER_6809 --define CPU_6309 --define NATIVE -o $@ -l $(basename $@).lst $< SBC09_MOS.asm
 		rm -f SBC09VERSION.inc
 
 $(BEEBOUT)/6809BAS.bin: $(DEPS)
@@ -268,5 +274,6 @@ $(CHIPKITOUT)/6809BAS-6502ass.bin: $(DEPS)
 $(FLEXOUT)/FLEXBAS.bin: $(DEPS)
 $(FLEXOUT)/FLEXBBC.bin: $(DEPS)
 $(SBC09OUT)/SBC6809BAS.bin: $(DEPS)
-$(SBC09OUT)/SBC6309BAS.bin: $(DEPS)
+$(SBC09OUT)/SBC6309EBAS.bin: $(DEPS)
+$(SBC09OUT)/SBC6309NBAS.bin: $(DEPS)
 $(MATCHBOXOUT)/6809BAS.bin: $(DEPS)

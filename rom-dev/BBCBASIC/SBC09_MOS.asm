@@ -307,15 +307,15 @@ PRSTRING
 
 
 SWI3_HANDLER
-      pshs  CC,A,X
+      pshs  CC,X  
    IF NATIVE
-      ldx   16,S
+      ldx   15,S
    ELSE
-      ldx   14,S              ; points at byte after SWI instruction
+      ldx   13,S              ; points at byte after SWI instruction
    ENDIF
       stx   <ZP_ERRPTR
-      stx   2,S               ; set X on return to this
-      puls  CC,A,X            ; restore A,X,CC
+      stx   1,S               ; set X on return to this
+      puls  CC,X              ; restore X,CC
       jmp   [BRKV]            ; and JUMP via BRKV (normally into current language)
 
 
@@ -326,6 +326,10 @@ RESET_HANDLER
       LDS   #$0200
       CLRA
       TFR   A,DP
+
+   IF NATIVE
+      LDMD #$01
+   ENDIF
       ;; Initialize Zero Page
       LDX  #ZP_START
 1
@@ -349,10 +353,23 @@ RESET_HANDLER
 
       ;; We are placing the manually to work around a asm6809 bug
       ;; that prevented us filling the rom completely
+   IF CPU_6309
+      ORG   $FFDB
+   ELSE
       ORG   $FFDC
+   ENDIF
 
 RESET_MSG
       FCB  $0D
+   IF CPU_6309
+      IF NATIVE
+         FCC "SBC6309N "
+      ELSE
+         FCC "SBC6309E "
+      ENDIF
+   ELSE
+      FCC "SBC6809 "
+   ENDIF
       FCC  SBC09VERSION
       FCB  $0A, $0D
    IF USE_XON_XOFF = 1
