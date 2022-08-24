@@ -82,7 +82,7 @@ IRQ_TX
 IRQ_TX_CHAR
       LDB  <ZP_TX_HEAD     ; Is the Tx buffer empty?
       CMPB <ZP_TX_TAIL
-      BEQ  IRQ_TX_DONE     ; Yes, then disable Tx interrupts and exit
+      BEQ  IRQ_TX_EMPTY    ; Yes, then disable Tx interrupts and exit
       LDX  #TX_BUFFER      ; No, then write the next character
       INCB
       STB  <ZP_TX_HEAD
@@ -90,6 +90,11 @@ IRQ_TX_CHAR
 
 SEND_A
       STA  UART+1
+      RTI
+
+IRQ_TX_EMPTY
+      LDA  #$95
+      STA  UART
 
 IRQ_EXIT
 ILL_HANDLER
@@ -98,11 +103,6 @@ SWI2_HANDLER
 FIRQ_HANDLER
 NMI_HANDLER
       RTI
-
-IRQ_TX_DONE
-      LDA  #$95
-      STA  UART
-      BRA  IRQ_EXIT
 
 OSRDCH
       PSHS  B,X
