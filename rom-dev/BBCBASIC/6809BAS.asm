@@ -872,7 +872,7 @@ fpAddAtoBstoreA_oppsigns_sk				; L840D
 
 		LDD	ZP_FPB + 5
 		SUBD	ZP_FPA + 6
-		STA	ZP_FPA + 6
+		STD	ZP_FPA + 6
 
 		LDD	ZP_FPB + 3
 		SBCB	ZP_FPA + 5
@@ -5111,6 +5111,7 @@ LA66B
 ;;		LDU	ZP_TXTPTR			; restore text pointer
 	IF CPU_6309
 		PULSW
+		LDB	ZP_FPB
 	ENDIF
 
 		RORB
