@@ -252,7 +252,7 @@ $(FLEXOUT)/FLEXBBC.BIN:	6809BAS.asm $(DEPS)
 
 $(SBC09OUT)/SBC6809BAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
 		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
-		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define ASSEMBLER_6809 --define CPU_6809 -o $@ -l $(basename $@).lst $< SBC09_MOS.asm
+		$(AS) $(ASFLAGS) --define SBC09=1 --define ASSEMBLER_6809 --define CPU_6809 -o $@ -l $(basename $@).lst $< SBC09_MOS.asm
 		rm -f SBC09VERSION.inc
 
 $(SBC09OUT)/SBC6309EBAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
