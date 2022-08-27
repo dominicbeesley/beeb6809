@@ -8,7 +8,7 @@ FC_NONE      EQU 0
 FC_XON_XOFF  EQU 1
 FC_RTS_CTS   EQU 2
 
-FLOW_CONTROL EQU FC_XON_XOFF
+FLOW_CONTROL EQU FC_RTS_CTS
 
 ;; *************************************************************
 ;; Memory
