@@ -203,36 +203,36 @@ $(CHIPKITOUT)/6309BAS.bin: 6809BAS.asm $(DEPS)
 
 
 $(BEEBOUT)/6809BAS.bin: 6809BAS.asm $(DEPS)
-		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6809 --define CPU_6809 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
+		$(AS) $(ASFLAGS) --define ASSEMBLER_6809 --define CPU_6809 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 
 		echo $$(( 0x$$(sed -n -e 's/DEF *__FREESPACE *\(.*\)/\1/p' <$(basename $@).sym) )) $$(date) >> $(notdir $(basename $@))_free.txt
 
 $(CHIPKITOUT)/6809BAS.bin: 6809BAS.asm $(DEPS)
-		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6809 --define CPU_6809 --define MACH_CHIPKIT=1 -o $@ -l $(basename $@).lst $<
+		$(AS) $(ASFLAGS) --define ASSEMBLER_6809 --define CPU_6809 --define MACH_CHIPKIT=1 -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 
 
 
 
 $(BEEBOUT)/6809BAS-6502ass.bin: 6809BAS-6502ass.asm $(DEPS)
-		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6809 --define CPU_6809 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
+		$(AS) $(ASFLAGS) --define ASSEMBLER_6809 --define CPU_6809 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 
 		echo $$(( 0x$$(sed -n -e 's/DEF *__FREESPACE *\(.*\)/\1/p' <$(basename $@).sym) )) $$(date) >> $(notdir $(basename $@))_free.txt
 
 $(CHIPKITOUT)/6809BAS-6502ass.bin: 6809BAS-6502ass.asm $(DEPS)
-		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6809 --define CPU_6809 --define MACH_CHIPKIT=1 -o $@ -l $(basename $@).lst $<
+		$(AS) $(ASFLAGS) --define ASSEMBLER_6809 --define CPU_6809 --define MACH_CHIPKIT=1 -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 
 
 $(MATCHBOXOUT)/6809BAS-6502ass.bin: 6809BAS-6502ass.asm $(DEPS)
-		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6809 --define CPU_6809 --define MACH_MATCHBOX=1 -o $@ -l $(basename $@).lst $<
+		$(AS) $(ASFLAGS) --define ASSEMBLER_6809 --define CPU_6809 --define MACH_MATCHBOX=1 -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 
 
 $(MATCHBOXOUT)/6809BAS.bin: 6809BAS.asm $(DEPS)
-		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6809 --define CPU_6809 --define MACH_MATCHBOX=1 -o $@ -l $(basename $@).lst $<
+		$(AS) $(ASFLAGS) --define ASSEMBLER_6809 --define CPU_6809 --define MACH_MATCHBOX=1 -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 
 
