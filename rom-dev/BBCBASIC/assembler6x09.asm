@@ -386,8 +386,8 @@ assModesParseMem
 assModeImmed
 		CALL	evalForceINT
 		LDB	#-1		
-		LDA	ASS_VAR_OP,S
 	IF CPU_6309
+		LDA	ASS_VAR_OP,S
 		CMPA	#$CD		; if LDQ then 32 bit immeds
 		BNE	2F
 		LDB	#-4
