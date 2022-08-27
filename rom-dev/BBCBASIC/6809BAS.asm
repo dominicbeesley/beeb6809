@@ -3443,6 +3443,7 @@ evalDoCompare						; L9CCA
 		STD	ZP_INT_WA + 2	; subtract least sig
 		PULS	D
 		SBCB	ZP_INT_WA + 1
+		STB	ZP_INT_WA + 1
 		EORA	#$80
 		SBCA	ZP_INT_WA + 0	; subtract most sig
 		ORA	ZP_INT_WA + 1
