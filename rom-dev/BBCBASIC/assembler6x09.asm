@@ -387,13 +387,13 @@ assModeImmed
 		CALL	evalForceINT
 		LDB	#-1		
 		LDA	ASS_VAR_OP,S
+	IF CPU_6309
 		CMPA	#$CD		; if LDQ then 32 bit immeds
 		BNE	2F
 		LDB	#-4
 		AIM	#~ASS_BITS_PRE,ASS_VAR_FLAGS,S
 		BRA	1F
 2		
-	IF CPU_6309
 		TIM	#ASS_BITS_16B,ASS_VAR_FLAGS,S	; if 16 bit immeds
 	ELSE
 		LDA	ASS_VAR_FLAGS,S
@@ -735,9 +735,15 @@ assModesTblAccIX
 		FCB	0
 
 
-assModesRegReg	LDB	#$FF
+assModesRegReg	
+
+	IF ASSEMBLER_6309
+		LDB	#$FF
+	ENDIF
 assModesRegReg2		
+	IF ASSEMBLER_6309
 		PSHS	B
+	ENDIF
 		CALL	skipSpacesYStepBack
 		CALL	assModesRegRegScan
 		ASLA
@@ -745,15 +751,18 @@ assModesRegReg2
 		ASLA
 		ASLA
 		PSHS	A
+	IF ASSEMBLER_6309
 		TST	1,S
 		BMI	1F
 		CMPA	#$40
 		BHI	assJmpBrkSyntax3
 		CALL	TFMPM
+	ENDIF
 1		CALL	skipSpacesCheckCommaAtY
 		BNE	assJmpBrkSyntax3
 		CALL	assModesRegRegScan
 		ANDA	#$0F
+	IF ASSEMBLER_6309
 		ORA	,S
 		STA	,S
 		TST	1,S
@@ -794,6 +803,9 @@ assModesRegReg2
 2		ADDA	2+ASS_VAR_OP,S				; add to OPCODE
 		STA	2+ASS_VAR_OP,S
 1		PULS	A,B
+	ELSE
+		ORA	,S+
+	ENDIF
 		JUMP	assPostByteThenScanEndOfStmt
 
 tblTFMOP	FCB	$A,$F,$8,$2
@@ -866,7 +878,7 @@ assPushPullRegsLoop
 		CMPB	#8
 		BHS	assJmpBrkSyntax6
 1		LDA	#1
-assBitLp	DECB
+assBitLp		DECB
 		BMI	1F
 		ASLA
 		BRA	assBitLp
