@@ -414,11 +414,16 @@ evalDoIntDivide						; L80F9
 		CALL	intWA_ABS			; Ensure RHS is positive
 		LDX	#ZP_INT_WA_B			
 		CALL	popIntAtXNew			; Pop LHS from stack to IntB at $39-$3C
+
+	IF CPU_6309
+		CLRD
+	ELSE
 		CLRA
-		STA	ZP_INT_WA_C
-		STA	ZP_INT_WA_C + 1
-		STA	ZP_INT_WA_C + 2
-		STA	ZP_INT_WA_C + 3			; Clear remainder in IntC
+		CLRB
+	ENDIF
+		STD	ZP_INT_WA_C
+		STD	ZP_INT_WA_C + 2			; Clear remainder in IntC
+
 		CALL	IntWAZero			; Check if IntA is zero
 		BEQ	brkDivideByZero			; Error if divide by zero
 		LDB	#$20				; 32-bit division
@@ -673,24 +678,23 @@ L8293
 		CMPA	#$99
 		BHS	L8280				; keep rolling bitwise
 		ADDA	#$08				; else roll bytewise
-		LDB	ZP_FPB + 4
-		STB	ZP_FPB + 5
-		LDB	ZP_FPB + 3
-		STB	ZP_FPB + 4
+		STA	,-S				; save A
+
+		LDD	ZP_FPB + 3
+		STD	ZP_FPB + 4
 		LDB	ZP_FPB + 2
 		STB	ZP_FPB + 3
 		
 		LDB	ZP_FPA + 6
 		STB	ZP_FPB + 2
 		
-		LDB	ZP_FPA + 5
-		STB	ZP_FPA + 6		
-		LDB	ZP_FPA + 4
-		STB	ZP_FPA + 5		
+		LDD	ZP_FPA + 4
+		STD	ZP_FPA + 5		
 		LDB	ZP_FPA + 3
 		STB	ZP_FPA + 4
 		
 		CLR	ZP_FPA + 3
+		LDA	,S+
 		BRA L8293
 fpMant2Int_brkTooBig
 		JUMP	brkTooBig
@@ -887,8 +891,12 @@ fpAddAtoBstoreA_oppsigns_sk				; L840D
 		STD	ZP_FPA + 6
 
 		LDD	ZP_FPB + 3
+	IF CPU_6309
+		SBCD	ZP_FPA + 4
+	ELSE
 		SBCB	ZP_FPA + 5
 		SBCA	ZP_FPA + 4
+	ENDIF
 		STD	ZP_FPA + 4
 
 		LDA	ZP_FPB + 2
@@ -902,8 +910,12 @@ fpAddAtoBstoreA_oppsigns_sk2				; L8435
 		STD	ZP_FPA + 6
 
 		LDD	ZP_FPA + 4
+	IF CPU_6309
+		SBCD	ZP_FPB + 3
+	ELSE
 		SBCB	ZP_FPB + 4
 		SBCA	ZP_FPB + 3
+	ENDIF
 		STD	ZP_FPA + 4
 
 		LDA	ZP_FPA + 3
@@ -1154,9 +1166,13 @@ int16atZP_FPB2toBUFasTOKENIZED
 		ORA	#$40
 		STA	2,U			; byte 2 = "01" & MSB[5 downto 0] 
 
+	IF CPU_6309
+		AIM	#$C0,ZP_FPB + 3
+	ELSE
 		LDA	ZP_FPB + 3
 		ANDA	#$C0		
 		STA	ZP_FPB + 3		; mask off all but top two bits of LSB
+	ENDIF
 
 		LDA	ZP_FPB + 2
 		ANDA	#$C0
@@ -1243,7 +1259,8 @@ rtsL8DDF	RTS
 tokNotQuot	CMPA	#':'
 		BNE	tokNotColon
 		
-L8DE7		CLR	ZP_FPB				; start of statement - don't expect line num
+cmdAUTOtokenize	STU	ZP_GEN_PTR+2
+		CLR	ZP_FPB				; start of statement - don't expect line num
 L8DE9		CLR	ZP_FPB + 1			
 		BRA	toklp2
 
@@ -2244,7 +2261,8 @@ L9492		CALL	stackINT_WAasINT
 		CALL	int16print_fmt5
 		CALL	ReadKeysTo_InBuf
 		CALL	popIntANew
-		CALL	L8DE7
+		LDU	#BAS_InBuf
+		CALL	cmdAUTOtokenize		
 		LDU	#BAS_InBuf
 		CALL	tokenizeAndStoreAlreadyLineNoDecoded 
 		CALL	ResetVars
@@ -3445,16 +3463,23 @@ evalDoCompare						; L9CCA
 		STB	4,S				; store B in reserved stack space
 		TSTA
 		BEQ	 L9CC6brkTypeMismatch;		;  <int> <compare> <string> - Type mismatch
-		BMI	 evalDoComparePopIntFromMachineStackConvertToRealAndCompare				;  <int> <compare> <real> - convert and compare
+		BMI	 evalDoComparePopIntFromMachineStackConvertToRealAndCompare	;  <int> <compare> <real> - convert and compare
+
+	IF CPU_6309
+		EIM	#$80,ZP_INT_WA
+	ELSE
+
 		LDA	 ZP_INT_WA + 0
 		EORA	 #$80
 		STA	 ZP_INT_WA + 0			; swap RHS sign bit
+	ENDIF
 					;  Compare current integer with stacked integer
 		PULS	D
 		SUBD	ZP_INT_WA + 2
 		STD	ZP_INT_WA + 2	; subtract least sig
 		PULS	D
 		SBCB	ZP_INT_WA + 1
+		STB	ZP_INT_WA + 1
 		EORA	#$80
 		SBCA	ZP_INT_WA + 0	; subtract most sig
 		ORA	ZP_INT_WA + 1
@@ -6242,9 +6267,13 @@ fpFPAeqPTR1subFPAnegFPA					; LACC7
 fpNegateFP_A
 		LDA	ZP_FPA + 3
 		BEQ	1F				;  Mantissa=0 - zero
+	IF CPU_6309
+		EIM	#$80,ZP_FPA
+	ELSE
 		LDA	ZP_FPA
 		EORA	#$80
 		STA	ZP_FPA			;  Negate sign fp sign
+	ENDIF
 1		LDA #$FF
 		RTS					;  Return real
 
@@ -8491,9 +8520,13 @@ ResetStackProgStartRepeatGosubFor
 		STD	ZP_READ_PTR				;  DATA pointer = PAGE
 		LDD	ZP_HIMEM				;  STACKBOT=HIMEM
 		STD	ZP_BAS_SP
+	IF CPU_6309
+		AIM	#$7F,ZP_LISTO
+	ELSE
 		LDA	ZP_LISTO
 		ANDA	#$7F
 		STA	ZP_LISTO
+	ENDIF
 		CLR	ZP_REPEAT_LVL
 		CLR	ZP_FOR_LVL_X_15
 		CLR	ZP_GOSUB_LVL;			;  Clear REPEAT, FOR, GOSUB stacks
