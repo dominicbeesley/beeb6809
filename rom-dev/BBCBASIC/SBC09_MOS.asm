@@ -233,7 +233,7 @@ CEXIT_OK
       JSR   OSNEWL
 CEXIT_ERR
       LDA   <ZP_ESCFLAG
-      ROL   A
+      ROLA
       RTS
 
 OSWORD_READSYSCLK
