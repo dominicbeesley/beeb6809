@@ -703,10 +703,10 @@ fpReal2Int_NegateMantissa				; L82C8
 		STD	ZP_FPA + 3
 fpMant2Int_RTS						; L82DF
 		RTS
-L82E0
+fpFPASplitToFractPlusInt
 		LDA	ZP_FPA + 2
-		BMI	L82E9
-		CLR	ZP_FP_TMP + 6
+		BMI	L82E9				
+		CLR	ZP_FP_TMP + 6			; if >1 then fix up for int+fract
 		JUMP	fpCheckMant0SetSignExp0
 L82E9		CALL	fpFPAMant2Int_remainder_inFPB
 		LDA	ZP_FPA + 6
@@ -3389,7 +3389,7 @@ evalDoComparePopIntFromMachineStackConvertToRealAndCompare
 		CALL	fpStackWAtoStackReal		; stack LHS real
 		CALL	IntToReal			; convert INT_WA to real in FPA
 		CALL	fpCopyFPAtoFPB			; copy it to FPB
-		CALL	popFPFromStackToPTR1
+		CALL	popFPandSetPTR1toStack
 		CALL	fpCopyPTR1toFPA		; get back stacked LHS real
 		CALL	evalDoCompareRealFPAwithFPB	; compare
 		PULS	B,PC				; get back stored token and finish
@@ -3402,7 +3402,7 @@ evalDoCompareReal			      ;L9C82
 		CALL	evalLevel4
 		PSHS	B				; save B (next char)
 		CALL	checkTypeIntToReal
-		CALL	popFPFromStackToPTR1
+		CALL	popFPandSetPTR1toStack
 		CALL	evalDoCompareRealFPAwithPTR1
 		PULS	B,PC
 
@@ -3802,7 +3802,7 @@ evalL4RealPlus						;L9E94
 		LBEQ	brkTypeMismatch
 		BMI	L9EA4
 		CALL	IntToReal
-L9EA4		CALL	popFPFromStackToPTR1
+L9EA4		CALL	popFPandSetPTR1toStack
 		CALL	fpFPAeqPTR1addFPA
 evalTokenFromVarTypeReturnReal				; L9EAA
 		LDB	ZP_VARTYPE			; Get back saved token
@@ -3859,7 +3859,7 @@ evalL4RealMinus						; L9EE7
 		BMI	1F
 		CALL	IntToReal
 1							; L9EF7
-		CALL	popFPFromStackToPTR1
+		CALL	popFPandSetPTR1toStack
 		CALL	fpFPAeqPTR1subFPA
 		BRA	evalTokenFromVarTypeReturnReal
 
@@ -3869,7 +3869,7 @@ evalL4IntMinusReal					; L9EFF
 		CALL	popIntANew
 		CALL	fpStackWAtoStackReal
 		CALL	IntToReal
-		CALL	popFPFromStackToPTR1
+		CALL	popFPandSetPTR1toStack
 		CALL	fpFPAeqPTR1subFPAnegFPA
 		BRA	evalTokenFromVarTypeReturnReal
 L9F12
@@ -3885,7 +3885,7 @@ eval3Mul_StackRealEvalAndMul			; L9F23
 		CALL	fpStackWAtoStackReal
 		CALL	evalLevel2			; call eval level 2
 		CALL	checkTypeIntToReal
-L9F2D		CALL	popFPFromStackToPTR1
+L9F2D		CALL	popFPandSetPTR1toStack
 		CALL	fpFPAeqPTR1mulFPA
 		LDA	#$FF
 		LDB	-1,U
@@ -4023,7 +4023,7 @@ evalL3DoRealDiv						; L9FDB
 		CALL	evalLevel2			; Call Evaluator Level 2 - ^
 		STB	ZP_VARTYPE			; save current token
 		CALL	checkTypeIntToReal
-		CALL	popFPFromStackToPTR1
+		CALL	popFPandSetPTR1toStack
 		CALL	fpFPAeqPTR1divFPA
 		LDA	#$FF
 		BRA	divmodfinish
@@ -4063,46 +4063,39 @@ evalL2lp1	LDB	,U+
 ;			;  <expression> ^ <expression>
 ;			;  ---------------------------
 evalDoCARET						;LA027:
-		CALL checkTypeIntToReal
-		TODODEADEND "evalDo^"
-;		CALL fpStackWAtoStackReal
-;		CALL evalLevel1ConvertReal
-;		LDA ZP_FPA + 2
-;		CMP #$87
-;		BCS LA079
-;		CALL L82E0
-;		BNE LA049
-;		CALL popFPFromStackToPTR1
-;		CALL fpCopyPTR1toFPA
-;		LDA ZP_FP_TMP + 6
-;		CALL LA5BE
-;		BRA LA075
-;LA049:
-;		CALL fpCopyFPA_FPTEMP3
-;		LDA ZP_BAS_SP
-;		STA ZP_FP_TMP_PTR1
-;		LDA ZP_BAS_SP + 1
-;		STA ZP_FP_TMP_PTR1 + 1
-;		CALL fpCopyPTR1toFPA
-;		LDA ZP_FP_TMP + 6
-;		CALL LA5BE
-;LA05C:
-;		LDA #$71
-;		CALL fpCopyFPA_X----check was 400+A
-;		CALL popFPFromStackToPTR1
-;		CALL fpCopyPTR1toFPA
-;		CALL fnLN_FPA
-;		CALL fpFPAeqFPTEMP3mulFPA
-;		CALL LA9E2
-;		LDA #$71
-;		CALL LA9A1
-;LA075:
-;		LDA #$FF
-;		BRA evalLevel2again
-;LA079:
-;		CALL fpCopyFPA_FPTEMP3
-;		CALL fpLoad1			;  FloatA=1.0
-;		BRA LA05C
+		CALL 	checkTypeIntToReal
+		CALL 	fpStackWAtoStackReal
+		CALL 	evalLevel1ConvertReal
+		LDA 	ZP_FPA + 2			; get exponent
+		CMPA	#$87				; is it > 87 i.e. FPA > 64
+		BHS 	LA079				; if it is ????
+		CALL	fpFPASplitToFractPlusInt
+		BNE	LA049				; if there's a fractional part then
+							; go to do "complex" routin
+		CALL	popFPandSetPTR1toStack		; else do a simpler X*X*X*X...
+		CALL	fpCopyPTR1toFPA			; move to FPA
+		LDA	ZP_FP_TMP + 6			; get integer part
+		CALL	FPAeqFPAraisedToA			; FPA = FPA ^ INT(A)
+		BRA	LA075retFPval
+LA049		CALL	fpCopyFPA_FPTEMP3
+		LDX 	ZP_BAS_SP
+		CALL	fpCopyXtoFPA
+		LDA	ZP_FP_TMP + 6
+		CALL	FPAeqFPAraisedToA
+LA05C		LDX	#BASWKSP_FPTEMP2
+		CALL	fpCopyFPA_X
+		CALL	popFPandSetPTR1toStack
+		CALL	fpCopyPTR1toFPA
+		CALL	fnLN_FPA
+		CALL	fpFPAeqFPTEMP3mulFPA
+		CALL	fnEXP_int
+		LDX	#BASWKSP_FPTEMP2
+		CALL	fpFPAeqXmulFPA
+LA075retFPval	LDA 	#$FF
+		BRA	evalLevel2again
+LA079		CALL	fpCopyFPA_FPTEMP3
+		CALL	fpLoad1			;  FloatA=1.0
+		BRA	LA05C
 
 
 		; formats a 16 bit integer at ZP_INT_WA + 2 to a string
@@ -4996,14 +4989,14 @@ LA5B3
 		CALL	fpFPAeqPTR1divFPA
 		LDA	#$FF
 		RTS
-LA5BE
+FPAeqFPAraisedToA						; TODO: this could be shortened by using stack to store counter
 		TFR	A,B
 		TSTB
 		BPL	LA5C9
 		NEGA
-		PSHS	A
+		STA	,-S
 		CALL	fpFPAeq1.0divFPA
-		PULS    B
+		LDB	,S+
 LA5C9
 		BEQ	fpLoad1			;  Floata=1.0
 		CALL	fpCopyFPA_FPTEMP1
@@ -5450,7 +5443,7 @@ fpNormalizeAndReturnFPA					; LA854
 LA861NewAPI
 *		B -> # of iterations
 *		X -> table of constants to use
-*		Y -> constant to use if FPA is too small		( was A )
+*		U -> constant to use if FPA is too small		( was A )
 * IF FPA < 0.5e-40 THEN FPA = U
 * ELSE 
 *	FPTEMP1 = 1/FPA
@@ -5467,7 +5460,7 @@ LA861NewAPI
 		STX	ZP_FP_TMP_PTR2			;						PTR2 = tablestart
 		LDA	ZP_FPA + 2			; get FPA exponent				
 		CMPA	#$40				;						if ABS(FPA)<1E-64
-		BLO	fpYtoPTR1toFPA			; if <-$40 approximate as constant at Y			RETURN default from Y
+		BLO	fpUtoPTR1toFPA			; if <-$40 approximate as constant at Y			RETURN default from Y
 		CALL	fpFPAeq1.0divFPA		;						FPA=1/FPA
 		CALL	fpCopyFPA_FPTEMP1		;						TMP=FPA
 		LDX	ZP_FP_TMP_PTR2			;			
@@ -5485,7 +5478,7 @@ LA886
 		CALL	fpFPAeqPTR1divFPA
 		CALL	fpAdd5toPTR2copytoPTR1
 		JUMP	fpFPAeqPTR1addFPA
-fpYtoPTR1toFPA						; LA896
+fpUtoPTR1toFPA						; LA896
 		STU	ZP_FP_TMP_PTR1
 		JUMP	fpCopyPTR1toFPA
 fnACS
@@ -5688,8 +5681,8 @@ fnDEG
 ;		BRA fpFPAeqXmulFPA_checkusingX!
 fnEXP			;  =EXP
 		CALL	evalLevel1ConvertReal
+fnEXP_int
 		PSHS	U
-LA9E2
 		LDA	ZP_FPA + 2
 		CMPA	#$87
 		BLO	LA9F7
@@ -5700,16 +5693,16 @@ LA9E2
 LA9F0		LDA	ZP_FPA
 		BPL	brkExpRange
 		JUMP	zero_FPA
-LA9F7		CALL	L82E0
+LA9F7		CALL	fpFPASplitToFractPlusInt
 		LDX	#fpConst0_07121
 		LDU	#fpConst1__2
 		LDB	#$03
 		CALL	LA861NewAPI
 		CALL	fpCopyFPA_FPTEMP3
 		LDU	#fpConst_e
-		CALL	fpYtoPTR1toFPA
+		CALL	fpUtoPTR1toFPA
 		LDA	ZP_FP_TMP + 6
-		CALL	LA5BE
+		CALL	FPAeqFPAraisedToA
 		CALL	fpFPAeqFPTEMP3mulFPA
 		PULS	U,PC
 
@@ -5774,7 +5767,7 @@ LAA52
 		CALL	IntToReal
 		CALL	fpStackWAtoStackReal
 		CALL	fnRND_1
-		CALL	popFPFromStackToPTR1
+		CALL	popFPandSetPTR1toStack
 		CALL	fpFPAeqPTR1mulFPA_internal
 		CALL	fpReal2Int
 		CALL	inc_INT_WA
@@ -7045,7 +7038,7 @@ LB140
 		STX	ZP_GEN_PTR+2			; stick var pointer at ZP_GEN_PTR+2
 		LDA	ZP_VARTYPE
 		BPL	LB165
-		CALL	popFPFromStackToPTR1
+		CALL	popFPandSetPTR1toStack
 		CALL	fpCopyPTR1toFPA
 		BRA	LB168
 LB165		CALL	popIntANew
@@ -8521,7 +8514,7 @@ ResetStackProgStartRepeatGosubFor
 		RTS					;  DATA pointer = PAGE
 ;		
 ;		
-popFPFromStackToPTR1			; pop FP from stack, set out old stack pointer in PTR1
+popFPandSetPTR1toStack			; pop FP from stack, set out old stack pointer in PTR1
 		LDY	ZP_BAS_SP
 		STY	ZP_FP_TMP_PTR1
 		LEAY	5,Y
