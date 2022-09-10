@@ -100,12 +100,7 @@ UART_INIT MACRO
 ;; Main IRQ Handler
 ;; *************************************************************
 
-IRQ_HANDLER
-
-      LDA  UART_SRA        ; Read UART status register
-      BITA #UART_RXINT     ; Test bit 0 (RxFull)
-      BEQ  IRQ_TX          ; no, then go on to check for a transmit interrupt
-
+IRQ_RX
       LDA  UART_RHRA       ; Read UART Rx Data (and clear interrupt)
       CMPA #$1B            ; Test for escape
       BNE  IRQ_NOESC
@@ -118,22 +113,26 @@ IRQ_NOESC
       STA  B,X             ; store the character in the buffer
       INCB                 ; increment the tail pointer
       CMPB <ZP_RX_HEAD     ; has it hit the head (buffer full?)
-      BEQ  IRQ_TX          ; yes, then drop characters
+      BEQ  IRQ_HANDLER     ; yes, then drop characters
       STB  <ZP_RX_TAIL     ; no, then save the incremented tail pointer
 
    ;; Simple implementation of RTS/CTS to prevent receive buffer overflow
    IF FLOW_CONTROL == FC_RTS_CTS
       SUBB <ZP_RX_HEAD     ; Tail - Head gives the receive buffer occupancy
       CMPB #FC_HI_THRESH   ; Compare with upper threshold
-      BNE  IRQ_TX
+      BNE  IRQ_HANDLER
       LDB  #$01
       STB  UART_OPRCLR     ; de-assert RTS
    ENDIF
 
-IRQ_TX
+IRQ_HANDLER
+
       LDA  UART_SRA        ; Read UART status register
-      BITA #UART_TXINT     ; Test bit 0 (TxEmpty)
-      BEQ  IRQ_TIMER       ; Not empty, no onto the timer
+      BITA #UART_RXINT     ; Test bit 0 (RxRdy)
+      BNE  IRQ_RX          ; Ready, branch back handle the character
+
+      BITA #UART_TXINT     ; Test bit 2 (TxRdy)
+      BEQ  IRQ_TIMER       ; Not ready, branch forward to the timer check
 
    ;; Simple implementation of XON/XOFF to prevent receive buffer overflow
    IF FLOW_CONTROL == FC_XON_XOFF
