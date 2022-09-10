@@ -37,18 +37,6 @@ TX_BUFFER    EQU  $7F80
 
 UART         EQU  $A000
 
-
-SYSCLK_UPDATE MACRO
-      INC  <ZP_TIME
-      BNE  1F
-      INC  <ZP_TIME+1
-      BNE  1F
-      INC  <ZP_TIME+2
-      BNE  1F
-      INC  <ZP_TIME+3
-1
-      ENDM
-
 UART_MRA     EQU UART+0x0
 UART_SRA     EQU UART+0x1
 UART_CSRA    EQU UART+0x1
@@ -73,23 +61,8 @@ UART_STARTCT EQU UART+0xe ; read command
 UART_OPRCLR  EQU UART+0xf ; write
 UART_STOPCT  EQU UART+0xf ; read command
 
-UART_STATUS  EQU  UART_SRA
-UART_TXDATA  EQU  UART_THRA
-UART_RXDATA  EQU  UART_RHRA
-
 UART_RXINT   EQU  $01
 UART_TXINT   EQU  $04
-
-UART_ENABLE_TXINT MACRO
-      LDB  #$0B
-      STB  UART_IMR
-      ENDM
-
-UART_DISABLE_TXINT MACRO
-      LDA  #$0A
-      STA  UART_IMR
-      ENDM
-
 
 UART_INIT MACRO
       LDA  #%00010011    ; NO PARITY, 8 BITS/CHAR - MR1A,B
@@ -107,7 +80,8 @@ UART_INIT MACRO
    IF FLOW_CONTROL == FC_RTS_CTS
       JSR  UPDATE_UART_CTRL
    ELSE
-      UART_DISABLE_TXINT
+      LDA  #$0A          ; Disable TX interrupts
+      STA  UART_IMR
    ENDIF
       LDA  UART_STARTCT  ; Start the counter-timer
       LDA  #%00000100
@@ -156,16 +130,23 @@ IRQ_HANDLER
 
       LDA  UART_ISR        ; Read UART Interrupt Status Register
       ANDA #$08            ; Check the timer bit
-      BEQ  1F
-      LDA  UART_STOPCT     ; Clear the interrupt
-      SYSCLK_UPDATE        ; Update the system clock
-1
+      BEQ  IRQ_RX
 
-      LDA  UART_STATUS     ; Read UART status register
+      LDA  UART_STOPCT     ; Clear the interrupt
+      INC  <ZP_TIME        ; Update the system clock
+      BNE  IRQ_RX
+      INC  <ZP_TIME+1
+      BNE  IRQ_RX
+      INC  <ZP_TIME+2
+      BNE  IRQ_RX
+      INC  <ZP_TIME+3
+
+IRQ_RX
+      LDA  UART_SRA        ; Read UART status register
       BITA #UART_RXINT     ; Test bit 0 (RxFull)
 
       BEQ  IRQ_TX          ; no, then go on to check for a transmit interrupt
-      LDA  UART_RXDATA     ; Read UART Rx Data (and clear interrupt)
+      LDA  UART_RHRA       ; Read UART Rx Data (and clear interrupt)
       CMPA #$1B            ; Test for escape
       BNE  IRQ_NOESC
       LDB  #$80            ; Set the escape flag
@@ -180,7 +161,7 @@ IRQ_NOESC
       STB  <ZP_RX_TAIL     ; no, then save the incremented tail pointer
 
 IRQ_TX
-      LDA  UART_STATUS     ; Read UART status register
+      LDA  UART_SRA        ; Read UART status register
       BITA #UART_TXINT     ; Test bit 0 (TxEmpty)
       BEQ  IRQ_EXIT        ; Not empty, so exit
 
@@ -208,7 +189,7 @@ IRQ_TX_CHAR
       LDA  B,X
 
 SEND_A
-      STA  UART_TXDATA
+      STA  UART_THRA
 
 IRQ_EXIT
 
@@ -218,7 +199,8 @@ IRQ_TX_EMPTY
    ELSE
       RTI
 IRQ_TX_EMPTY
-      UART_DISABLE_TXINT
+      LDA  #$0A          ; Disable TX interrupts
+      STA  UART_IMR
    ENDIF
 
 ILL_HANDLER
@@ -418,7 +400,8 @@ OSWRCH
    IF FLOW_CONTROL == FC_RTS_CTS
       JSR   UPDATE_UART_CTRL
    ELSE
-      UART_ENABLE_TXINT ; Enable Tx interrupts to make sure buffer is serviced
+      LDB   #$0B        ; Enable Tx interrupts to make sure buffer is serviced
+      STB   UART_IMR
    ENDIF
       PULS  B,X
       RTS
