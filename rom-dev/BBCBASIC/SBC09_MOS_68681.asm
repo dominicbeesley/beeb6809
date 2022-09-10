@@ -10,6 +10,12 @@ FC_RTS_CTS   EQU 2
 
 FLOW_CONTROL EQU FC_RTS_CTS
 
+;; Threshold at which RTS is asserted
+FC_LO_THRESH EQU $80
+
+;; Threshold at which RTS is de-asserted
+FC_HI_THRESH EQU $C0
+
 ;; *************************************************************
 ;; Memory
 ;; *************************************************************
@@ -64,6 +70,10 @@ UART_STOPCT  EQU UART+0xf ; read command
 UART_RXINT   EQU  $01
 UART_TXINT   EQU  $04
 
+;; *************************************************************
+;; UART Initialization
+;; *************************************************************
+
 UART_INIT MACRO
       LDA  #%00010011    ; NO PARITY, 8 BITS/CHAR - MR1A,B
       STA  UART_MRA
@@ -77,54 +87,18 @@ UART_INIT MACRO
       STA  UART_ACR
       LDD  #(2304/2-1)   ; 16-bit write to counter to get a 100Hz tick
       STD  UART_CTU
-   IF FLOW_CONTROL == FC_RTS_CTS
-      JSR  UPDATE_UART_CTRL
-   ELSE
-      LDA  #$0A          ; Disable TX interrupts
+      LDA  #%00000001    ; assert RTS
+      STA  UART_OPRSET
+      LDA  #$0A          ; Timer Int, Rx Int enabled; Rx Int disabled
       STA  UART_IMR
-   ENDIF
       LDA  UART_STARTCT  ; Start the counter-timer
       LDA  #%00000100
-      STA  UART_OPCR     ; Ouput timer squarewave on OP3
+      STA  UART_OPCR     ; Ouput timer squarewave on OP3 for debugging only
       ENDM
 
 ;; *************************************************************
-;; UART
+;; Main IRQ Handler
 ;; *************************************************************
-
-   IF FLOW_CONTROL == FC_RTS_CTS
-
-
-;; If Rx occupancy > 75% then
-;;     UART_OPRCLR = 1    ; de-assert RTS
-;; else
-;;     UART_OPRSET = 1    ; assert RTS
-;;
-;; if Tx occupancy > 0% then
-;;     UART_IMR = $0B
-;; else
-;;     UART_IMR = $0A
-;;
-
-UPDATE_UART_CTRL
-      LDB  <ZP_RX_TAIL    ; Determine whethe RTS needs to be raised
-      SUBB <ZP_RX_HEAD    ; Tail - Head gives the receive buffer occupancy
-      CMPB #$C0           ; C=0 if occupancy >=75%
-      LDB  #$01
-      BCC  1F
-      STB  UART_OPRSET     ; assert RTS
-      BRA  2F
-1     STB  UART_OPRCLR     ; de-assert RTS
-2
-      LDB  <ZP_TX_HEAD    ; Is the Tx buffer empty?
-      CMPB <ZP_TX_TAIL
-      BEQ  1F
-      LDB  #$0B           ; Not-empty, so enable TxInt (leaving Rx and Timer ints enabled)
-      BRA  2F
-1     LDB  #$0A           ; Empty, so disable TxInt (leaving Rx and Timer ints enabled)
-2     STB  UART_IMR
-      RTS
-   ENDIF
 
 IRQ_HANDLER
 
@@ -144,13 +118,14 @@ IRQ_HANDLER
 IRQ_RX
       LDA  UART_SRA        ; Read UART status register
       BITA #UART_RXINT     ; Test bit 0 (RxFull)
-
       BEQ  IRQ_TX          ; no, then go on to check for a transmit interrupt
+
       LDA  UART_RHRA       ; Read UART Rx Data (and clear interrupt)
       CMPA #$1B            ; Test for escape
       BNE  IRQ_NOESC
       LDB  #$80            ; Set the escape flag
       STB  <ZP_ESCFLAG
+
 IRQ_NOESC
       LDB  <ZP_RX_TAIL     ; B = keyboard buffer tail index
       LDX  #RX_BUFFER      ; X = keyboard buffer base address
@@ -159,6 +134,15 @@ IRQ_NOESC
       CMPB <ZP_RX_HEAD     ; has it hit the head (buffer full?)
       BEQ  IRQ_TX          ; yes, then drop characters
       STB  <ZP_RX_TAIL     ; no, then save the incremented tail pointer
+
+   ;; Simple implementation of RTS/CTS to prevent receive buffer overflow
+   IF FLOW_CONTROL == FC_RTS_CTS
+      SUBB <ZP_RX_HEAD     ; Tail - Head gives the receive buffer occupancy
+      CMPB #FC_HI_THRESH   ; Compare with upper threshold
+      BNE  IRQ_TX
+      LDB  #$01
+      STB  UART_OPRCLR     ; de-assert RTS
+   ENDIF
 
 IRQ_TX
       LDA  UART_SRA        ; Read UART status register
@@ -192,16 +176,11 @@ SEND_A
       STA  UART_THRA
 
 IRQ_EXIT
-
-   IF FLOW_CONTROL == FC_RTS_CTS
-IRQ_TX_EMPTY
-      JSR UPDATE_UART_CTRL
-   ELSE
       RTI
+
 IRQ_TX_EMPTY
       LDA  #$0A          ; Disable TX interrupts
       STA  UART_IMR
-   ENDIF
 
 ILL_HANDLER
 SWI_HANDLER
@@ -219,7 +198,13 @@ OSRDCH
       LDA   B,X
       INC   <ZP_RX_HEAD
    IF FLOW_CONTROL == FC_RTS_CTS
-      JSR   UPDATE_UART_CTRL
+      LDB   <ZP_RX_TAIL    ; Determine whethe RTS needs to be raised
+      SUBB  <ZP_RX_HEAD    ; Tail - Head gives the receive buffer occupancy
+      CMPB  #FC_LO_THRESH
+      BNE   1F
+      LDB   #$01
+      STB   UART_OPRSET     ; assert RTS
+1
    ENDIF
       LDB   <ZP_ESCFLAG
       ROLB
@@ -397,12 +382,8 @@ OSWRCH
       LDX   #TX_BUFFER  ; Write the character to the tail of the Tx buffer
       STA   B,X
       STB   <ZP_TX_TAIL ; Save the updated tail pointer
-   IF FLOW_CONTROL == FC_RTS_CTS
-      JSR   UPDATE_UART_CTRL
-   ELSE
       LDB   #$0B        ; Enable Tx interrupts to make sure buffer is serviced
       STB   UART_IMR
-   ENDIF
       PULS  B,X
       RTS
 
