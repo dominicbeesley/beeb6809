@@ -102,20 +102,6 @@ UART_INIT MACRO
 
 IRQ_HANDLER
 
-      LDA  UART_ISR        ; Read UART Interrupt Status Register
-      ANDA #$08            ; Check the timer bit
-      BEQ  IRQ_RX
-
-      LDA  UART_STOPCT     ; Clear the interrupt
-      INC  <ZP_TIME        ; Update the system clock
-      BNE  IRQ_RX
-      INC  <ZP_TIME+1
-      BNE  IRQ_RX
-      INC  <ZP_TIME+2
-      BNE  IRQ_RX
-      INC  <ZP_TIME+3
-
-IRQ_RX
       LDA  UART_SRA        ; Read UART status register
       BITA #UART_RXINT     ; Test bit 0 (RxFull)
       BEQ  IRQ_TX          ; no, then go on to check for a transmit interrupt
@@ -147,7 +133,7 @@ IRQ_NOESC
 IRQ_TX
       LDA  UART_SRA        ; Read UART status register
       BITA #UART_TXINT     ; Test bit 0 (TxEmpty)
-      BEQ  IRQ_EXIT        ; Not empty, so exit
+      BEQ  IRQ_TIMER       ; Not empty, no onto the timer
 
    ;; Simple implementation of XON/XOFF to prevent receive buffer overflow
    IF FLOW_CONTROL == FC_XON_XOFF
@@ -171,9 +157,22 @@ IRQ_TX_CHAR
       INCB
       STB  <ZP_TX_HEAD
       LDA  B,X
-
 SEND_A
       STA  UART_THRA
+
+IRQ_TIMER
+      LDA  UART_ISR        ; Read UART Interrupt Status Register
+      ANDA #$08            ; Check the timer bit
+      BEQ  IRQ_EXIT
+
+      LDA  UART_STOPCT     ; Clear the interrupt
+      INC  <ZP_TIME        ; Update the system clock
+      BNE  IRQ_EXIT
+      INC  <ZP_TIME+1
+      BNE  IRQ_EXIT
+      INC  <ZP_TIME+2
+      BNE  IRQ_EXIT
+      INC  <ZP_TIME+3
 
 IRQ_EXIT
       RTI
@@ -181,6 +180,7 @@ IRQ_EXIT
 IRQ_TX_EMPTY
       LDA  #$0A          ; Disable TX interrupts
       STA  UART_IMR
+      BRA  IRQ_TIMER
 
 ILL_HANDLER
 SWI_HANDLER
