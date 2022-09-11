@@ -41,7 +41,7 @@ RX_BUFFER    EQU  $7E80
 ;; Tx Buffer is 0x7f00-0x7FFF - Set in middle as B,X addressing is used (B is signed)
 TX_BUFFER    EQU  $7F80
 
-UART         EQU  $A000
+UART         EQU  $FE00
 
 UART_MRA     EQU UART+0x0
 UART_SRA     EQU UART+0x1
@@ -69,6 +69,8 @@ UART_STOPCT  EQU UART+0xf ; read command
 
 UART_RXINT   EQU  $01
 UART_TXINT   EQU  $04
+
+   ORG $C000
 
 ;; *************************************************************
 ;; UART Initialization
@@ -188,7 +190,7 @@ FIRQ_HANDLER
 NMI_HANDLER
       RTI
 
-OSRDCH
+NVRDCH
       PSHS  B,X
 1     LDB   <ZP_RX_HEAD
       CMPB  <ZP_RX_TAIL
@@ -210,36 +212,12 @@ OSRDCH
       PULS  B,X
       RTS
 
-;; *************************************************************
-;; OS Interface
-;; *************************************************************
-
-OSINIT
-      CLRA           ;; Big Endian Flag
-      LDX   #BRKV
-      LDY   #ZP_ESCFLAG
-      ;; fall through to
-
-;; *************************************************************
-;; File System
-;; *************************************************************
-
-
-OSARGS
-OSBGET
-OSBPUT
-OSCLI
-OSFILE
-OSFILE_LOAD
-OSFILE_SAVE
-OSFIND
-      RTS
 
 ;; *************************************************************
 ;; OSWORD
 ;; *************************************************************
 
-OSWORD
+NVWORD
       CMPA  #$01
       BLO   OSWORD_READLINE
       BEQ   OSWORD_READSYSCLK
@@ -324,7 +302,7 @@ OSWORD_SOUND
 ;; OSBYTE
 ;; *************************************************************
 
-OSBYTE
+NVBYTE
       CMPA  #$7C
       BNE   1F
       CLR   <ZP_ESCFLAG
@@ -357,20 +335,7 @@ OSBYTE
       LDX   #$0000
       RTS
 
-;; *************************************************************
-;; Input/Output
-;; *************************************************************
-
-OSASCI
-      CMPA  #$0D
-      BNE   OSWRCH
-
-OSNEWL
-      LDA   #$0A
-      JSR   OSWRCH
-      LDA   #$0D
-
-OSWRCH
+NVWRCH
       PSHS  B,X
 1
       LDB   <ZP_TX_TAIL ; Is there space in the Tx buffer for one more character?
@@ -433,15 +398,7 @@ RESET_HANDLER
       LDX   #RESET_MSG
       JSR   PRSTRING
       ;; Enter Basic
-      JMP   $C000
-
-      ;; We are placing the manually to work around a asm6809 bug
-      ;; that prevented us filling the rom completely
-   IF CPU_6309
-      ORG   $FFDB
-   ELSE
-      ORG   $FFDC
-   ENDIF
+      JMP   $8000
 
 RESET_MSG
       FCB  $0D
@@ -461,12 +418,11 @@ RESET_MSG
    ENDIF
       FCB  $00
 
-
 ;; *************************************************************
 ;; Vectors
 ;; *************************************************************
 
-      ORG   $FFF0
+      ORG   $FEF0
 
       FDB   ILL_HANDLER
       FDB   SWI3_HANDLER
@@ -476,3 +432,82 @@ RESET_MSG
       FDB   SWI_HANDLER
       FDB   NMI_HANDLER
       FDB   RESET_HANDLER
+
+;; *************************************************************
+;; MOS API
+;; *************************************************************
+
+      ORG $FF00
+
+OSINIT
+      CLRA
+      LDX   #BRKV
+      LDY   #ZP_ESCFLAG
+      RTS
+
+      ORG $FFCE
+
+OSFIND
+      RTS
+      NOP
+      NOP
+
+OSGBPB
+      RTS
+      NOP
+      NOP
+
+OSBPUT
+      RTS
+      NOP
+      NOP
+
+OSBGET
+      RTS
+      NOP
+      NOP
+
+OSARGS
+      RTS
+      NOP
+      NOP
+
+OSFILE
+OSFILE_LOAD
+OSFILE_SAVE
+      RTS
+      NOP
+      NOP
+
+OSRDCH
+      JMP NVRDCH
+
+OSASCI
+      CMPA  #$0D
+      BNE   OSWRCH
+
+OSNEWL
+      LDA   #$0A
+      JSR   OSWRCH
+      LDA   #$0D
+
+OSWRCH
+      JMP NVWRCH
+
+OSWORD
+      JMP NVWORD
+
+OSBYTE
+      JMP NVBYTE
+
+OSCLI
+      RTS
+      NOP
+      NOP
+
+      FCB $FF
+      FCB $FF
+      FCB $FF
+      FCB $FF
+      FCB $FF
+      FCB $FF
