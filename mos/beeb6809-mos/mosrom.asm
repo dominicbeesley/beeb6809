@@ -8429,7 +8429,7 @@ LF11E		adda	#$10				;add 16
 		bpl	LF103				;and do it again if 0=<result<128
 
 LF123		decb					;decrement X
-		bpl	LF0E3				;scan again if greater than 0
+		bpl	LF0E3				;scan again if >= 0
 		tfr	b,a				;
 LF127		m_tax_se				;
 		puls	CC				;pull flags
