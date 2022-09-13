@@ -1279,8 +1279,8 @@ tokDot		LDA	,U+
 		CALL	checkIsDotOrNumeric
 		BCS	tokDot
 tokNextSetFlag0_FF
-;L8E1F
 		LEAU	-1,U
+L8E1F
 1		LDA	#$FF
 		STA	ZP_FPB
 		BRA	L8DE9
@@ -5915,56 +5915,39 @@ fnPI							; LAAFF!
 
 ;			;  =EVAL string$ - Tokenise and evaluate expression
 ;			;  ================================================
-fnEVAL
+fnEVAL			
+		CALL	evalLevel1
+		LBNE	brkTypeMismatch			;  Evaluate value, error if not string
+		LDB	ZP_STRBUFLEN
+		INC	ZP_STRBUFLEN
+		LDX	#BASWKSP_STRING
+		ABX
+		LDA	#$0D
+		STA	,X				;  Put in terminating <cr>
+		CALL	StackString			;  Stack the string
+			;  String has to be stacked as otherwise would
+			;   be overwritten by any string operations
+			;   called by Evaluator
+		pshs	U
+		ldu	ZP_BAS_SP
+		leau	1,U				; skip length byte on stack
+		CALL 	L8E1F				;  Tokenise string on stack at GPTR
+		ldu	ZP_BAS_SP
+		leau	1,U
+		CALL 	evalAtY				;  Call expression evaluator
+		CALL 	popStackedStringNew		;  Drop string from stack
 
-		TODO_CMD "EVAL"
-			
-;		CALL evalLevel1
-;		BNE JUMPBrkTypeMismatch3		;  Evaluate value, error if not string
-;		INC ZP_STRBUFLEN
-;		LDU ZP_STRBUFLEN			;  Increment string length to add a <cr>
-;		LDA #$0D
-;		STA $0600 - 1,Y				;  Put in terminating <cr>
-;		CALL StackString				;  Stack the string
-;			;  String has to be stacked as otherwise would
-;			;   be overwritten by any string operations
-;			;   called by Evaluator
-;		rep		#PF_I16
-;		.i16
-;		ldx		ZP_TXTPTR2
-;		phx
-;		lda		ZP_TXTOFF2
-;		pha
-;		ldx		ZP_BAS_SP
-;		inx
-;		stx		ZP_TXTPTR2
-;		stx		ZP_GEN_PTR
-;		sep		#PF_I16
-;		.i8
-;		CALL L8E1F				;  Tokenise string on stack at GPTR
-;		STZ ZP_TXTOFF2				;  Point PTRB offset back to start
-;		CALL evalAtY				;  Call expression evaluator
-;		CALL LBCE1				;  Drop string from stack
-;pullPTRBandRTS:
-;		rep			#PF_I16
-;		.i16
-;		PLA
-;		STA ZP_TXTOFF2				;  Restore PTRB
-;		PLX
-;		STX ZP_TXTPTR
-;		sep			#PF_A16
-;		.i8
-;		LDA ZP_VARTYPE				;  Get expression return value
-;		RTS					;  And return
-JUMPBrkTypeMismatch3
-		JUMP brkTypeMismatch
+
+		PULS	U
+		LDA	ZP_VARTYPE			;  Get expression return value
+		RTS					;  And return
 ;
 ;
 fnVAL
 
 			;  =VAL
 		CALL	evalLevel1
-		BNE	JUMPBrkTypeMismatch3
+		LBNE	brkTypeMismatch
 str2Num		LDB	ZP_STRBUFLEN
 		LDX	#BASWKSP_STRING
 		ABX
