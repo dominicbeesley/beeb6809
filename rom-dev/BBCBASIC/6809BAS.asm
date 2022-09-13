@@ -2036,8 +2036,8 @@ callusrSetRegsEnterCode				; L9304
 		LDU	$0464+2
 		JSR	[ZP_INT_WA + 2]
 		PULS	U,PC
-L9314JUMPbrkSyntax
-		JUMP	brkSyntax
+;L9314JUMPbrkSyntax
+;		JUMP	brkSyntax
 cmdDELETE
 
 			TODO_CMD "DELETE"
@@ -6693,7 +6693,7 @@ LAF29
 		PSHS	B
 		CALL	evalLevel1
 		STA	ZP_VARTYPE
-		BEQ	LAF44brkTypeMismatch
+		LBEQ	brkTypeMismatch
 		PULS	B
 		PSHS	U
 		STB	ZP_PRINTFLAG			; dec/hex flag
@@ -6705,8 +6705,6 @@ LAF29
 LAF3F
 		CALL	cmdPRINT_num2str
 		BRA	LAF7AclrArts
-LAF44brkTypeMismatch
-		JUMP brkTypeMismatch
 fnSTRING			; LAF47!
 			
 ;			;  =STRING$
@@ -6714,7 +6712,7 @@ fnSTRING			; LAF47!
 		CALL	stackINT_WAasINT
 		CALL	skipSpacesCheckCommaAtYOrBRK
 		CALL	evalL1BracketAlreadyOpen
-		BNE	LAF44brkTypeMismatch
+		LBNE	brkTypeMismatch
 		PSHS	U
 		CALL	popIntANew
 		LDB	ZP_STRBUFLEN
@@ -7294,8 +7292,6 @@ cmdWIDTH
 		STB	ZP_WIDTH
 LB322continue
 		JUMP	continue
-LB325brkMismatch
-		JUMP	brkTypeMismatch
 evalAtYAndStoreEvaledExpressioninStackedVarPTr		; LB328
 		CALL evalAtY
 		; the pointer to the variable (and it's type) are on the stack above the return pointer
@@ -7322,7 +7318,7 @@ storeEvaledExpressioninVarAtZP_GEN_PTR			; LB338
 		CMPA	#VAR_TYPE_REAL
 		BEQ	storeEvaledExpressioninRealVarAtZP_GEN_PTR
 		LDA	ZP_VARTYPE
-		BEQ	LB325brkMismatch
+		LBEQ	brkTypeMismatch
 		BPL	storeInt1
 		CALL	fpReal2Int
 storeInt1						;LB347:
@@ -7354,7 +7350,7 @@ storeByte
 		RTS
 storeEvaledExpressioninRealVarAtZP_GEN_PTR		; LB360
 		LDA	ZP_VARTYPE
-		BEQ	LB325brkMismatch
+		LBEQ	brkTypeMismatch
 		BMI	skIntToReal1
 		CALL	IntToReal
 skIntToReal1						; LB369
