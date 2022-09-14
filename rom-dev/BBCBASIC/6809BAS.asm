@@ -8899,6 +8899,7 @@ StoreFileAddressNext
 		LEAU	4,U				; Point to next address
 StoreFileAddress
 		PSHS	X
+		LDX	#0
 		BCC	StoreFileBigAddr
 		EXG	A,B				; Swap to make little-endian
 		EXG	X,D
