@@ -5732,23 +5732,17 @@ fnRND_0							; LAA21
 		CLR	ZP_FPA + 7
 		LDA	#$80
 		STA	ZP_FPA + 2
-;		PSHS	U
-;		LDB	#3
-;		LDX	#ZP_RND_WA + 4			; copy random accumulator
-;		LDU	#ZP_FPA + 7			; int mantissa 6 downto 3
-1;		EORA	,-X
-;		STA	,-U
-;		DECB
-;		BPL	1B
-;		PULS	U
-		LDA	ZP_RND_WA+3
-		STA	ZP_FPA+3
-		LDA	ZP_RND_WA+2
-		STA	ZP_FPA+4
-		LDA	ZP_RND_WA+1
-		STA	ZP_FPA+5
-		LDA	ZP_RND_WA+0
-		STA	ZP_FPA+6
+
+
+		; DB: 2022/9/14 - copy to FPA mantissa, most sig 4 bytes NOT reversing order as already BE
+
+		LDX	#4
+1		EORA	ZP_RND_WA-1,X
+		STA	ZP_FPA+2,X
+		LEAX	-1,X
+		BNE	1B
+
+
 		JUMP	fpNormalizeAndReturnFPA
 fnRND_int						; RND(X)
 		LEAU	1,U
