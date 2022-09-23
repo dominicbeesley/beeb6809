@@ -4983,7 +4983,7 @@ fnTAN			; LA59B!
 		LDX	#BASWKSP_FPTEMP4
 		CALL	fpCopyXtoFPA			; get back theta from FPTEMP4
 		CALL	fnCOS_internal1			; get cos theta
-LA5B3
+fpFPAeqFPTEMP3divFPA					; LA5B3
 		LDX	#BASWKSP_FPTEMP3
 		STX	ZP_FP_TMP_PTR1
 		CALL	fpFPAeqPTR1divFPA
@@ -5483,33 +5483,29 @@ fpUtoPTR1toFPA						; LA896
 		JUMP	fpCopyPTR1toFPA
 fnACS
 
-			TODO_CMD "ACS"
 			
-;			;  =ACS
-;		CALL fnASN
-;		BRA fpFPAEqPiDiv2SubFPA
+			;  =ACS
+		CALL	fnASN
+		BRA	fpFPAEqPiDiv2SubFPA
 fnASN
-
-			TODO_CMD "ASN"
-			
-;		CALL evalLevel1ConvertReal
-;		LDA ZP_FPA
-;		BPL LA8AF
-;		STZ ZP_FPA
-;		CALL LA8AF
-;		BRA LA8D2
-;LA8AF:
-;		CALL fpCopyFPA_FPTEMP3
-;		CALL LA929
-;		LDA ZP_FPA + 3
-;		BEQ fpSetFPAPIdiv2
-;		CALL LA5B3
-;		BRA LA8C6
-fpSetFPAPIdiv2						; LA8BE
+		CALL	evalLevel1ConvertReal
+		LDA	ZP_FPA
+		BPL	LA8AF				; jump forward if arg is positive
+		CLR	ZP_FPA				; else make positive
+		CALL	LA8AF				; call positive ASN code (returns with A=FF)
+		BRA	LA8D2				; jump forward to set FPA sign to FF
+LA8AF
+		CALL	fpCopyFPA_FPTEMP3		; FPTEMP3 = FPA
+		CALL	LA929				; call SQR(x*x-1)
+		LDA	ZP_FPA + 3			; check result is zero
+		BEQ	fpSetFPAeqPIdiv2		; if so set FPA=PI/2
+		CALL	fpFPAeqFPTEMP3divFPA		; LA5B3
+		BRA	LA8C6				; Call ATN
+fpSetFPAeqPIdiv2					; LA8BE
 		LDX	#fpConstPiDiv2
 		JUMP	fpCopyXtoFPA
 fnATN
-		CALL evalLevel1ConvertReal
+		CALL	evalLevel1ConvertReal
 LA8C6
 		CALL	fpCheckMant0SetSignExp0
 		BEQ	LA926_retFF
@@ -5903,7 +5899,7 @@ fileOpen
 	ENDIF
 ;
 fnPI							; LAAFF!
-		CALL	fpSetFPAPIdiv2			; load PI/2 into FPA and increment exponent for PI
+		CALL	fpSetFPAeqPIdiv2			; load PI/2 into FPA and increment exponent for PI
 		INC	ZP_FPA + 2
 		RTS
 
@@ -6349,8 +6345,6 @@ NoSuchVar	LDA	ZP_OPT			;  Get assembler OPTion
 		ANDA	#$02
 		BNE	brkNoSuchVar		;  If OPT 2 set, give No such variable error
 		BCS	brkNoSuchVar		;  If invalid variable name, also give error
-;;		TODODEADEND "NoSuchVar - assembler OPT 2 - skip TXTPTR2?"
-;;		STX ZP_TXTOFF2			;  Store
 GetP_percent	LDD	VAR_P_PERCENT+2
 		JUMP	retD16asUINT
 brkNoSuchVar
