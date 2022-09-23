@@ -2036,36 +2036,26 @@ callusrSetRegsEnterCode				; L9304
 		LDU	$0464+2
 		JSR	[ZP_INT_WA + 2]
 		PULS	U,PC
-;L9314JUMPbrkSyntax
-;		JUMP	brkSyntax
 cmdDELETE
 
-			TODO_CMD "DELETE"
-			
-;			;  DELETE
-;		CALL skipSpacesDecodeLineNumber
-;		BCC L9314JUMPbrkSyntax
-;		CALL stackINT_WAasINT
-;		CALL SkipSpaceCheckComma
-;		BNE L9314JUMPbrkSyntax
-;		CALL skipSpacesDecodeLineNumber
-;		BCC L9314JUMPbrkSyntax
-;		CALL scanNextStmt
-;		LDA ZP_INT_WA
-;		STA ZP_NAMELENORVT
-;		LDA ZP_INT_WA + 1
-;		STA ZP_NAMELENORVT + 1
-;		CALL popIntA
-;L9337:
-;		CALL findLineAndDelete  
-;		CALL checkForESC
-;		CALL inc_INT_WA
-;		LDA ZP_NAMELENORVT
-;		CMP ZP_INT_WA
-;		LDA ZP_NAMELENORVT + 1
-;		SBC ZP_INT_WA + 1
-;		BCS L9337
-;		JUMP resetVarsImmedPrompt
+		CALL	skipSpacesDecodeLineNumberNewAPI
+		LBCC	brkSyntax
+		CALL	stackINT_WAasINT
+		CALL	skipSpacesCheckCommaAtY
+		LBNE	brkSyntax
+		CALL	skipSpacesDecodeLineNumberNewAPI
+		LBCC	brkSyntax
+		CALL	scanNextStmtFromY
+		LDD	ZP_INT_WA+2
+		STD	ZP_NAMELENORVT
+		CALL	popIntANew
+L9337		CALL	findLineAndDelete  
+		CALL	checkForESC
+		CALL	inc_INT_WA
+		LDD	ZP_NAMELENORVT
+		CMPD	ZP_INT_WA+2
+		BHS	L9337
+		JUMP	resetVarsImmedPrompt
 AUTO_RENUM_STARTSTEP_DEF1010				; L934D
 		LDB	#$0A
 		CALL	retB8asUINT			; default first param 10
