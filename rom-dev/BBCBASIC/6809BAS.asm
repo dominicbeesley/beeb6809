@@ -5653,28 +5653,22 @@ brkExpRange						; LA9BC
 
 fnRAD			; LA9C8!
 
-			TODO_CMD "RAD"
-			
-;			;  =RAD
-;		CALL evalLevel1ConvertReal
-;		LDA #<fpConstDeg2Rad
-;		BRA fpFPAeqXmulFPA_checkusingX!
+			;  =RAD
+		CALL	evalLevel1ConvertReal
+		LDX_FPC fpConstDeg2Rad
+		BRA	fpFPAeqXmulFPA
 fnLOG
 
-			TODO_CMD "LOG"
-			
-;			;  =LOG
-;?		CALL	fnLN
-;?		LDX	#fpConst0_43429
-;?		BRA	fpFPAeqXmulFPA
+			;  =LOG
+		CALL	fnLN
+		LDX_FPC	fpConst0_43429
+		BRA	fpFPAeqXmulFPA
 fnDEG
 
-			TODO_CMD "DEG"
-			
-;			;  =DEG
-;		CALL evalLevel1ConvertReal
-;		LDA #<fpConstRad2Deg
-;		BRA fpFPAeqXmulFPA_checkusingX!
+			;  =DEG
+		CALL	evalLevel1ConvertReal
+		LDX_FPC	fpConstRad2Deg
+		BRA 	fpFPAeqXmulFPA
 fnEXP			;  =EXP
 		CALL	evalLevel1ConvertReal
 fnEXP_int
