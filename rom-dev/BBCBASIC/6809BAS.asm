@@ -620,10 +620,7 @@ fpAMant2Int
 		TST	ZP_FPA + 3
 		BEQ	fpMant2Int_CheckSignAndNegate	; Mantissa = $00xxxxxx, real holds an int, jump to check for negative
 fpAMant2Int_lp1
-		LSR	ZP_FPA + 3
-		ROR	ZP_FPA + 4			; Divide the mantissa by 2 to denormalise by one power
-		ROR	ZP_FPA + 5
-		ROR	ZP_FPA + 6
+		CALL	FPAshr1
 		INCA
 		BEQ	fpMant2Int_brkTooBig		; Inc. exponent, if run out of exponent, jump to 'Too big'
 fpAMant2Int_lp2	CMPA	#$A0
@@ -638,6 +635,15 @@ fpAMant2Int_lp2	CMPA	#$A0
 		CLR	ZP_FPA + 3
 		BRA	fpAMant2Int_lp2			; Loop to keep dividing
 
+FPAshr1
+		LSR	ZP_FPA + 3
+		ROR	ZP_FPA + 4			; Divide the mantissa by 2 to denormalise by one power
+		ROR	ZP_FPA + 5
+		ROR	ZP_FPA + 6
+		ROR	ZP_FPA + 7
+		RTS
+
+
 
 fpFPAtoFPBzeroFPA
 		CALL fpCopyFPAtoFPB
@@ -650,10 +656,13 @@ fpFPAMant2Int_remainder_inFPB				; L8275
 		LDB	ZP_FPA + 3			; get mantissa MSB return 0 or -1 depending on sign
 		BEQ	fpMant2Int_CheckSignAndNegate	; L827E
 L8280
-		LSR	ZP_FPA + 3			; roll A mantissa into B mantissa
-		ROR	ZP_FPA + 4
-		ROR	ZP_FPA + 5
-		ROR	ZP_FPA + 6
+		CALL	FPAshr1
+
+		; slow but small - the original only shifted right 3..6 but the FPAshr1 shifts into
+		; FPA 7 so shift it back out left to recover carry
+
+		ASL	ZP_FPA + 7
+
 		ROR	ZP_FPB + 2
 		ROR	ZP_FPB + 3
 		ROR	ZP_FPB + 4
@@ -813,11 +822,7 @@ fpAddAtoBStoreA_shr8_B_sk				; L8395:
 		ANDA	#$07
 		BEQ	fpAddAtoBStoreA_sk_sameExp
 fpAddAtoBStoreA_shr1_B_lp					; L839A:
-		LSR	ZP_FPB + 2
-		ROR	ZP_FPB + 3
-		ROR	ZP_FPB + 4
-		ROR	ZP_FPB + 5
-		ROR	ZP_FPB + 6
+		CALL	fpShiftBMantissaRight
 		DECA
 		BNE	fpAddAtoBStoreA_shr1_B_lp
 		BRA	fpAddAtoBStoreA_sk_sameExp
@@ -846,11 +851,7 @@ fpAddAtoBStoreA_shr8_A_sk				; L83D0:
 		ANDA	#$07
 		BEQ	fpAddAtoBStoreA_sk_sameExp
 fpAddAtoBStoreA_shr1_A_lp				; L83D5:
-		LSR	ZP_FPA + 3
-		ROR	ZP_FPA + 4
-		ROR	ZP_FPA + 5
-		ROR	ZP_FPA + 6
-		ROR	ZP_FPA + 7
+		CALL	FPAshr1
 		DECA
 		BNE	fpAddAtoBStoreA_shr1_A_lp
 fpAddAtoBStoreA_sk_sameExp				; L83E2
@@ -2167,9 +2168,9 @@ ren4LineLoop					; L9421
 		STD	ZP_FPB+2		; store in FPB+2
 		LDU	,S			; get back the intra-line pointer from pass3
 		LEAU	-1,U			; point back at 8D instruction
-		CALL int16atZP_FPB2toBUFasTOKENIZED	;store updated number back in program at 1,U and move U on
+		CALL	int16atZP_FPB2toBUFasTOKENIZED	;store updated number back in program at 1,U and move U on
 		PULS	Y,U			; get back our pointers
-		BRA ren3CharLoop
+		BRA	ren3CharLoop
 ren4nomatch
 		CALL	renSkipNextLine
 		BRA	ren4LineLoop
@@ -4313,11 +4314,7 @@ LA1B2
 		LDA	ZP_FPA + 2
 		CMPA	#$84
 		BHS	LA1C6				; if >= $84
-		LSR	ZP_FPA + 3
-		ROR	ZP_FPA + 4
-		ROR	ZP_FPA + 5
-		ROR	ZP_FPA + 6
-		ROR	ZP_FPA + 7
+		CALL	FPAshr1
 		INC	ZP_FPA + 2
 		BNE	LA1B2
 LA1C6
@@ -5310,11 +5307,7 @@ fpFPAeq_sqr_FPA
 		STA	ZP_FPA + 2
 		PULS	CC
 		BCC	fpFPAeq_sqr_FPA_sk6
-		LSR	ZP_FPA + 3
-		ROR	ZP_FPA + 4
-		ROR	ZP_FPA + 5
-		ROR	ZP_FPA + 6
-		ROR	ZP_FPA + 7
+		CALL	FPAshr1
 fpFPAeq_sqr_FPA_sk6
 		CALL	fpSetRealBto0
 		CLRA
