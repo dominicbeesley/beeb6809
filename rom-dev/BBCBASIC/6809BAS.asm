@@ -2150,8 +2150,9 @@ ren3NextLine					; L9412
 		BRA	ren3LineLoop
 
 ren3LineNoFnd					; L941B
-		CALL	decodeLineNumber	; ZP_INT_WA+2 now contains line number to update
 		PSHS	U,Y			; preserve line/char pointers
+		LEAU	,Y			; we need to point U at byte after 8D
+		CALL	decodeLineNumber	; ZP_INT_WA+2 now contains line number to update
 		CALL	renResetPileAndProg
 
 		; Pass 4 8D token found scan program and pile for new/old line number
@@ -2159,12 +2160,13 @@ ren3LineNoFnd					; L941B
 ren4LineLoop					; L9421
 		TST	1,U			; check for EOP
 		BMI	ren4NotFound
-		LDD	,Y++			; get original line num from pile
+		LDD	,X++			; get original line num from pile
 		CMPD	ZP_INT_WA+2		; compare with 8D number
 		BNE	ren4nomatch
+		LDD	1,U			; get new line number as binary
 		STD	ZP_FPB+2		; store in FPB+2
 		LDU	,S			; get back the intra-line pointer from pass3
-		LEAU	-4,U			; point back at 8D instruction
+		LEAU	-1,U			; point back at 8D instruction
 		CALL int16atZP_FPB2toBUFasTOKENIZED	;store updated number back in program at 1,U and move U on
 		PULS	Y,U			; get back our pointers
 		BRA ren3CharLoop
@@ -2175,7 +2177,7 @@ ren4NotFound					; L945C
 		LEAX	str_failed_at,PCR
 		JSR	PRSTRING
 		PULS	U,Y
-		LDD	,U
+		LDD	1,U
 		STD	ZP_INT_WA+2
 		CLRA
 		CALL	int16print_AnyLen
