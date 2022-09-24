@@ -2073,161 +2073,125 @@ AUTO_RENUM_STARTSTEP_DEF1010				; L934D
 		JUMP	scanNextStmtFromY
 L9370
 		JUMP	scanNextExpectColonElseCR
-;L9373:
-;		LDA ZP_TOP
-;		STA ZP_FPB
-;		LDA ZP_TOP + 1
-;		STA ZP_FPB + 1
-;L937B:
-;		LDA ZP_PAGE_H
-;		STA ZP_GEN_PTR + 1
-;		LDU #$01
-;		STU ZP_GEN_PTR
-;		RTS
-cmdRENUMBER		; L9384!
 
-			TODO_CMD "RENUMBER"
-			
-;			;  RENUMBER
-;		CALL AUTO_RENUM_STARTSTEP_DEF1010
-;		LDX #ZP_NAMELENORVT
-;		CALL popIntAtX
-;		CALL findTOP
-;		CALL L9373
-;L9392:
-;		LDA (ZP_GEN_PTR)
-;		BMI L93C4
-;		STA (ZP_FPB)
-;		LDA (ZP_GEN_PTR),Y
-;		STA (ZP_FPB),Y
-;		SEC
-;		TYA
-;		ADC ZP_FPB
-;		STA ZP_FPB
-;		BCC L93A6
-;		INC ZP_FPB + 1
-;L93A6:
-;		CMP ZP_HIMEM
-;		LDA ZP_FPB + 1
-;		SBC ZP_HIMEM + 1
-;		BCS brkRENUMBERspace
-;		CALL L947A
-;		BRA L9392
-;brkRENUMBERspace:
-;		BRK
-;		.byte  $00
-;		.byte  tknRENUMBER, " space"
+		; DB: Instead of ZP pointers the 6809 routine uses:
+		; X - points to "number pile" above TOP (was FPB)
+		; U - points to program position (was ZP_GEN_PTR)
+
+renResetPileAndProg				; L9373
+		LDX	ZP_TOP
+renResetProg					; L937B
+		LDA	ZP_PAGE_H
+		CLRB
+		TFR	D,U
+		RTS
+cmdRENUMBER		; L9384!
+			;  RENUMBER
+		CALL	AUTO_RENUM_STARTSTEP_DEF1010
+		LDX	#ZP_NAMELENORVT
+		CALL	popIntAtXNew
+		CALL	findTOP
+		CALL	renResetPileAndProg
+L9392
+		LDD	1,U
+		BMI	renPass2		; end of prog - skip to pass #2
+		STD	,X++			; store in "PILE"
+		CMPX 	ZP_HIMEM
+		BHS	brkRENUMBERspace
+		CALL	renSkipNextLine
+		BRA	L9392
+brkRENUMBERspace
+		DO_BRK_B
+		FCB  $00, tknRENUMBER, " space"
 brkSilly
 		DO_BRK_B
 		FCB	$00, "Silly", 0
-;
-;L93C4:		CALL L937B
-;L93C7:		LDA (ZP_GEN_PTR)
-;		BMI L93E7
-;		LDA ZP_NAMELENORVT + 1
-;		STA (ZP_GEN_PTR)
-;		LDA ZP_NAMELENORVT
-;		STA (ZP_GEN_PTR),Y
-;		CLC
-;		LDA ZP_NAMELENORVT
-;		ADC ZP_INT_WA
-;		STA ZP_NAMELENORVT
-;		LDA #$00
-;		ADC ZP_NAMELENORVT + 1
-;		AND #$7F
-;		STA ZP_NAMELENORVT + 1
-;		CALL L947A
-;		BRA L93C7
-;L93E7:
-;		LDA ZP_PAGE_H
-;		STA ZP_TXTPTR + 1
-;		STZ ZP_TXTPTR
-;L93ED:
-;		LDU #$01
-;		LDA (ZP_TXTPTR),Y
-;		BMI L945A
-;		LDU #$04
-;		STZ ZP_INT_WA + 2
-;L93F7:
-;		LDA (ZP_TXTPTR),Y
-;		LDX ZP_INT_WA + 2
-;		BNE L9405
-;		CMP #$8D
-;		BEQ L941B
-;		CMP #$F4
-;		BEQ L9412
-;L9405:
-;		INY
-;		CMP #$22
-;		BNE L940E
-;		EOR ZP_INT_WA + 2
-;		STA ZP_INT_WA + 2
-;L940E:
-;		CMP #$0D
-;		BNE L93F7
-;L9412:
-;		LDU #$03
-;		LDA (ZP_TXTPTR),Y
-;		CALL L9BF4
-;		BRA L93ED
-;L941B:
-;		CALL decodeLineNumber
-;		CALL L9373
-;L9421:
-;		LDA (ZP_GEN_PTR)
-;		BMI L945C
-;		LDA (ZP_FPB)
-;		CMP ZP_INT_WA + 1
-;		BNE L944A
-;		LDA (ZP_FPB),Y
-;		CMP ZP_INT_WA
-;		BNE L944A
-;		LDA (ZP_GEN_PTR),Y
-;		STA ZP_FPB + 2
-;		LDA (ZP_GEN_PTR)
-;		TAX
-;		LDU ZP_TXTOFF
-;		DEY
-;		LDA ZP_TXTPTR
-;		STA ZP_NAMELENORVT
-;		LDA ZP_TXTPTR + 1
-;		STA ZP_NAMELENORVT + 1
-;		CALL L8D62
-;L9446:
-;		LDU ZP_TXTOFF
-;		BRA L93F7
-;L944A:
-;		CLC
-;		CALL L947A
-;		LDA ZP_FPB
-;		ADC #$02
-;		STA ZP_FPB
-;		BCC L9421
-;		INC ZP_FPB + 1
-;		BRA L9421
-;L945A:
-;		BRA L94B6
-;L945C:
-;		PRINT_STR "Failed at "
-;		LDA (ZP_TXTPTR),Y
-;		STA ZP_INT_WA + 1
-;		INY
-;		LDA (ZP_TXTPTR),Y
-;		STA ZP_INT_WA
-;		CALL int16print_AnyLen -- API CHANGE -- API CHANGE
-;		CALL PrintCRclearPRLINCOUNT
-;		BRA L9446
-;L947A:
-;		INY
-;		LDA (ZP_GEN_PTR),Y
-;		LDU #$01
-;		ADC ZP_GEN_PTR
-;		STA ZP_GEN_PTR
-;		BCC L9488
-;		INC ZP_GEN_PTR + 1
-;		CLC
-;L9488:
-;		RTS
+
+		; pass 2 through program - assign new program line numbers
+
+renPass2					; L93C4
+		CALL	renResetProg
+L93C7		LDA	1,U
+		BMI	renPass3		; check for EOP
+		LDD	ZP_NAMELENORVT+2
+		STD	1,U			; overwrite old line number
+		ADDD	ZP_INT_WA+2		; increment line number
+		ANDA	#$7F			; top bit clear
+		STD	ZP_NAMELENORVT+2	; store it back
+		CALL	renSkipNextLine
+		BRA	L93C7
+
+renPass3					; L93E7
+		CALL	renResetProg
+ren3LineLoop					; L93ED
+		TST	1,U
+		LBMI	resetVarsImmedPrompt	; check for EOP and skip to next pass
+		LEAY	4,U			; point Y at line text data
+		CLR	ZP_INT_WA		; clear state machine flags 
+			; flags are 22 for skip quotes
+ren3CharLoop					; L93F7
+		LDA	,Y+
+		TST	ZP_INT_WA		; test quotes flag
+		BNE	ren3SkNotQuo
+		CMPA	#tknLineNo
+		BEQ	ren3LineNoFnd
+		CMPA	#tknREM
+		BEQ	ren3NextLine
+ren3SkNotQuo					; L9405
+		CMPA	#'"'
+		BNE	ren3SkNotQuo2
+		EORA	ZP_INT_WA
+		STA	ZP_INT_WA
+ren3SkNotQuo2
+		CMPA	#$0D
+		BNE	ren3CharLoop
+ren3NextLine					; L9412
+		CALL	renSkipNextLine
+		BRA	ren3LineLoop
+
+ren3LineNoFnd					; L941B
+		CALL	decodeLineNumber	; ZP_INT_WA+2 now contains line number to update
+		PSHS	U,Y			; preserve line/char pointers
+		CALL	renResetPileAndProg
+
+		; Pass 4 8D token found scan program and pile for new/old line number
+
+ren4LineLoop					; L9421
+		TST	1,U			; check for EOP
+		BMI	ren4NotFound
+		LDD	,Y++			; get original line num from pile
+		CMPD	ZP_INT_WA+2		; compare with 8D number
+		BNE	ren4nomatch
+		STD	ZP_FPB+2		; store in FPB+2
+		LDU	,S			; get back the intra-line pointer from pass3
+		LEAU	-4,U			; point back at 8D instruction
+		CALL int16atZP_FPB2toBUFasTOKENIZED	;store updated number back in program at 1,U and move U on
+		PULS	Y,U			; get back our pointers
+		BRA ren3CharLoop
+ren4nomatch
+		CALL	renSkipNextLine
+		BRA	ren4LineLoop
+ren4NotFound					; L945C
+		LEAX	str_failed_at,PCR
+		JSR	PRSTRING
+		PULS	U,Y
+		LDD	,U
+		STD	ZP_INT_WA+2
+		CLRA
+		CALL	int16print_AnyLen
+		CALL	PrintCRclearPRLINCOUNT
+		BRA	ren3CharLoop		; do rest of original line in program
+
+str_failed_at
+		FCN "Failed at "
+
+
+renSkipNextLine					; L947A
+		; U pointing at start of line + 1 add length byte to U
+		LDB	3,U
+		CLRA
+		LEAU	D,U
+		RTS
 ;			;  AUTO [num[,num]]
 ;			;  ================
 cmdAUTO			
