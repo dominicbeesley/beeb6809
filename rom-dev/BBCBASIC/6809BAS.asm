@@ -8500,12 +8500,13 @@ delocaliseAtZP_GEN_PTR
 
 		;delocalise Dynamic String
 
-		LDB	,U+				; get stacked string length
-		BEQ	2F
 		LDX	ZP_GEN_PTR + 2			; string params pointer
+		LDB	,U+				; get stacked string length
 		STB	3,X
+		BEQ	2F
 		LDX	,X				; string pointer
 
+delocCopyB
 1		LDA	,U+
 		STA	,X+
 		DECB
@@ -8516,15 +8517,15 @@ delocExit
 		PULS	U,PC
 
 delocalizeStaticString					; LBC95
+		LDX	ZP_GEN_PTR + 2			; get address to restore string to 
 		LDB	,U+				; get stacked string length
 		BEQ	2F
-		LDX	ZP_GEN_PTR + 2			; get address to restore string to 
 1							; LBC9C
 		LDA	,U+
 		STA	,X+
 		DECB
 		BNE	1B
-		LDA	#$0D
+2		LDA	#$0D
 		STA	,X+
 		BRA	delocExit
 delocalizeNum						; LBCAA
