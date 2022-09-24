@@ -2041,13 +2041,11 @@ callusrSetRegsEnterCode				; L9304
 		PULS	U,PC
 cmdDELETE
 
-		CALL	skipSpacesDecodeLineNumberNewAPI
-		LBCC	brkSyntax
+		CALL	skipSpacesDecodeLineNumberNewAPIbrkSyntax
 		CALL	stackINT_WAasINT
 		CALL	skipSpacesCheckCommaAtY
 		LBNE	brkSyntax
-		CALL	skipSpacesDecodeLineNumberNewAPI
-		LBCC	brkSyntax
+		CALL	skipSpacesDecodeLineNumberNewAPIbrkSyntax
 		CALL	scanNextStmtFromY
 		LDD	ZP_INT_WA+2
 		STD	ZP_NAMELENORVT
@@ -3173,6 +3171,12 @@ L9B17
 		RTS
 ;		
 ;		
+skipSpacesDecodeLineNumberNewAPIbrkSyntax
+		CALL	skipSpacesDecodeLineNumberNewAPI
+		BCC	brkSyntax
+		RTS
+
+
 		; API changed used to scan from ZP_TXTPTR now scan from Y
 skipSpacesDecodeLineNumberNewAPI
 		;		LDU	ZP_TXTPTR
@@ -3180,8 +3184,9 @@ skipSpacesDecodeLineNumberNewAPI
 		CMPA	#tknLineNo
 		BEQ	decodeLineNumber
 		LEAU	-1,U
-		STU	ZP_TXTPTR
-		BRA	__rtsCLC				;  Not line number, return CC
+		STU	ZP_TXTPTR				;  Not line number, return CC
+		CLC
+		RTS
 decodeLineNumber
 		LDA	,U+
 		ASLA
@@ -3199,9 +3204,6 @@ decodeLineNumber
 		SEC
 		RTS
 ;			;  Line number, return CS
-__rtsCLC
-		CLC
-		RTS
 ;			;  Expression Evaluator
 ;			;  ====================
 ;			;  ExpectEquals - evalute =<expr>
