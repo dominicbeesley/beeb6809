@@ -621,7 +621,6 @@ fpAMant2Int
 		BEQ	fpMant2Int_CheckSignAndNegate	; Mantissa = $00xxxxxx, real holds an int, jump to check for negative
 fpAMant2Int_lp1
 		CALL	FPAshr1
-		INCA
 		BEQ	fpMant2Int_brkTooBig		; Inc. exponent, if run out of exponent, jump to 'Too big'
 fpAMant2Int_lp2	CMPA	#$A0
 		BHS	fpMant2Int_brkTooBigIfNE	; Exponent is +32, float has been denormalised to an integer
@@ -636,11 +635,14 @@ fpAMant2Int_lp2	CMPA	#$A0
 		BRA	fpAMant2Int_lp2			; Loop to keep dividing
 
 FPAshr1
-		LSR	ZP_FPA + 3
-		ROR	ZP_FPA + 4			; Divide the mantissa by 2 to denormalise by one power
+		CLC
+FPAror1
+		ROR	ZP_FPA + 3
+		ROR	ZP_FPA + 4
 		ROR	ZP_FPA + 5
 		ROR	ZP_FPA + 6
 		ROR	ZP_FPA + 7
+		INCA
 		RTS
 
 
@@ -667,7 +669,7 @@ L8280
 		ROR	ZP_FPB + 3
 		ROR	ZP_FPB + 4
 		ROR	ZP_FPB + 5
-		INCA
+		TSTA
 		BEQ	fpMant2Int_brkTooBig
 L8293
 		CMPA	#$A0				; compare to A0, i.e. $80 + 32
@@ -850,9 +852,9 @@ fpAddAtoBStoreA_shr8_A_sk				; L83D0:
 		TFR	B,A
 		ANDA	#$07
 		BEQ	fpAddAtoBStoreA_sk_sameExp
+		NEGA
 fpAddAtoBStoreA_shr1_A_lp				; L83D5:
 		CALL	FPAshr1
-		DECA
 		BNE	fpAddAtoBStoreA_shr1_A_lp
 fpAddAtoBStoreA_sk_sameExp				; L83E2
 		LDA	ZP_FPA
@@ -4310,14 +4312,14 @@ LA1A5		LDX	#BASWKSP_FPTEMP1		;  Point to $46C
 		LDA	ZP_VARTYPE
 		STA	ZP_FPB + 6
 		CALL	fpAddAtoBStoreA				;  Add
-LA1B2
 		LDA	ZP_FPA + 2
+LA1B2
 		CMPA	#$84
 		BHS	LA1C6				; if >= $84
 		CALL	FPAshr1
-		INC	ZP_FPA + 2
 		BNE	LA1B2
 LA1C6
+		STA	ZP_FPA + 2
 		LDA	ZP_FPA + 3
 		CMPA	#$A0
 		BHS	setFloatA1_cmdPRINT_num2str_digit
@@ -4736,11 +4738,7 @@ fpAddAtoBstoreinA_sameExp
 		STA	ZP_FPA + 3
 		BCC	anRTS11
 fpRORMantAincExp
-		ROR	ZP_FPA + 3
-		ROR	ZP_FPA + 4
-		ROR	ZP_FPA + 5
-		ROR	ZP_FPA + 6
-		ROR	ZP_FPA + 7
+		CALL	FPAror1
 		INC	ZP_FPA + 2
 		BNE	anRTS11
 		INC	ZP_FPA + 1
