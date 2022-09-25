@@ -7735,17 +7735,15 @@ cmdFORskINTnoSTEP					; LB677
 		STD	FORSTACK_OFFS_STEP + 2,X
 cmdFORskipExecBody					; LB68F
 		CALL	scanNextStmtAndTrace
-		LDB	ZP_FOR_LVL_X_15
-		LDX	#BASWKSP_FORSTACK + FORSTACK_OFFS_LOOP - FORSTACK_ITEM_SIZE
-		STU	B,X				; store Y pointer to body statement in FOR stack (2 before next pointer!)
+		LDX	ZP_EXTRA_SAVE
+		STU	FORSTACK_OFFS_LOOP,X				; store Y pointer to body statement in FOR stack (2 before next pointer!)
 		JUMP	skipSpacesAtYexecImmed
 cmdFORskipskReal					; LB6A1
 
 		CALL	evalAtY
 		CALL	checkTypeIntToReal
 		LDX	ZP_EXTRA_SAVE
-		LDB	#FORSTACK_OFFS_TO
-		ABX
+		LEAX	FORSTACK_OFFS_TO,X
 		CALL	fpCopyFPA_X			; store TO value (real)
 		CALL	fpLoad1				; FloatA=1.0 (load default STEP)
 		CALL	skipSpacesY
@@ -7757,8 +7755,7 @@ cmdFORskipskReal					; LB6A1
 cmdFORrealNoStep					; LB6C7
 		LEAU	-1,U
 		LDX	ZP_EXTRA_SAVE
-		LDB	#FORSTACK_OFFS_STEP
-		ABX
+		LEAX	FORSTACK_OFFS_STEP,X
 		CALL	fpCopyFPA_X
 		BRA	cmdFORskipExecBody
 
