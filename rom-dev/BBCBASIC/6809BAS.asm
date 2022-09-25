@@ -8507,8 +8507,7 @@ delocaliseAtZP_GEN_PTR
 		LDX	ZP_GEN_PTR + 2			; string params pointer
 		LDB	,U+				; get stacked string length
 		STB	3,X
-		BEQ	2F
-		LDX	,X				; string pointer
+		BRA	strCpFin
 
 
 delocCopyB
@@ -8530,6 +8529,7 @@ copyBatUtoX
 delocalizeStaticString					; LBC95
 		LDX	ZP_GEN_PTR + 2			; get address to restore string to 
 		LDB	,U+				; get stacked string length
+strCpFin
 		BEQ	2F
 		CALL	copyBatUtoX
 2		LDA	#$0D
