@@ -6996,14 +6996,20 @@ GetVarValNewAPI						; LB1A0
 		CMPA	#VAR_TYPE_INT
 		BEQ	GetVarValInt			; &04=Integer
 ; little-endian integer
-		LDX	ZP_INT_WA + 2			; &02=Little-endian integer, TODO: check speed / size trade off with swapendian defined elsewhere if short of space
-		LDD	,X++
-		EXG	A,B
-		STD	ZP_INT_WA + 2
-		LDD	,X++
-		EXG	A,B
-		STD	ZP_INT_WA + 0
+		PSHS	U
+		LDU	ZP_INT_WA + 2			; &02=Little-endian integer, TODO: check speed / size trade off with swapendian defined elsewhere if short of space
+		LDX	#ZP_INT_WA
+		CALL	getLEUtoX
 		LDA	#VAR_TYPE_INT
+		PULS	U,PC
+
+getLEUtoX
+		LDD	,U++
+		EXG	A,B
+		STD	2,X
+		LDD	,U++
+		EXG	A,B
+		STD	0,X
 		RTS
 ;;^^^
 
@@ -8531,12 +8537,15 @@ delocalizeStaticString					; LBC95
 delocalizeNum						; LBCAA
 		LDX	ZP_GEN_PTR + 2
 		LDB	ZP_NAMELENORVT			; get var type
-		DECB
-1		LDA	,U+				; for 0 (do 1 byte), for 4,5 do 4,5 bytes
-		STA	,X+
-		DECB
-		BPL	1B
+		BEQ	delocCopy1
+		CMPB	#2
+		BNE	delocCopyB
+		CALL	getLEUtoX			; copy and reverse bytes
 		BRA	delocExit
+delocCopy1
+		LEAU	3,U				; stacked as a 4 byte INT TODO: store as 1 byte int?
+		INCB
+		BRA	delocCopyB
 
 		; new API - trashes A, X
 popStackedStringNew					; LBCD2
