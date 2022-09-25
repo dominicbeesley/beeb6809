@@ -5987,11 +5987,11 @@ fnSGN							; LABF5!
 		CALL	evalLevel1
 		LBEQ	brkTypeMismatch
 		BMI	fnSGN_real
-		LDA	ZP_INT_WA + 0
+
+		CALL	IntWAZero
+
 		BMI	returnINTminus1
-		ORA	ZP_INT_WA + 1
-		ORA	ZP_INT_WA + 2
-		ORA	ZP_INT_WA + 3
+
 		BEQ	returnINT
 fnSGN_pos	LDB	#1
 		BRA	returnB8asINT_S
@@ -7596,6 +7596,7 @@ cmdNEXTnoZ
 							;=31
 cmdNEXTnoZ2
 		LDA	0,X
+cmdNextnoz3
 		EORA	(0+FORSTACK_OFFS_TO),U
 		EORA	(0+FORSTACK_OFFS_STEP),U
 		BPL	cmdNEXTcksign2
@@ -7642,11 +7643,7 @@ cmdNEXTnoZLE
 							;=31
 cmdNEXTnoZ2LE
 		LDA	3,X
-		EORA	(0+FORSTACK_OFFS_TO),U
-		EORA	(0+FORSTACK_OFFS_STEP),U
-		BPL	cmdNEXTcksign2
-		BCC	cmdNEXTexecLoop
-		BRA	cmdNEXTloopFinished
+		BRA	cmdNextnoz3
 
 cmdNEXTloopFinished					; LB5AE
 		LDB	ZP_FOR_LVL_X_15
@@ -8207,10 +8204,11 @@ cmdREAD_dataItemFound
 IntWAZero
 		PSHS	A
 		LDA	ZP_INT_WA
+		BMI	1F
 		ORA	ZP_INT_WA + 1
 		ORA	ZP_INT_WA + 2
 		ORA	ZP_INT_WA + 3
-		PULS	A,PC
+1		PULS	A,PC
 
 
 cmdUNTIL
