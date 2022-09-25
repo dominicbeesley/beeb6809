@@ -230,11 +230,13 @@ $(MATCHBOXOUT)/6809BAS-6502ass.bin: 6809BAS-6502ass.asm $(DEPS)
 		$(AS) $(ASFLAGS) --define ASSEMBLER_6809 --define CPU_6809 --define MACH_MATCHBOX=1 -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 		perl $(SCRIPTS)/getsymbols.pl -bem <$(basename $@).lst >$(basename $@).bem
+		echo $$(( 0x$$(sed -n -e 's/DEF *__FREESPACE *\(.*\)/\1/p' <$(basename $@).sym) )) $$(date) >> mb_$(notdir $(basename $@))_free.txt
 
 $(MATCHBOXOUT)/6809BAS.bin: 6809BAS.asm $(DEPS)
 		$(AS) $(ASFLAGS) --define ASSEMBLER_6809 --define CPU_6809 --define MACH_MATCHBOX=1 -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 		perl $(SCRIPTS)/getsymbols.pl -bem <$(basename $@).lst >$(basename $@).bem
+		echo $$(( 0x$$(sed -n -e 's/DEF *__FREESPACE *\(.*\)/\1/p' <$(basename $@).sym) )) $$(date) >> mb_$(notdir $(basename $@))_free.txt
 
 
 

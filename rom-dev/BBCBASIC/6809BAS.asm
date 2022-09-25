@@ -7691,8 +7691,7 @@ cmdFOR
 		; TODO some recalcs of X could be done by LEAX?
 			;  FOR
 		CALL	findVarOrAllocEmpty
-		BEQ	brkFORVariable
-		BCS	brkFORVariable
+		BLS	brkFORVariable				; error if CS or Z
 		CALL	pushVarPtrAndType
 		CALL	skipToEqualsOrBRKY
 		CALL	evalAtYAndStoreEvaledExpressioninStackedVarPTr
@@ -7701,11 +7700,10 @@ cmdFOR
 		BNE	brkNoTO
 		LDB	ZP_FOR_LVL_X_15
 		CMPB	#FORSTACK_ITEM_SIZE*FORSTACK_MAX_ITEMS
-		BCC	brkTooManyFORs
+		BHI	brkTooManyFORs
 		LDX	#BASWKSP_FORSTACK
 		ABX
 		STX	ZP_EXTRA_SAVE
-		LDB	ZP_FOR_LVL_X_15
 		ADDB	#FORSTACK_ITEM_SIZE
 		STB	ZP_FOR_LVL_X_15
 		LDD	ZP_GEN_PTR+2			; addr of control var
