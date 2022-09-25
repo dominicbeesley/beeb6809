@@ -8558,6 +8558,7 @@ popStackedStringNew					; LBCD2
 		STB	ZP_STRBUFLEN
 		BEQ	delocExit
 		CALL	copyBatUtoX
+		CLRA					; indicate string
 		BRA	delocExit		
 
 
