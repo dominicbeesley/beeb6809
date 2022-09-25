@@ -7770,8 +7770,7 @@ intGOSUB_FPB_2	CALL	scanNextStmtFromY		; LB6DC
 		BHS	brkTooManyGosubs
 		LDX	#BASWKSP_GOSUBSTACK
 		ASLB
-		ABX
-		STU	,X				; store text pointer on stack
+		STU	B,X				; store text pointer on stack
 		INC	ZP_GOSUB_LVL
 		BRA	cmdGOTODecodedLineNumber
 brkTooManyGosubs
@@ -7791,8 +7790,7 @@ cmdRETURN
 		DEC	ZP_GOSUB_LVL
 		LDX	#BASWKSP_GOSUBSTACK-2
 		ASLB
-		ABX
-		LDU	,X
+		LDU	B,X
 LB71A		JUMP	continue
 
 			;============================
