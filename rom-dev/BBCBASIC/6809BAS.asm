@@ -8512,25 +8512,28 @@ delocaliseAtZP_GEN_PTR
 		BEQ	2F
 		LDX	,X				; string pointer
 
+
 delocCopyB
-1		LDA	,U+
-		STA	,X+
-		DECB
-		BNE	1B
+		CALL	copyBatUtoX
+
 2							; LBC8D:
 delocExit
 		STU	ZP_BAS_SP
 		PULS	U,PC
 
+copyBatUtoX
+1		LDA	,U+
+		STA	,X+
+		DECB
+		BNE	1B
+		RTS
+
+
 delocalizeStaticString					; LBC95
 		LDX	ZP_GEN_PTR + 2			; get address to restore string to 
 		LDB	,U+				; get stacked string length
 		BEQ	2F
-1							; LBC9C
-		LDA	,U+
-		STA	,X+
-		DECB
-		BNE	1B
+		CALL	copyBatUtoX
 2		LDA	#$0D
 		STA	,X+
 		BRA	delocExit
@@ -8553,38 +8556,27 @@ popStackedStringNew					; LBCD2
 		PSHS	U
 		LDU	ZP_BAS_SP
 		LDA	,U+				; first byte contains length
-		STA	ZP_STRBUFLEN
+		STB	ZP_STRBUFLEN
 		BEQ	delocExit
-		LDX	#BASWKSP_STRING
-2		LDB	,U+
-		STB	,X+
-		DECA
-		BNE	2B
+		CALL	copyBatUtoX
 		BRA	delocExit		
 
 
 		; New API - after call all regs preserved
 popIntANew
-		PSHS	D,U
-		LDU	ZP_BAS_SP
-		LDD	,U++
-		STD	ZP_INT_WA
-		LDD	,U++
-		STD	ZP_INT_WA+2
-		STU	ZP_BAS_SP
-		PULS	D,U,PC
+		PSHS	D,U,X
+		LDX	#ZP_INT_WA
+		BRA	1F
 popIntAtZP_GEN_PTRNew				; LBD06
 		LDX #ZP_GEN_PTR			; TODO - WORK THIS LOT OUT!
 		; NOTE: trashes A,B
 popIntAtXNew					; LBD08
-		PSHS	U
-		LDU	ZP_BAS_SP
-		LDD	,U++
-		STD	0,X
-		LDD	,U++
-		STD	2,X
+		PSHS	D,U,X
+1		LDU	ZP_BAS_SP
+		LDB	#4
+		CALL	copyBatUtoX
 		STU	ZP_BAS_SP
-		PULS	U,PC
+		PULS	D,U,X,PC
 UpdStackByBCheckFull
 		LDX	ZP_BAS_SP
 		SEX
