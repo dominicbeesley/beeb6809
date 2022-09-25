@@ -8553,7 +8553,8 @@ popStackedStringNew					; LBCD2
 
 		PSHS	U
 		LDU	ZP_BAS_SP
-		LDA	,U+				; first byte contains length
+		LDX	#BASWKSP_STRING
+		LDB	,U+				; first byte contains length
 		STB	ZP_STRBUFLEN
 		BEQ	delocExit
 		CALL	copyBatUtoX
