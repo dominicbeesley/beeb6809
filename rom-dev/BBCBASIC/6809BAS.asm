@@ -7833,6 +7833,7 @@ cmdON							; LB75B!
 
 		LEAU	-1,U
 		CALL	evalForceINT				;  Evaluate ON <num>
+		LDB	,U
 		CMPB 	#tknPROC
 		BEQ 	cmdOnGSP				;  ON <num> PROC
 		LEAU	1,U
@@ -7887,7 +7888,7 @@ cmdOnFound							; LB7B6
 		JUMP	cmdGOTODecodedLineNumber
 cmdOnFoundGOSUB							; LB7CA
 		CALL	decodeLineNumberFindProgLine
-		LDU	ZP_TXTOFF
+;;		LDU	ZP_TXTOFF
 		CALL	findNextStmt				; find $0D or ':' to use as return from GOSUB
 		JUMP	intGOSUB_FPB_2
 cmdOnSkipNoMatch2
