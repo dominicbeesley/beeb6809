@@ -1096,7 +1096,7 @@ storeTokenAndCloseUpLine
 ;		RTS
 
 		; on entry A contains a numeric digit
-		; parse number and store in ?????
+		; parse number and store in at U as 8D XX YY ZZ
 		; TODO, there may be a quicker / smaller way of doing this
 		; use shift and add instead of mul and add?
 tokenizeLineNo	
@@ -1109,25 +1109,25 @@ tokLinLp	LDA	,U+
 		BCC	tokLineNoSk1
 		ANDA	#$F
 		STA	ZP_GEN_PTR+1
-		CLR	ZP_GEN_PTR+0		; store as 16 bit no
 
-		LDA	ZP_FPB + 3		; low byte * 10
-		LDB	#10
-		MUL				; this cannot overflow or go minus so don't panic!
-		ADDD	ZP_GEN_PTR		; add to current digit
-		BMI	tokLinOv		; overflowed
-		STD	ZP_GEN_PTR		; store 
-		
-1		LDA	ZP_FPB + 2		; mul old number hi byte by 10
-		LDB	#10
-		MUL
-		BCS	tokLinOv		; top bit of B
-		TSTA				; or top byte of result
-		BNE	tokLinOv		; causes overflow
-		EXG	A,B			; now D = 256 * B 
-2		ADDD	ZP_GEN_PTR
-		STD	ZP_FPB + 2		; store result
+		; mul existing number by 10
+		LDD	ZP_FPB+2
+		ASLB
+		ROLA		
+		ASLB
+		ROLA
+		ADDD	ZP_FPB+2
+		ASLB
+		ROLA
+		BCS	tokLinOv
+
+		; add in new number and check for overflow
+		ADDB	ZP_GEN_PTR+1
+		ADCA	#0
+		STD	ZP_FPB+2
+		BCS	tokLinOv
 		BPL	tokLinLp
+
 tokLinOv
 		SEC
 		RTS				; unstack result
