@@ -2278,9 +2278,9 @@ cmdDIM_mul_D_by_S					; L9503
 	IF CPU_6309
 		MULD	2,S
 		BMI	brkBadDIM
-		BCS	brkBadDIM
-		ORR	E,F
+		ORR	A,B
 		BNE	brkBadDIM		
+		TFR	W,D
 		RTS
 	ELSE
 		STD	ZP_INT_WA_C
