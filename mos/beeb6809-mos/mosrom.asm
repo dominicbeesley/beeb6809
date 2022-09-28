@@ -4,6 +4,8 @@
 		include "../../includes/oslib.inc"
 		include "./gen-version.inc"
 
+DOCHIPKIT_RTC EQU 0
+
 ; TODO: CLC is set after mos_VDU_WRCH - check if this is necessary suspect it is just used to allow a bcc to replace bra at LE0C8
 ;       not sure but it may be used for tracking whether a char went to printer around the exit routine
 
@@ -4946,7 +4948,7 @@ mostbl_star_commands
 		STARCMD	"SAVE"	,mos_STAR_SAVE		,$00	; *SAVE     &E23E, A=0     X=>String
 		STARCMD	"SPOOL"	,mos_STAR_SPOOL		,$00	; *SPOOL    &E281, A=0     X=>String
 ;;;	STARCMD	"TAPE'	,mos_STAR_OSBYTE_A	,$8C	; *TAPE     &E348, A=&8C   OSBYTE
-	IF MACH_CHIPKIT
+	IF MACH_CHIPKIT AND DOCHIPKIT_RTC
 		STARCMD "TIME"	,mos_STAR_TIME		,$00	; *TIME
 	ENDIF
 		STARCMD	"TV"	,mos_STAR_OSBYTE_A	,$90	; *TV       &E348, A=&90   OSBYTE
@@ -6180,7 +6182,7 @@ mostbl_OSWORD_LOOK_UP
 		FDB	mos_OSWORD_nowt			;	E651
 		FDB	mos_OSWORD_nowt			;	E653
 		FDB	mos_OSWORD_nowt			;	E655
-	IF MACH_CHIPKIT
+	IF MACH_CHIPKIT AND DOCHIPKIT_RTC
 		FDB	mos_OSWORD_E_read_rtc
 		FDB	mos_OSWORD_F_write_rtc
 
@@ -9570,6 +9572,11 @@ debug_print_hex_digit
 ;		sta	$FCA0				
 ;		puls	A,X,PC
 
+	IF MACH_CHIPKIT
+debug_print_ch	; TODO - do debug on serial port
+		RTS
+	ELSE
+
 debug_print_ch	pshs	A,X
 		ldx	#100
 		lda	#ACIA_TDRE
@@ -9581,6 +9588,7 @@ debug_print_ch	pshs	A,X
 		anda	#$7F
 		sta	sheila_ACIA_DATA
 		puls	A,X,PC
+	ENDIF
 
 ;;;mostbl_BUFFER_ADDRESS_LO_LOOK_UP_TABLE
 ;;;mostbl_BUFFER_ADDRESS_HI_LOOK_UP_TABLE
@@ -9626,7 +9634,7 @@ mc_logo_0
 		FCB	$9E,$DC,$DC,$F8,$E0,$80,$00,$00
 
 
-	IF MACH_CHIPKIT
+	IF MACH_CHIPKIT AND DOCHIPKIT_RTC
 mos_STAR_TIME
 		;TODO - find somewhere else to put this?
 		ldx	#stack
