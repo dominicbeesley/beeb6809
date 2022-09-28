@@ -1961,8 +1961,8 @@ rtsCLC_L926A
 ;		
 ;	
 
-;decYEvalForceINT
-;		LEAU	-1,Y
+decUEvalForceINT
+		LEAU	-1,U
 evalForceINT
 		CALL	evalExpressionMAIN
 		CALL	checkTypeInAConvert2INT
@@ -2734,8 +2734,7 @@ cmdVDU					       ; L980D!	      ;	 VDU
 		BEQ	skVDUend
 		CMPA	#tknELSE
 		BEQ	skVDUend
-		LEAU	-1,U
-		CALL	evalForceINT
+		CALL	decUEvalForceINT
 		CALL	doVDUChar_fromWA3
 		CALL	skipSpacesCheckCommaAtY
 		BEQ	cmdVDU
@@ -7845,8 +7844,7 @@ cmdON							; LB75B!
 		CMPA	#tknERROR
 		BEQ	cmdONERROR				;  ON ERROR
 
-		LEAU	-1,U
-		CALL	evalForceINT				;  Evaluate ON <num>
+		CALL	decUEvalForceINT			;  Evaluate ON <num>
 		LDB	,U
 		CMPB 	#tknPROC
 		BEQ 	cmdOnGSP				;  ON <num> PROC
