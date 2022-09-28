@@ -2274,6 +2274,13 @@ cmdDIM_more_dims_q					; L94FB
 		;  ==========
 		;     F F C   = bad DIM !
 cmdDIM_mul_D_by_S					; L9503
+
+	IF CPU_6309
+		MULD	2,S
+		BMI	brkBadDIM
+		BCS	brkBadDIM
+		RTS
+	ELSE
 		STD	ZP_INT_WA_C
 		TSTA
 		BEQ	1F
@@ -2309,7 +2316,7 @@ cmdDIM_mul_D_by_S					; L9503
 		TFR	B,A
 		LDB	ZP_INT_WA_C + 3
 		RTS
-		
+	ENDIF	
 
 brkBadDIM						; L952C
 		DO_BRK_B

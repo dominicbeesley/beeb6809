@@ -4,7 +4,8 @@ TARGETS=		6809BAS.bin \
 			6809BAS-6502ass.bin \
 			loadbasicandsyms.noi \
 			loadbasic6309andsyms.noi \
-			6309BAS.bin 
+			6309BAS.bin \
+			6368BAS.bin
 
 TARGETS_BEEB=		TESTASM.ssd \
 			TESTAS63.ssd
@@ -183,11 +184,24 @@ $(BEEBOUT)/6309BAS.bin: 6809BAS.asm $(DEPS)
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
+$(BEEBOUT)/6368BAS.bin: 6809BAS.asm $(DEPS)
+		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6809 --define CPU_6309 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
+		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+
+		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
+
+
 $(CHIPKITOUT)/6309BAS.bin: 6809BAS.asm $(DEPS)
 		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6309 --define CPU_6309 --define MACH_CHIPKIT=1 -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> ck_$(notdir $(basename $@))_free.txt
+
+$(CHIPKITOUT)/6368BAS.bin: 6809BAS.asm $(DEPS)
+		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6809 --define CPU_6309 --define MACH_CHIPKIT=1 -o $@ -l $(basename $@).lst $<
+		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+
+		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
 
 $(BEEBOUT)/6809BAS.bin: 6809BAS.asm $(DEPS)
