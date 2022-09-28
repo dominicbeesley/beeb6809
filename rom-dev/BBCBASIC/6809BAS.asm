@@ -2279,6 +2279,8 @@ cmdDIM_mul_D_by_S					; L9503
 		MULD	2,S
 		BMI	brkBadDIM
 		BCS	brkBadDIM
+		ORR	E,F
+		BNE	brkBadDIM		
 		RTS
 	ELSE
 		STD	ZP_INT_WA_C
