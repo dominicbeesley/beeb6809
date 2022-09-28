@@ -442,8 +442,12 @@ evalDoIntDivide						; L80F9
 		SUBD	ZP_INT_WA + 2
 		PSHS	D
 		LDD	ZP_INT_WA_C + 0
+	IF CPU_6309
+		SBCD	ZP_INT_WA + 0
+	ELSE
 		SBCB	ZP_INT_WA + 1
 		SBCA	ZP_INT_WA + 0
+	ENDIF
 		BCS	4F				; Couldn't subtract, do next bit
 		STD	ZP_INT_WA_C + 0
 		PULS	D
@@ -706,6 +710,14 @@ fpMant2Int_CheckSignAndNegate				; L82C4
 		BPL	fpMant2Int_RTS			; If positive, jump to return
 fpReal2Int_NegateMantissa				; L82C8
 		;  Negate the mantissa to get integer
+	IF CPU_6309
+		CLRD
+		SUBD	ZP_FPA+5
+		STD	ZP_FPA+5
+		CLRD
+		SBCD	ZP_FPA+3
+		STD	ZP_FPA+3
+	ELSE
 		LDD	#0
 		SUBD	ZP_FPA + 5
 		STD	ZP_FPA + 5
@@ -713,6 +725,7 @@ fpReal2Int_NegateMantissa				; L82C8
 		SBCB	ZP_FPA + 4
 		SBCA	ZP_FPA + 3
 		STD	ZP_FPA + 3
+	ENDIF
 fpMant2Int_RTS						; L82DF
 		RTS
 fpFPASplitToFractPlusInt
@@ -5326,11 +5339,14 @@ fpFPAeq_sqr_FPA
 		CALL	FPAshr1
 fpFPAeq_sqr_FPA_sk6
 		CALL	fpSetRealBto0
+	IF CPU_6309
+		CLRD
+	ELSE
 		CLRA
-		STA	ZP_FP_TMP
-		STA	ZP_FP_TMP + 1
-		STA	ZP_FP_TMP + 2
-		STA	ZP_FP_TMP + 3
+		CLRB
+	ENDIF
+		STD	ZP_FP_TMP
+		STD	ZP_FP_TMP + 2
 		LDA	#$40
 		STA	ZP_FPB + 2
 		STA	ZP_FPB + 7
@@ -5364,8 +5380,12 @@ fpFPAeq_sqr_FPA_sk2
 		SUBD	ZP_FP_TMP + 2
 		STD	ZP_FPA + 6
 		LDD	ZP_FPA + 4
+	IF CPU_6309
+		SBCD	ZP_FP_TMP + 0
+	ELSE
 		SBCB	ZP_FP_TMP + 1
 		SBCA	ZP_FP_TMP + 0
+	ENDIF
 		STD	ZP_FPA + 4
 		LDA	ZP_FPA + 3
 		SBCA	ZP_FPB + 7
@@ -6205,6 +6225,14 @@ evalLevel1CheckNotStringAndNegate			; LACDA
 		BMI	fpNegateFP_A			;  -<real> - Jump to negate real
 ;		
 negateIntA	
+	IF CPU_6309
+		CLRD
+		SUBD	ZP_INT_WA+2
+		STD	ZP_INT_WA+2
+		CLRD
+		SBCD	ZP_INT_WA
+		STD	ZP_INT_WA
+	ELSE
 		LDD	#0
 		SUBD	ZP_INT_WA + 2
 		STD	ZP_INT_WA + 2
@@ -6212,6 +6240,7 @@ negateIntA
 		SBCB	ZP_INT_WA + 1
 		SBCA	ZP_INT_WA + 0
 		STD	ZP_INT_WA + 0
+	ENDIF
 A_eq_40_rts	LDA	#$40
 		RTS
 ;		
@@ -7604,8 +7633,12 @@ cmdNEXTfoundLoopVar
 		SUBD	(2+FORSTACK_OFFS_TO),U		;7
 		BNE	cmdNEXTnoZ			;3
 		LDD	0,X				;5
+	IF CPU_6309
+		SBCD	(0+FORSTACK_OFFS_TO),U
+	ELSE
 		SBCB	(1+FORSTACK_OFFS_TO),U		;5
 		SBCA	(0+FORSTACK_OFFS_TO),U		;5
+	ENDIF
 		BNE	cmdNEXTnoZ2			;3
 		TSTB					;2
 		BNE	cmdNEXTnoZ2			;3
@@ -7613,8 +7646,12 @@ cmdNEXTfoundLoopVar
 		BRA	cmdNEXTexecLoop			;3
 cmdNEXTnoZ
 		LDD	0,X				;5
+	IF CPU_6309
+		SBCD	(0+FORSTACK_OFFS_TO),U
+	ELSE
 		SBCB	(1+FORSTACK_OFFS_TO),U		;5
 		SBCA	(0+FORSTACK_OFFS_TO),U		;5
+	ENDIF
 							;=31
 cmdNEXTnoZ2
 		LDA	0,X
