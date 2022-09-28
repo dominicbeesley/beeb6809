@@ -2860,7 +2860,7 @@ findVARTreatAsMemoryAccess					;L98C1
 		BEQ   memaccStr				; Jump to do $<addr>
 		EORA  #'?'
 		BEQ   memacc8				; Jump to do ?<addr>
-		LDA   #$00
+		CLRA
 		SEC				; Return EQ/CS for invalid name
 anRTS6		RTS
 
