@@ -9,12 +9,8 @@ TARGETS=		6809BAS.bin \
 TARGETS_BEEB=		TESTASM.ssd \
 			TESTAS63.ssd
 
+TARGETS_FLEX= 		FLEXBAS.BIN
 
-#			6809BAS-6309ass.bin \
-
-
-TARGETS_FLEX= 		FLEXBAS.BIN \
-			FLEXBBC.BIN
 TARGETS_MATCHBOX=	6809BAS.bin \
 			6809BAS-6502ass.bin \
 
@@ -57,15 +53,6 @@ $(HOSTFSDIR)/%.bin: $(BEEBOUT)/%.bin
 
 6309-assembler.gen.asm:	 6x09-ass-readdefs.pl 6x09-assembler.defs.txt
 		perl 6x09-ass-readdefs.pl --6309
-
-
-all: sizelog.txt sizelog6309.txt
-
-sizelog.txt: $(BEEBOUT)/6809BAS.sym
-		echo -e "$(shell date +"%F,%T")\t$(shell ./calc-free-space.sh $(BEEBOUT)/6809BAS.sym)" >>sizelog.txt
-sizelog6309.txt: $(BEEBOUT)/6809BAS.sym
-		echo -e "$(shell date +"%F,%T")\t$(shell ./calc-free-space.sh $(BEEBOUT)/6309BAS.sym)" >>sizelog6309.txt
-
 
 
 $(BEEBOUT)/test-asm-xroar-%.asm:asm-test-%.txt mkasmtest.pl
@@ -194,24 +181,26 @@ $(BEEBOUT)/6309BAS.bin: 6809BAS.asm $(DEPS)
 		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6309 --define CPU_6309 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 
-		echo $$(( 0x$$(sed -n -e 's/DEF *__FREESPACE *\(.*\)/\1/p' <$(basename $@).sym) )) $$(date) >> $(notdir $(basename $@))_free.txt
+		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
 $(CHIPKITOUT)/6309BAS.bin: 6809BAS.asm $(DEPS)
 		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6309 --define CPU_6309 --define MACH_CHIPKIT=1 -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 
+		./freespace.pl <$(basename $@).sym >> ck_$(notdir $(basename $@))_free.txt
 
 
 $(BEEBOUT)/6809BAS.bin: 6809BAS.asm $(DEPS)
 		$(AS) $(ASFLAGS) --define ASSEMBLER_6809 --define CPU_6809 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 
-		echo $$(( 0x$$(sed -n -e 's/DEF *__FREESPACE *\(.*\)/\1/p' <$(basename $@).sym) )) $$(date) >> $(notdir $(basename $@))_free.txt
+		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
 $(CHIPKITOUT)/6809BAS.bin: 6809BAS.asm $(DEPS)
 		$(AS) $(ASFLAGS) --define ASSEMBLER_6809 --define CPU_6809 --define MACH_CHIPKIT=1 -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 
+		./freespace.pl <$(basename $@).sym >> ck_$(notdir $(basename $@))_free.txt
 
 
 
@@ -219,34 +208,36 @@ $(BEEBOUT)/6809BAS-6502ass.bin: 6809BAS-6502ass.asm $(DEPS)
 		$(AS) $(ASFLAGS) --define ASSEMBLER_6809 --define CPU_6809 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 
-		echo $$(( 0x$$(sed -n -e 's/DEF *__FREESPACE *\(.*\)/\1/p' <$(basename $@).sym) )) $$(date) >> $(notdir $(basename $@))_free.txt
+		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
 $(CHIPKITOUT)/6809BAS-6502ass.bin: 6809BAS-6502ass.asm $(DEPS)
 		$(AS) $(ASFLAGS) --define ASSEMBLER_6809 --define CPU_6809 --define MACH_CHIPKIT=1 -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+
+		./freespace.pl <$(basename $@).sym >> ck_$(notdir $(basename $@))_free.txt
 
 
 $(MATCHBOXOUT)/6809BAS-6502ass.bin: 6809BAS-6502ass.asm $(DEPS)
 		$(AS) $(ASFLAGS) --define ASSEMBLER_6809 --define CPU_6809 --define MACH_MATCHBOX=1 -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 		perl $(SCRIPTS)/getsymbols.pl -bem <$(basename $@).lst >$(basename $@).bem
-		echo $$(( 0x$$(sed -n -e 's/DEF *__FREESPACE *\(.*\)/\1/p' <$(basename $@).sym) )) $$(date) >> mb_$(notdir $(basename $@))_free.txt
+
+		./freespace.pl <$(basename $@).sym >> mb_$(notdir $(basename $@))_free.txt
 
 $(MATCHBOXOUT)/6809BAS.bin: 6809BAS.asm $(DEPS)
 		$(AS) $(ASFLAGS) --define ASSEMBLER_6809 --define CPU_6809 --define MACH_MATCHBOX=1 -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 		perl $(SCRIPTS)/getsymbols.pl -bem <$(basename $@).lst >$(basename $@).bem
-		echo $$(( 0x$$(sed -n -e 's/DEF *__FREESPACE *\(.*\)/\1/p' <$(basename $@).sym) )) $$(date) >> mb_$(notdir $(basename $@))_free.txt
 
-
+		./freespace.pl <$(basename $@).sym >> mb_$(notdir $(basename $@))_free.txt
 
 
 $(FLEXOUT)/FLEXBAS.BIN:	6809BAS.asm $(DEPS)
 		$(AS) -S --define FLEX=1 -o $(basename $@).hex -l $(basename $@).lst $<
+		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 		perl $(BASEDIR)/scripts/flex/hex2bin.pl $(basename $@).hex $@
-$(FLEXOUT)/FLEXBBC.BIN:	6809BAS.asm $(DEPS)
-		$(AS) -S --define FLEX=1 --define FLEXBBC=1 -o $(basename $@).hex -l $(basename $@).lst $<
-		perl $(BASEDIR)/scripts/flex/hex2bin.pl $(basename $@).hex $@
+
+		./freespace.pl <$(basename $@).sym >> fl_$(notdir $(basename $@))_free.txt
 
 
 $(BEEBOUT)/6809BAS.bin: $(DEPS)
