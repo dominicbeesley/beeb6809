@@ -32,7 +32,7 @@ $(CHIPKITOUT)/mosrom.bin:	mosrom.asm $(DEPS)
 			$(AS) $(ASFLAGS) --define MACH_CHIPKIT=1 -o $@ -l $(basename $@).lst $<
 			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 						
-			./makeloadnoi.sh $(CHIPKITOUT) mosrom.bin >$@
+			./makeloadnoi.sh $(CHIPKITOUT) mosrom.bin >$(CHIPKITOUT)/mosloadandrun.noi
 			cat $(basename $@).sym >>$(CHIPKITOUT)/mosloadandrun.noi
 
 			if [ -a ./extras.noi ]; then \
