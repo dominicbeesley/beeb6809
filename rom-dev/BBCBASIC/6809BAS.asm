@@ -235,7 +235,8 @@ OSCLI_OK		PULS	D,X,U,U,CC,PC
 OSRDCH		JMP	GETCHR
 		
 
-FLEX_READLINE	CLRB					; TODOFLEX - this is very simplistic
+ReadKeysTo_PageInA
+		CLRB					; TODOFLEX - this is very simplistic
 		TFR	D,X
 FLEX_RL_LP	JSR	OSRDCH				; get char
 		CMPA	#$D
@@ -1747,6 +1748,10 @@ indStringStore	CALL	str600CRterm			;  Store <cr> at end of string buffer
 
 
 cmdPRINT_HASH						; L9141
+	IF FLEX
+		JUMP	brkFlexNotImpl
+	ELSE
+
 		CALL	decYSaveAndEvalHashChannelAPI
 		PSHS	Y				; save Channel #
 cmdPRINTHAS_lp		
@@ -1787,6 +1792,9 @@ cmdPRINTHASH_STR
 		JSR	OSBPUT
 		DECB
 		BRA	1B
+
+	ENDIF	;FLEX
+
 cmdPRINTHASH_exit
 		LEAS	2,S				; discard stacked channel
 		LEAU	-1,U
@@ -5998,6 +6006,10 @@ fnSGN_pos	LDB	#1
 
 
 fnPOINT			; LAC0E!
+	IF FLEX
+		JUMP	brkFlexNotImpl
+	ELSE
+
 			; TODO: use hw stack?
 		CALL	evalAtYcheckTypeInAConvert2INT
 		CALL	stackINT_WAasINT		; stack X coord
@@ -6018,6 +6030,8 @@ fnPOINT			; LAC0E!
 		LDB	ZP_INT_WA+4
 		BMI	returnINTminus1
 		BRA	returnB8asINT_S
+	ENDIF
+
 fnINSTR
 
 		CALL	evalAtY
@@ -7960,6 +7974,12 @@ findProgLineOrBRK
 ;;;LB844:
 ;;		JUMP scanNextContinue
 
+	IF FLEX
+cmdINPUT_HASH						; LB847
+		JUMP	brkFlexNotImpl
+	ELSE
+
+
 cmdINPUTBGETtoX
 1		JSR	OSBGET
 		STA 	,X+
@@ -8017,6 +8037,8 @@ cmdINPUT_HASH_StoreAtVarPtr
 		CALL	popIntAtZP_GEN_PTRNew
 		CALL	storeEvaledExpressioninVarAtZP_GEN_PTR
 		BRA	cmdINPUT_HASH_lp
+
+	ENDIF	;FLEX
 ;LB8B2:
 ;		PLA
 ;		PLA
@@ -8252,8 +8274,7 @@ cmdREPEAT
 ReadKeysTo_InBuf
 		LDA	#BAS_InBuf / $100
 	IF FLEX = 1
-		CLRB
-		CALL	FLEX_READLINE
+		CALL	ReadKeysTo_PageInA
 	ELSE
 ReadKeysTo_PageInA
 		CLRB
