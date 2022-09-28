@@ -311,8 +311,62 @@ Serv12Select
 		lda	#143
 		ldx	#15
 		jsr	OSBYTE				; Vectors changed
-Serv12Serial						; We're taking over Serial system
-	IF MYELIN
+Serv12Serial	
+	IF MACH_CHIPKIT					; We're taking over Serial system
+		; TODO: - call MOS?
+		; Set 16650 to 19200 8n1 with FIFOs
+
+*  Delay here in case the UART has not come out of reset yet.
+		LDX	#0
+LOP		LEAX	-1,X		      ;	 DELAY FOR SLOW RESETTING UART
+		NOP
+		NOP
+		BNE	LOP
+*
+*  access baud generator, no parity, 1 stop bit, 8 data bits
+		LDA	#$83
+		STA	S16550_LCR
+		LDA	#%10000111			; enable FIFOs and clear trigger RECV interrupt at 8
+		STA	S16550_FCR			; no FIFOs
+
+*
+*  fixed baud rate of 19200:  crystal is 3.686400 Mhz.
+*  Divisor is 4000000/(16*baud)
+BAUD_WORD	EQU SER_BAUD_CLOCK_IN/(BAUD_RATE*16)
+		LDA	#BAUD_WORD%256
+		STA	S16550_RXR		; lsb
+		LDA	#BAUD_WORD/256
+		STA	S16550_RXR+1		; msb=0
+*
+*  access data registers, no parity, 1 stop bits, 8 data bits
+		LDA	#$03
+		STA	S16550_LCR
+*
+*  no loopback, OUT2 on, OUT1 on, RTS on, DTR (LED) on
+		LDA	#$0F
+		STA	S16550_MCR
+*
+*  disable all interrupts: modem, receive error, transmit, and receive
+		LDA	#$00
+		STA	S16550_IER
+
+*
+*  enable FIFOS
+
+		LDA	#$07
+		STA	S16550_FCR
+
+		LDA	#'X'
+		STA	S16550_TXR
+
+
+		LDA	#' '
+1		JSR	SendData
+		INCA
+		BNE	1B
+
+
+	ELSIF MYELIN
 		; no claim to make?
 	ELSE
 		lda	#156
@@ -2045,7 +2099,21 @@ Not6x09Code
 * On entry, A=byte to send
 * On exit,  A,X,Y preserved, P corrupted
 *
-	IF MYELIN
+	IF MACH_CHIPKIT
+SendData
+		sta	,-S
+
+SendWait
+		lda	S16550_LSR
+		anda	#$20			; check for empty FIFO - TODO - should be not full?!?!
+		beq	SendWait
+
+		lda	,S+
+		sta	S16550_TXR
+		rts
+
+
+	ELSIF MYELIN
 SendData
 		pshs	A
 SendWait
@@ -2072,7 +2140,21 @@ SendWait
 * On exit, P =CC, no data
 *            =CS, data present, EQ=HOSTFS_ESC, NE=not HOSTFS_ESC
 *
-	IF MYELIN
+	IF MACH_CHIPKIT
+ReadData
+		lda	S16550_LSR
+		anda	#$01
+		bne	ReadDataOk			; Data present
+		CLC
+		rts					; CC=No data present
+ReadDataOk
+		lda	S16550_RXR
+
+		cmpa	#HOSTFS_ESC
+		SEC
+		rts					; CS=Data present, EQ/NE=HOSTFS_ESC
+
+	ELSIF MYELIN
 ReadData
 		lda	fred_MYELIN_SERIAL_STATUS	
 		anda	#MYELIN_SERIAL_RXRDY
