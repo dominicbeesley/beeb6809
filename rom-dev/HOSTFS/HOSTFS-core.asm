@@ -2137,6 +2137,8 @@ SendWait
 *
 	IF MACH_CHIPKIT
 ReadData
+		PSHS	CC,B
+		SEI
 		lda	#LSR_BIT_RXRDY
 		bita	S16550_LSR
 		bne	ReadDataOk			; Data present already even though we blocked
@@ -2168,6 +2170,7 @@ ReadData
 		stb	S16550_MCR
 
 		;
+		PULS	CC,B
 		CLC
 		rts					; CC=No data present
 ReadDataOk
@@ -2175,6 +2178,7 @@ ReadDataOk
 		ldb	#MCR_WAIT
 		stb	S16550_MCR
 
+		PULS	CC,B
 		cmpa	#HOSTFS_ESC
 		SEC
 		rts					; CS=Data present, EQ/NE=HOSTFS_ESC
