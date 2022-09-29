@@ -356,14 +356,9 @@ BAUD_WORD	EQU SER_BAUD_CLOCK_IN/(BAUD_RATE*16)
 		LDA	#$07
 		STA	S16550_FCR
 
-		LDA	#'X'
-		STA	S16550_TXR
-
-
-		LDA	#' '
-1		JSR	SendData
-		INCA
-		BNE	1B
+		; Set RTS off 
+		LDA	#MCR_WAIT
+		STA	S16550_MCR
 
 
 	ELSIF MYELIN
@@ -2105,7 +2100,7 @@ SendData
 
 SendWait
 		lda	S16550_LSR
-		anda	#$20			; check for empty FIFO - TODO - should be not full?!?!
+		anda	#LSR_BIT_TXRDY		; check for empty FIFO - TODO - should be not full?!?!
 		beq	SendWait
 
 		lda	,S+
@@ -2142,13 +2137,43 @@ SendWait
 *
 	IF MACH_CHIPKIT
 ReadData
-		lda	S16550_LSR
-		anda	#$01
+		lda	#LSR_BIT_RXRDY
+		bita	S16550_LSR
+		bne	ReadDataOk			; Data present already even though we blocked
+		; 
+		ldb	#MCR_CONT
+		stb	S16550_MCR
+
+		; now try a few times, allow time for byte to come through
+		bita	S16550_LSR
 		bne	ReadDataOk			; Data present
+		bita	S16550_LSR
+		bne	ReadDataOk			; Data present
+		bita	S16550_LSR
+		bne	ReadDataOk			; Data present
+		bita	S16550_LSR
+		bne	ReadDataOk			; Data present
+		bita	S16550_LSR
+		bne	ReadDataOk			; Data present
+		bita	S16550_LSR
+		bne	ReadDataOk			; Data present
+		bita	S16550_LSR
+		bne	ReadDataOk			; Data present
+		bita	S16550_LSR
+		bne	ReadDataOk			; Data present
+		bita	S16550_LSR
+		bne	ReadDataOk			; Data present
+
+		ldb	#MCR_WAIT
+		stb	S16550_MCR
+
+		;
 		CLC
 		rts					; CC=No data present
 ReadDataOk
 		lda	S16550_RXR
+		ldb	#MCR_WAIT
+		stb	S16550_MCR
 
 		cmpa	#HOSTFS_ESC
 		SEC
