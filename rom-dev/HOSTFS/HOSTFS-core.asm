@@ -157,7 +157,7 @@ Serv3Select
 ;ENDIF
 SelectMyFilesystem
 		lbsr	SelectFS
-		bsr	Serv9a				; Select FS, print title
+		lbsr	Serv9a				; Select FS, print title
 		jsr	OSNEWL
 		tst	4,S				; test low byte of pushed Y
 		bne	Serv3Ok				; No boot
@@ -172,6 +172,13 @@ SelectMyFilesystem
 		leax	B,X
 		jsr	OSCLI
 Serv3Ok
+
+		lda	#$FE	\Capabilities
+		ldx	#$01
+		ldy	#0
+		jsr	[FSCV]
+
+
 		lda	#0
 		puls	B,X,Y,PC				; Claim
 
@@ -1832,7 +1839,7 @@ WaitExitRelease
 WaitExitScreen
 	IF SWROM
 		ldy	#0
-		bra	vramSelect			; Page in main memory, return to WaitByte
+		jmp	vramSelect			; Page in main memory, return to WaitByte
 	ELSE
 		rts
 	ENDIF
@@ -1853,6 +1860,10 @@ WaitStartLp
 		blo	WaitExit			; HOSTFS_ESC,$Cx - set address for later entry
 		cmpa	#$E0
 		blo	CallCode			; HOSTFS_ESC,$Dx - enter code immediately
+
+		bita	#1			; check for FAST transfers
+		lbne	FastXferEnter
+
 
 * Decide what local memory to transfer data to/from
 * -------------------------------------------------
@@ -1915,13 +1926,12 @@ WaitSaveExit
 * A=$Ex/$Fx - Load/Save
 	IF SWROM
 WaitTransTube
-		CLC
-		adca	#$10
+		adda	#$10
 		rola					; Cy=1/0 for load/save
 		lda	#0
 		rola
 		pshs	A				; A=1/0 for load/save
-		bsr	TubeAction			; Claim Tube and start transfer
+		lbsr	TubeAction			; Claim Tube and start transfer
 		lda	,S
 		beq	WaitSaveTube			; Leave flag pushed with b7=0 for Tube transfer
 WaitLoadTube
@@ -1944,6 +1954,176 @@ CallCode
 		lda	#$00
 		SEC
 		jmp	[ZP_ADDR_TRANS]			; Enter code with A=0, SEC
+
+
+*\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+*\ ------------------------ FAST RAW XFER ---------------------------------------
+*\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+*\
+*\ In Fast RAW transfer mode transfers cannot be interrupted and are sent as raw
+*\ data for speed this requires:
+*\ - an updated host system
+*\ - a reliable connection
+*\ 
+*\ The protocol is changed that the first two bytes after the transfer command F0/E0
+*\ are a 15 bit transfer length followed by that number of raw (escape ignored) 
+*\ bytes - the top bit of the length must be 0!
+*\ For Reads: the number of bytes specified are read and then a following B0 (end transfer)
+*\ is expected
+*\ For Writes: the number of byte specified are sent and then a following B0 (end transder)
+*\ is expected
+*
+*\TODO: Check NUM is a safe place for storing temporaries here
+*\TODO: Faster ReadByte (MACRO?)
+*\TODO: Verify Fast XFER with Host?
+*\TODO: Check this doesn't clash with any other extensions
+*\TODO: Shared code to get length?
+*
+*
+FastXferEnter
+
+*\ Decide what local memory to transfer data to/from
+*\ -------------------------------------------------
+*\ A=&Ex/&Fx - Load/Save
+*\
+	IF SWROM
+		ldb	sysvar_TUBE_PRESENT
+		bpl	F_WaitTransIO    			\ No Tube
+		ldb	ZP_ADDR_TRANS+0			\ Check transfer address
+		incb
+		bne	F_WaitTransTube        		\ Tube present, ADDR<&FFxxxxxx
+	ENDIF
+F_WaitTransIO
+		anda 	#$F0
+;;+	TAY                 		\ Y=transfer flag with b7=1 for IO transfer
+;;+	LDX DADR+2
+;;+	INX
+;;+	BEQ F_IOGo  			\ &FFFFxxxx - current IO memory
+;;+	LDA &D0
+;;+	INX
+;;+	BEQ F_IOScreen 			\ &FFFExxxx - current display memory
+;;+	INX
+;;+	BNE F_IOGo
+;;+	LDA #16     			\ &FFFDxxxx - shadow screen memory
+;;+.F_IOScreen
+;;+	AND #16
+;;+	BEQ F_IOGo         		\ Non-shadow screen displayed, jump with Y=&E0/&F0
+;;+	INY
+;;+	JSR vramSelect           	\ Page in video RAM, Y is now &E1/&F1
+;;+.F_IOGo
+;;+	TYA
+
+		pshs	A
+		ldy	ZP_ADDR_TRANS+2        		\ Stack IO/Screen flag, init Y=0
+		cmpa 	#$F0
+		bhs	F_WaitSaveIO      		\ esc,&Fx - save data
+
+;\ Load data from remote host
+;\ --------------------------
+F_WaitLoadIO
+		; Get transfer len note it is -ve length sent big endian
+		jsr	F_ReadData_W
+		tfr	A,B
+		jsr	F_ReadData_W
+		exg	A,B
+		tfr	D,X					; X hold count
+
+F_LoadIO_lp
+		jsr	F_ReadData_W
+		sta	,Y+
+		leax	1,X
+		bne	F_LoadIO_lp
+F_LoadIO_le
+		jsr	WaitByte  			\ Loop Ended - this _should_ be a B0
+		bra	F_LoadIO_le
+
+; TODO implement a FAST read byte for each hardware, as a macro?
+F_ReadData_W
+		lbsr	ReadData
+		bcc	F_ReadData_W
+		rts
+
+
+; Save data to remote host
+; ------------------------
+F_WaitSaveIO
+		; Get transfer len note it is -ve length sent big endian
+		jsr	F_ReadData_W
+		tfr	A,B
+		jsr	F_ReadData_W
+		exg	A,B
+		tfr	D,X				; X hold count
+
+		; send -X bytes
+F_SaveIO_lp
+		lda	,Y+
+		jsr	SendData
+		leax	1,X
+		bne	F_SaveIO_lp
+F_SaveIO_le
+		jsr	WaitByte  			\ Loop Ended - this _should_ be a B0
+		jmp	F_SaveIO_le
+
+	IF SWROM
+; Tube and ADDR<&FFxxxxxx
+; -----------------------
+F_WaitTransTube
+		adda	#$10
+		rola	        				; Cy=1/0 for load/save
+		lda	#0
+		rola	
+		pshs	A	          		\ A=1/0 for load/save
+		jsr	TubeAction             		\ Claim Tube and start transfer
+		tst	,S		
+		beq	F_SaveTube			\ Leave flag pushed with b7=0 for Tube transfer
+F_LoadTube
+		; Get transfer len
+		jsr	F_ReadData_W
+		tfr	A,B
+		jsr	F_ReadData_W
+		exg	A,B
+		tfr	D,X				; X hold count
+F_LoadTube_lp
+		jsr	TubeDelay
+		jsr	F_ReadData_W
+		sta	sheila_TUBE_R3_DATA     		\ Fetch byte and send to Tube
+		leax	1,X
+		bne	F_LoadTube_lp
+
+F_LoadTube_le
+		jsr	WaitByte  			\ Loop Ended - this _should_ be a B0
+		jmp	F_LoadTube_le
+
+
+F_SaveTube
+		; Get transfer len
+		jsr	F_ReadData_W
+		tfr	A,B
+		jsr	F_ReadData_W
+		exg	A,B
+		tfr	D,X				; X hold count
+F_SaveTube_lp
+
+		lda	sheila_TUBE_R3_DATA
+		jsr	SendData		       		\ Fetch byte from Tube and send it
+		jsr	TubeDelay
+		leax	1,X
+		bne	F_SaveTube_lp
+F_SaveTube_le
+		jsr	WaitByte  			\ Loop Ended - this _should_ be a B0
+		jmp	F_SaveTube_le
+
+	ENDIF ; SWROM
+;
+;\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+;\ ------------------------ FAST RAW XFER END -----------------------------------
+;\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+
+
+
+
+
 
 
 * Screen selection routines
