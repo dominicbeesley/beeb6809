@@ -1027,6 +1027,7 @@ SaveEnterCode
 		puls	X
 		stx	ZP_ADDR_PROG
 		stx	ZP_ADDR_MEMTOP
+		tsta
 SaveEnterDone
 		rts
 
