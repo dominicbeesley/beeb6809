@@ -6289,7 +6289,8 @@ evalLevel1StringLiteral_lp			;LAD1C:
 ;			;  Evaluate a value - called by functions for value parameters
 ;			;
 evalLevel1						; LAD36
-;				LEAU	1,Y		; TODO - not sure whether to inc here or after
+		; TODO: Could call skipSpacesY here - but this is called a lot so maybe best to 
+		; leave as is for now? - tried this and it reduced clocksp noticeably
 		LDA	,U+				;  Get next character
 		CMPA	#' '
 		BEQ	evalLevel1			;  Skip spaces
