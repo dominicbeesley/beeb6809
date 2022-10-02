@@ -8567,6 +8567,7 @@ delocaliseAtZP_GEN_PTR
 		LDX	ZP_GEN_PTR + 2			; string params pointer
 		LDB	,U+				; get stacked string length
 		STB	3,X
+		LDX	,X				; get pointer to string?
 		BRA	strCpFin
 
 
