@@ -2954,6 +2954,22 @@ LD437		ldx	#vduvar_TEMP_draw_W		;
 
 LD453		std	zp_vdu_wksp_draw_loop_ctr	
 		ldx	#vduvar_GRA_WKSP_5_ERRACC	;	D457
+
+; This is used in both line drawing and triangle filling to initialise the variables needed
+; to track along the edge. Sets the deltas to absolute values, and initialises an error
+; term to half the absolute delta in Y.
+;
+;   X[4,5] = ABS(X[4,5])
+;   X[2,3] = ABS(X[2,3])
+;   X[0,1] = X[4,5] / 2
+;
+; On Entry:
+;       X = source (offset from .vduVariablesStart)
+;
+; On Exit:
+;       D = absolute value of X[2,3]
+
+
 LD459		jsr	x_drawline_init_get_delta	;	D459
 		lsra					;	D45C
 		rorb					;	D461
@@ -3296,13 +3312,14 @@ mos_PLOT_Fill_triangle_routine
 	; fill triangle bottom half
 
 	CLC						
-	jsr	plotFillTriangleHalf		
-	jsr	x_exg4atGRACURINTwithGRACURINTOLD
+	jsr	plotFillTriangleHalf	
 
+	jsr	x_exg4atGRACURINTwithGRACURINTOLD
 	ldx	#vduvar_VDU_Q_START+5		
 	jsr	x_exg4atGRACURINTOLDwithX
 	SEC			
 	jsr	plotFillTriangleHalf
+
 	ldx	#vduvar_GRA_WKSP+$E
 	ldy	#vduvar_VDU_Q_START+5
 	jsr	copy8fromXtoY
@@ -3310,7 +3327,7 @@ mos_PLOT_Fill_triangle_routine
 ;; ----------------------------------------------------------------------------
 LD632	ldx	#vduvar_VDU_Q_START+5
 	ldy	#vduvar_GRA_CUR_INT_OLD		
-LD636	lda	2,x				;	if [2+Y] > [2+X] then swap
+LD636	ldd	2,x				;	if [2+Y] > [2+X] then swap
 	cmpd	2,y				
 	blo	LD657rts				
 	jmp	x_exchange_4atY_with_4atX	
@@ -3348,9 +3365,9 @@ plotFillTriangleHalf
 		
 		jsr	x_copyplotcoordsexttoY
 		
-		ldd	vduvar_VDU_Q_END - 1		
+		ldd	vduvar_VDU_Q_START+7		
 		subd	vduvar_GRA_CUR_INT+2		
-		std	vduvar_VDU_Q_END - 9
+		std	vduvar_VDU_Q_START
 		beq	LD69F				;	D686
 
 LD688		jsr	LD6A2				;	D688
@@ -3358,9 +3375,9 @@ LD688		jsr	LD6A2				;	D688
 		jsr	LD774				;	D68D
 		ldx	#vduvar_TEMP_8			;	D690
 		jsr	LD774				;	D692
-		inc	vduvar_VDU_Q_END - 9		;	D695
+		inc	vduvar_VDU_Q_START+1		;	D695
 		bne	LD688				;	D698
-		inc	vduvar_VDU_Q_START+1		;	D69A
+		inc	vduvar_VDU_Q_START		;	D69A
 		bne	LD688				;	D69D
 LD69F		puls	CC				;	D69F
 		bcc	LD657rts			;	D6A0
