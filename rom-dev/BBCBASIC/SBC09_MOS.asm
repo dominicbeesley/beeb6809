@@ -354,6 +354,9 @@ RESET_HANDLER
       ;; Enter Basic
       JMP   $C000
 
+__CODE_END
+__FREESPACE     EQU $FFF0-__CODE_END
+
 
 ;; *************************************************************
 ;; Vectors
