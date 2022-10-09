@@ -4,6 +4,8 @@
 		include "../../includes/oslib.inc"
 		include "./gen-version.inc"
 
+DOCHIPKIT_RTC EQU 0
+
 ; TODO: CLC is set after mos_VDU_WRCH - check if this is necessary suspect it is just used to allow a bcc to replace bra at LE0C8
 ;       not sure but it may be used for tracking whether a char went to printer around the exit routine
 
@@ -2954,6 +2956,22 @@ LD437		ldx	#vduvar_TEMP_draw_W		;
 
 LD453		std	zp_vdu_wksp_draw_loop_ctr	
 		ldx	#vduvar_GRA_WKSP_5_ERRACC	;	D457
+
+; This is used in both line drawing and triangle filling to initialise the variables needed
+; to track along the edge. Sets the deltas to absolute values, and initialises an error
+; term to half the absolute delta in Y.
+;
+;   X[4,5] = ABS(X[4,5])
+;   X[2,3] = ABS(X[2,3])
+;   X[0,1] = X[4,5] / 2
+;
+; On Entry:
+;       X = source (offset from .vduVariablesStart)
+;
+; On Exit:
+;       D = absolute value of X[2,3]
+
+
 LD459		jsr	x_drawline_init_get_delta	;	D459
 		lsra					;	D45C
 		rorb					;	D461
@@ -3268,45 +3286,53 @@ plot_filhorz_back_qry				; LD506
 ;; ----------------------------------------------------------------------------
 ;; PLOT Fill triangle routine
 mos_PLOT_Fill_triangle_routine
-		TODO "mos_PLOT_Fill_triangle_routine"
-;	ldx	#$20				;	D5EA
-;	ldy	#$3E				;	D5EC
-;	jsr	copy8fromXtoY				;	D5EE
-;	jsr	LD632				;	D5F1
-;	ldx	#$14				;	D5F4
-;	ldy	#$24				;	D5F6
-;	jsr	LD636				;	D5F8
-;	jsr	LD632				;	D5FB
-;	ldx	#$20				;	D5FE
-;	ldy	#$2A				;	D600
-;	jsr	x_coords_to_width_height				;	D602
-;	lda	vduvar_TEMP_8+3		;	D605
-;	sta	vduvar_GRA_WKSP+2		;	D608
-;	ldx	#$28				;	D60B
-;	jsr	LD459				;	D60D
-;	ldy	#$2E				;	D610
-;	jsr	x_copyplotcoordsexttoY				;	D612
-;	jsr	x_exg4atGRACURINTwithGRACURINTOLD				;	D615
-;	clc					;	D618
-;	jsr	LD658				;	D619
-;	jsr	x_exg4atGRACURINTwithGRACURINTOLD				;	D61C
-;	ldx	#$20				;	D61F
-;	jsr	x_exchange_4atGRACUREXTOLDwithX				;	D621
-;	sec					;	D624
-;	jsr	LD658				;	D625
-;	ldx	#$3E				;	D628
-;	ldy	#$20				;	D62A
-;	jsr	copy8fromXtoY				;	D62C
-;	jmp	mos_PLOT_MOVE_absolute				;	D62F
+	ldx	#vduvar_VDU_Q_START+5
+	ldy	#vduvar_GRA_WKSP+$E
+	jsr	copy8fromXtoY			; copy 300/7+X to 300/7+Y
+						; this gets XY data parameters and current graphics
+						; cursor position
+	jsr	LD632				; exchange 320/3 with 314/7 if 316/7=<322/3
+	ldx	#vduvar_GRA_CUR_INT_OLD				
+	ldy	#vduvar_GRA_CUR_INT				
+	jsr	LD636				; exchange 324/3 with 314/7 if 316/7=<326/3
+	jsr	LD632				; exchange 320/3 with 314/7 if 316/7=<322/3
+	; =============== Toby Lobster comments and references interspersed see https://tobylobster.github.io/mos/mos/S-s8.html#SP60
+
+
+	ldx	#vduvar_VDU_Q_START+5		; Get "main" line delta 
+	ldy	#vduvar_TEMP_8+2		
+	jsr	x_coords_to_width_height	; stores result in Y
+
+	lda	vduvar_TEMP_8+2			; Get high byte of dX as a flag for later
+	sta	vduvar_GRA_WKSP+2		
+	ldx	#vduvar_TEMP_8			
+	jsr	LD459				; Initialise main line "erracc"
+	ldy	#vduvar_TEMP_8+6		
+	jsr	x_copyplotcoordsexttoY		
+	jsr	x_exg4atGRACURINTwithGRACURINTOLD
+
+	; fill triangle bottom half
+
+	CLC						
+	jsr	plotFillTriangleHalf	
+
+	jsr	x_exg4atGRACURINTwithGRACURINTOLD
+	ldx	#vduvar_VDU_Q_START+5		
+	jsr	x_exg4atGRACURINTOLDwithX
+	SEC			
+	jsr	plotFillTriangleHalf
+
+	ldx	#vduvar_GRA_WKSP+$E
+	ldy	#vduvar_VDU_Q_START+5
+	jsr	copy8fromXtoY
+	jmp	mos_PLOT_MOVE_absolute
 ;; ----------------------------------------------------------------------------
-;LD632:	ldx	#$20				;	D632
-;	ldy	#$14				;	D634
-;LD636:	lda	vduvar_GRA_WINDOW_BOTTOM,x	;	D636
-;	cmp	vduvar_GRA_WINDOW_BOTTOM,y	;	D639
-;	lda	vduvar_GRA_WINDOW_BOTTOM+1,x	;	D63C
-;	sbc	vduvar_GRA_WINDOW_BOTTOM+1,y	;	D63F
-;	bmi	LD657				;	D642
-;	jmp	x_exchange_300_3Y_with_300_3X	;	D644
+LD632	ldx	#vduvar_VDU_Q_START+5
+	ldy	#vduvar_GRA_CUR_INT_OLD		
+LD636	ldd	2,x				;	if [2+Y] > [2+X] then swap
+	cmpd	2,y				
+	blo	LD657rts				
+	jmp	x_exchange_4atY_with_4atX	
 ;; ----------------------------------------------------------------------------
 ;; OSBYTE 134  Read cursor position
 mos_OSBYTE_134
@@ -3317,41 +3343,51 @@ mos_OSBYTE_134
 		ldb	vduvar_TXT_CUR_Y		;	D64F
 		subb	vduvar_TXT_WINDOW_TOP		;	D653
 		tfr	D,Y
-LD657		rts					;	D657
+LD657rts	rts					;	D657
 ;; ----------------------------------------------------------------------------
-;LD658:	php					;	D658
-;	ldx	#$20				;	D659
-;	ldy	#$35				;	D65B
-;	jsr	x_coords_to_width_height				;	D65D
-;	lda	vduvar_GRA_WKSP+6		;	D660
-;	sta	$033D				;	D663
-;	ldx	#$33				;	D666
-;	jsr	LD459				;	D668
-;	ldy	#$39				;	D66B
-;	jsr	x_copyplotcoordsexttoY				;	D66D
-;	sec					;	D670
-;	lda	vduvar_VDU_Q_END - 2			;	D671
-;	sbc	vduvar_GRA_CUR_INT+2		;	D674
-;	sta	vduvar_VDU_Q_END - 9;	D677
-;	lda	vduvar_VDU_Q_END - 1			;	D67A
-;	sbc	vduvar_GRA_CUR_INT+3		;	D67D
-;	sta	$031C				;	D680
-;	ora	vduvar_VDU_Q_END - 9;	D683
-;	beq	LD69F				;	D686
-;LD688:	jsr	LD6A2				;	D688
-;	ldx	#$33				;	D68B
-;	jsr	LD774				;	D68D
-;	ldx	#$28				;	D690
-;	jsr	LD774				;	D692
-;	inc	vduvar_VDU_Q_END - 9;	D695
-;	bne	LD688				;	D698
-;	inc	$031C				;	D69A
-;	bne	LD688				;	D69D
-;LD69F:	plp					;	D69F
-;	bcc	LD657				;	D6A0
+plotFillTriangleHalf
+		pshs	CC				; store bottom/top flag
 
-;LD6A2:	ldx	#$39				;	D6A2
-;	ldy	#$2E				;	D6A4
+		; find dX,dY for "minor" line
+
+		ldx	#vduvar_VDU_Q_START+5
+		ldy	#vduvar_GRA_WKSP+5
+		jsr	x_coords_to_width_height
+
+		; get and store sign of dX for later
+		lda	vduvar_GRA_WKSP+5	
+		sta	vduvar_GRA_WKSP+$D
+
+		ldx	#vduvar_GRA_WKSP+3	
+		jsr	LD459				; init minor line delta
+
+		; init point on minor line
+
+		ldy	#vduvar_GRA_WKSP+9
+		
+		jsr	x_copyplotcoordsexttoY
+		
+		ldd	vduvar_VDU_Q_START+7		
+		subd	vduvar_GRA_CUR_INT+2		
+		std	vduvar_VDU_Q_START
+		beq	LD69F				;	D686
+
+LD688		jsr	LD6A2				;	D688
+		ldx	#vduvar_GRA_WKSP+3		;	D68B
+		jsr	LD774				;	D68D
+		ldx	#vduvar_TEMP_8			;	D690
+		jsr	LD774				;	D692
+		inc	vduvar_VDU_Q_START+1		;	D695
+		bne	LD688				;	D698
+		inc	vduvar_VDU_Q_START		;	D69A
+		bne	LD688				;	D69D
+LD69F		puls	CC				;	D69F
+		bcc	LD657rts			;	D6A0
+
+		; do final row at top of triangle
+
+LD6A2		ldx	#vduvar_GRA_WKSP+9		;	D6A2
+		ldy	#vduvar_TEMP_8+6		;	D6A4
 
 *****************************************************
 * OLD API X,Y contained PAGE 3 relative pointers to *
@@ -3449,37 +3485,33 @@ LD75C		aslb					;	D75C
 LD76E		jsr	x_mos_vdu_gra_drawpixels_in_grpixmask_cell_line_in_B				;	D76E
 		jmp	3B				;	D771
 ;; ----------------------------------------------------------------------------
-;LD774:	inc	vduvar_TXT_WINDOW_LEFT,x	;	D774
-;	bne	LD77C				;	D777
-;	inc	vduvar_TXT_WINDOW_BOTTOM,x	;	D779
-;LD77C:	sec					;	D77C
-;	lda	vduvar_GRA_WINDOW_LEFT,x	;	D77D
-;	sbc	vduvar_GRA_WINDOW_BOTTOM,x	;	D780
-;	sta	vduvar_GRA_WINDOW_LEFT,x	;	D783
-;	lda	vduvar_GRA_WINDOW_LEFT+1,x	;	D786
-;	sbc	vduvar_GRA_WINDOW_BOTTOM+1,x	;	D789
-;	sta	vduvar_GRA_WINDOW_LEFT+1,x	;	D78C
-;	bpl	LD7C1				;	D78F
-;LD791:	lda	vduvar_TXT_WINDOW_RIGHT,x	;	D791
-;	bmi	LD7A1				;	D794
-;	inc	vduvar_GRA_WINDOW_TOP,x		;	D796
-;	bne	LD7AC				;	D799
-;	inc	vduvar_GRA_WINDOW_TOP+1,x	;	D79B
-;	jmp	LD7AC				;	D79E
-;; ----------------------------------------------------------------------------
-;LD7A1:	lda	vduvar_GRA_WINDOW_TOP,x		;	D7A1
-;	bne	LD7A9				;	D7A4
-;	dec	vduvar_GRA_WINDOW_TOP+1,x	;	D7A6
-;LD7A9:	dec	vduvar_GRA_WINDOW_TOP,x		;	D7A9
-;LD7AC:	clc					;	D7AC
-;	lda	vduvar_GRA_WINDOW_LEFT,x	;	D7AD
-;	adc	vduvar_GRA_WINDOW_RIGHT,x	;	D7B0
-;	sta	vduvar_GRA_WINDOW_LEFT,x	;	D7B3
-;	lda	vduvar_GRA_WINDOW_LEFT+1,x	;	D7B6
-;	adc	vduvar_GRA_WINDOW_RIGHT+1,x	;	D7B9
-;	sta	vduvar_GRA_WINDOW_LEFT+1,x	;	D7BC
-;	bmi	LD791				;	D7BF
-;LD7C1:	rts					;	D7C1
+LD774		inc	9,x				; inc curY (16)
+		bne	LD77C				
+		inc	8,x	
+LD77C
+		ldd	0,x
+		subd	2,X
+		std	0,X
+		bpl	LD7C1
+LD791		lda	10,x			; direction flag
+		bmi	LD7A1				
+		inc	7,x				
+		bne	LD7AC				
+		inc	6,x				
+		jmp	LD7AC				
+; ----------------------------------------------------------------------------
+LD7A1		lda	7,x			; decrement cur X
+		bne	LD7A9
+		dec	6,x
+LD7A9		dec	7,x
+
+		; update error term
+LD7AC
+		ldd	0,x
+		addd	4,x
+		std	0,x
+		bmi	LD791				;	D7BF
+LD7C1		rts					;	D7C1
 ;; ----------------------------------------------------------------------------
 ;; OSBYTE 135  Read character at text cursor position
 mos_OSBYTE_135
@@ -4946,7 +4978,7 @@ mostbl_star_commands
 		STARCMD	"SAVE"	,mos_STAR_SAVE		,$00	; *SAVE     &E23E, A=0     X=>String
 		STARCMD	"SPOOL"	,mos_STAR_SPOOL		,$00	; *SPOOL    &E281, A=0     X=>String
 ;;;	STARCMD	"TAPE'	,mos_STAR_OSBYTE_A	,$8C	; *TAPE     &E348, A=&8C   OSBYTE
-	IF MACH_CHIPKIT
+	IF MACH_CHIPKIT AND DOCHIPKIT_RTC
 		STARCMD "TIME"	,mos_STAR_TIME		,$00	; *TIME
 	ENDIF
 		STARCMD	"TV"	,mos_STAR_OSBYTE_A	,$90	; *TV       &E348, A=&90   OSBYTE
@@ -6180,7 +6212,7 @@ mostbl_OSWORD_LOOK_UP
 		FDB	mos_OSWORD_nowt			;	E651
 		FDB	mos_OSWORD_nowt			;	E653
 		FDB	mos_OSWORD_nowt			;	E655
-	IF MACH_CHIPKIT
+	IF MACH_CHIPKIT AND DOCHIPKIT_RTC
 		FDB	mos_OSWORD_E_read_rtc
 		FDB	mos_OSWORD_F_write_rtc
 
@@ -8429,7 +8461,7 @@ LF11E		adda	#$10				;add 16
 		bpl	LF103				;and do it again if 0=<result<128
 
 LF123		decb					;decrement X
-		bpl	LF0E3				;scan again if greater than 0
+		bpl	LF0E3				;scan again if >= 0
 		tfr	b,a				;
 LF127		m_tax_se				;
 		puls	CC				;pull flags
@@ -9570,6 +9602,11 @@ debug_print_hex_digit
 ;		sta	$FCA0				
 ;		puls	A,X,PC
 
+	IF MACH_CHIPKIT
+debug_print_ch	; TODO - do debug on serial port
+		RTS
+	ELSE
+
 debug_print_ch	pshs	A,X
 		ldx	#100
 		lda	#ACIA_TDRE
@@ -9581,6 +9618,7 @@ debug_print_ch	pshs	A,X
 		anda	#$7F
 		sta	sheila_ACIA_DATA
 		puls	A,X,PC
+	ENDIF
 
 ;;;mostbl_BUFFER_ADDRESS_LO_LOOK_UP_TABLE
 ;;;mostbl_BUFFER_ADDRESS_HI_LOOK_UP_TABLE
@@ -9626,7 +9664,7 @@ mc_logo_0
 		FCB	$9E,$DC,$DC,$F8,$E0,$80,$00,$00
 
 
-	IF MACH_CHIPKIT
+	IF MACH_CHIPKIT AND DOCHIPKIT_RTC
 mos_STAR_TIME
 		;TODO - find somewhere else to put this?
 		ldx	#stack

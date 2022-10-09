@@ -419,6 +419,8 @@ RESET_MSG
    ENDIF
       FCB  $00
 
+__CODE_END
+__FREESPACE     EQU $FFF0-__CODE_END
 
 ;; *************************************************************
 ;; Vectors

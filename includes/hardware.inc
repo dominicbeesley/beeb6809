@@ -249,10 +249,19 @@ S16550_MCR		equ	S16550+4		; Modem control register
 S16550_DTR		equ	S16550+1		; Bit equate used to control status LED
 S16550_LSR		equ	S16550+5		; Line status register
 
-SER_BIT_RXRDY		EQU	$01            ; BIT MASK FOR RX BUFFER FULL
-SER_BIT_TXRDY		EQU	$20            ; BIT MASK FOR TX BUFFER EMPTY
+LSR_BIT_RXRDY		EQU	$01            ; BIT MASK FOR RX BUFFER FULL
+LSR_BIT_TXRDY		EQU	$20            ; BIT MASK FOR TX BUFFER EMPTY
+
+MCR_BIT_DTR		EQU	$01
+MCR_BIT_RTS		EQU	$02
+MCR_BIT_OUT1		EQU	$04
+MCR_BIT_OUT2		EQU	$08
+MCR_BIT_LOOP		EQU	$10
+
 
 SER_BAUD_CLOCK_IN	EQU	7372800			; frequency of on board serial crystal
+
+
 
 
 sheila_VINC_data	EQU	$FE50

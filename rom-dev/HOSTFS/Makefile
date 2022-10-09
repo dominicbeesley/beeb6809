@@ -1,10 +1,16 @@
 ASFLAGS=-v -3 
+
 TARGETS_BEEB=	HOSTFS.bin \
-				loadHOSTFSandsyms.noi \
-				loadHOSTFS.noi \
-				HOSTFS-myelin.bin \
-				loadHOSTFS-myelin-andsyms.noi \
-				loadHOSTFS-myelin.noi
+		loadHOSTFSandsyms.noi \
+		loadHOSTFS.noi \
+		HOSTFS-myelin.bin \
+		loadHOSTFS-myelin-andsyms.noi \
+		loadHOSTFS-myelin.noi
+
+TARGETS_CHIPKIT=HOSTFS-ck.bin \
+		loadHOSTFSandsyms.noi \
+		loadHOSTFS.noi
+
 
 DEPS=	../../includes/hardware.inc \
 		../../includes/common.inc \
@@ -36,6 +42,14 @@ $(BEEBOUT)/loadHOSTFSandsyms.noi $(BEEBOUT)/loadHOSTFS.noi: $(BEEBOUT)/HOSTFS.sy
 		./makeloadnoi.sh $(BEEBOUT)/HOSTFS.bin $(BEEBOUT)/loadHOSTFS.noi $(ROMNO)
 		cat $(BEEBOUT)/loadHOSTFS.noi $(BEEBOUT)/HOSTFS.sym $(BEEBOUT)/../../mos/beeb6809-mos/mosrom.sym >$(BEEBOUT)/loadHOSTFSandsyms.noi
 		echo -e "WAITFORSTOP 1\nR PC mos_handle_res\n" >>$(BEEBOUT)/loadHOSTFSandsyms.noi
+
+$(CHIPKITOUT)/loadHOSTFSandsyms.noi $(CHIPKITOUT)/loadHOSTFS.noi: $(CHIPKITOUT)/HOSTFS-ck.sym
+		../../scripts/prefixromsadds.sh $(CHIPKITOUT)/HOSTFS-ck.sym $(ROMNO)
+		./makeloadnoi.sh $(CHIPKITOUT)/HOSTFS-ck.bin $(CHIPKITOUT)/loadHOSTFS.noi $(ROMNO)
+		cat $(CHIPKITOUT)/loadHOSTFS.noi $(CHIPKITOUT)/HOSTFS-ck.sym $(CHIPKITOUT)/../../mos/beeb6809-mos/mosrom.sym >$(CHIPKITOUT)/loadHOSTFSandsyms.noi
+		echo -e "WAITFORSTOP 1\nR PC mos_handle_res\n" >>$(CHIPKITOUT)/loadHOSTFSandsyms.noi
+
+
 
 $(BEEBOUT)/loadHOSTFS-myelin-andsyms.noi $(BEEBOUT)/loadHOSTFS-myelin.noi: $(BEEBOUT)/HOSTFS-myelin.sym
 		../../scripts/prefixromsadds.sh $(BEEBOUT)/HOSTFS-myelin.sym $(ROMNO)
