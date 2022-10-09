@@ -10,12 +10,6 @@ FC_RTS_CTS   EQU 2
 
 FLOW_CONTROL EQU FC_RTS_CTS
 
-;; Threshold at which RTS is asserted
-FC_LO_THRESH EQU $80
-
-;; Threshold at which RTS is de-asserted
-FC_HI_THRESH EQU $C0
-
 ;; *************************************************************
 ;; Memory
 ;; *************************************************************
@@ -35,106 +29,66 @@ ZP_END       EQU  $00fF
 
 BRKV         EQU  $0202
 
+
 ;; Rx Buffer is 0x7e00-0x7eFF - Set in middle as B,X addressing is used (B is signed)
 RX_BUFFER    EQU  $7E80
 
 ;; Tx Buffer is 0x7f00-0x7FFF - Set in middle as B,X addressing is used (B is signed)
 TX_BUFFER    EQU  $7F80
 
-UART         EQU  $FE00
-
-UART_MRA     EQU UART+0x0
-UART_SRA     EQU UART+0x1
-UART_CSRA    EQU UART+0x1
-UART_CRA     EQU UART+0x2
-UART_THRA    EQU UART+0x3
-UART_RHRA    EQU UART+0x3
-UART_ACR     EQU UART+0x4
-UART_ISR     EQU UART+0x5
-UART_IMR     EQU UART+0x5
-UART_CTU     EQU UART+0x6
-UART_CTL     EQU UART+0x7
-UART_MRB     EQU UART+0x8
-UART_SRB     EQU UART+0x9
-UART_CSRB    EQU UART+0x9
-UART_CRB     EQU UART+0xa
-UART_THRB    EQU UART+0xb
-UART_RHRB    EQU UART+0xb
-UART_IVR1    EQU UART+0xc
-UART_OPCR    EQU UART+0xd
-UART_OPRSET  EQU UART+0xe ; write
-UART_STARTCT EQU UART+0xe ; read command
-UART_OPRCLR  EQU UART+0xf ; write
-UART_STOPCT  EQU UART+0xf ; read command
-
-UART_RXINT   EQU  $01
-UART_TXINT   EQU  $04
-
-;;   ORG $C000
+UART         EQU  $A000
 
 ;; *************************************************************
-;; UART Initialization
+;; UART
 ;; *************************************************************
 
-UART_INIT MACRO
-      LDA  #%00010011    ; NO PARITY, 8 BITS/CHAR - MR1A,B
-      STA  UART_MRA
-      LDA  #%00010111    ; CTS ENABLE TX, 1.000 STOP BITS - MR2A,B
-      STA  UART_MRA
-      LDA  #%00000101    ; ENABLE TX AND RX
-      STA  UART_CRA
-      LDA  #%11101110    ; External 16x -> 115200 baud
-      STA  UART_CSRA
-      LDA  #%01110000    ; Timer Mode, Clock = XTAL/16 = 3686400 / 16 = 230400 Hz
-      STA  UART_ACR
-      LDD  #(2304/2-1)   ; 16-bit write to counter to get a 100Hz tick
-      STD  UART_CTU
-      LDA  #%00000001    ; assert RTS
-      STA  UART_OPRSET
-      LDA  #$0A          ; Timer Int, Rx Int enabled; Rx Int disabled
-      STA  UART_IMR
-      LDA  UART_STARTCT  ; Start the counter-timer
-      LDA  #%00000100
-      STA  UART_OPCR     ; Ouput timer squarewave on OP3 for debugging only
-      ENDM
+   IF FLOW_CONTROL == FC_RTS_CTS
+;; If Rx occupancy > 75% then
+;;     UART_CTRL = D5 (B6:5=10; RTS high; TxIRQ disabled)
+;; else if Tx occupancy > 0% then
+;;     UART_CTRL = B5 (B6:5=01; RTS low;  TxIRQ enabled)
+;; else
+;;     UART_CTRL = 95 (95: B6:5=00; RTS low;  TxIRQ disabled)
 
-;; *************************************************************
-;; Main IRQ Handler
-;; *************************************************************
+UPDATE_UART_CTRL
+      LDB  <ZP_RX_TAIL    ; Determine whethe RTS needs to be raised
+      SUBB <ZP_RX_HEAD    ; Tail - Head gives the receive buffer occupancy
+      CMPB #$C0           ; C=0 if occupancy >=75%
+      LDB  #$D5
+      BCC  2F
+      LDB  <ZP_TX_HEAD    ; Is the Tx buffer empty?
+      CMPB <ZP_TX_TAIL
+      BEQ  1F
+      LDB  #$B5
+      BRA  2F
+1     LDB  #$95
+2     STB  UART
+      RTS
+   ENDIF
 
-IRQ_RX
-      LDA  UART_RHRA       ; Read UART Rx Data (and clear interrupt)
+IRQ_HANDLER
+      LDA  UART            ; Read UART status register
+      BITA #$01            ; Test bit 0 (RxFull)
+
+      BEQ  IRQ_TX          ; no, then go on to check for a transmit interrupt
+      LDA  UART+1          ; Read UART Rx Data (and clear interrupt)
       CMPA #$1B            ; Test for escape
       BNE  IRQ_NOESC
       LDB  #$80            ; Set the escape flag
       STB  <ZP_ESCFLAG
-
 IRQ_NOESC
       LDB  <ZP_RX_TAIL     ; B = keyboard buffer tail index
       LDX  #RX_BUFFER      ; X = keyboard buffer base address
       STA  B,X             ; store the character in the buffer
       INCB                 ; increment the tail pointer
       CMPB <ZP_RX_HEAD     ; has it hit the head (buffer full?)
-      BEQ  IRQ_HANDLER     ; yes, then drop characters
+      BEQ  IRQ_TX          ; yes, then drop characters
       STB  <ZP_RX_TAIL     ; no, then save the incremented tail pointer
 
-   ;; Simple implementation of RTS/CTS to prevent receive buffer overflow
-   IF FLOW_CONTROL == FC_RTS_CTS
-      SUBB <ZP_RX_HEAD     ; Tail - Head gives the receive buffer occupancy
-      CMPB #FC_HI_THRESH   ; Compare with upper threshold
-      BNE  IRQ_HANDLER
-      LDB  #$01
-      STB  UART_OPRCLR     ; de-assert RTS
-   ENDIF
-
-IRQ_HANDLER
-
-      LDA  UART_SRA        ; Read UART status register
-      BITA #UART_RXINT     ; Test bit 0 (RxRdy)
-      BNE  IRQ_RX          ; Ready, branch back handle the character
-
-      BITA #UART_TXINT     ; Test bit 2 (TxRdy)
-      BEQ  IRQ_TIMER       ; Not ready, branch forward to the timer check
+IRQ_TX
+      LDA  UART            ; Read UART status register
+      BITA #$02            ; Test bit 0 (TxEmpty)
+      BEQ  IRQ_EXIT        ; Not empty, so exit
 
    ;; Simple implementation of XON/XOFF to prevent receive buffer overflow
    IF FLOW_CONTROL == FC_XON_XOFF
@@ -158,30 +112,21 @@ IRQ_TX_CHAR
       INCB
       STB  <ZP_TX_HEAD
       LDA  B,X
+
 SEND_A
-      STA  UART_THRA
-
-IRQ_TIMER
-      LDA  UART_ISR        ; Read UART Interrupt Status Register
-      ANDA #$08            ; Check the timer bit
-      BEQ  IRQ_EXIT
-
-      LDA  UART_STOPCT     ; Clear the interrupt
-      INC  <ZP_TIME        ; Update the system clock
-      BNE  IRQ_EXIT
-      INC  <ZP_TIME+1
-      BNE  IRQ_EXIT
-      INC  <ZP_TIME+2
-      BNE  IRQ_EXIT
-      INC  <ZP_TIME+3
+      STA  UART+1
 
 IRQ_EXIT
-      RTI
 
+   IF FLOW_CONTROL == FC_RTS_CTS
 IRQ_TX_EMPTY
-      LDA  #$0A          ; Disable TX interrupts
-      STA  UART_IMR
-      BRA  IRQ_TIMER
+      BSR UPDATE_UART_CTRL
+   ELSE
+      RTI
+IRQ_TX_EMPTY
+      LDA  #$95
+      STA  UART
+   ENDIF
 
 ILL_HANDLER
 SWI_HANDLER
@@ -190,7 +135,7 @@ FIRQ_HANDLER
 NMI_HANDLER
       RTI
 
-NVRDCH
+OSRDCH
       PSHS  B,X
 1     LDB   <ZP_RX_HEAD
       CMPB  <ZP_RX_TAIL
@@ -199,25 +144,43 @@ NVRDCH
       LDA   B,X
       INC   <ZP_RX_HEAD
    IF FLOW_CONTROL == FC_RTS_CTS
-      LDB   <ZP_RX_TAIL    ; Determine whethe RTS needs to be raised
-      SUBB  <ZP_RX_HEAD    ; Tail - Head gives the receive buffer occupancy
-      CMPB  #FC_LO_THRESH
-      BNE   1F
-      LDB   #$01
-      STB   UART_OPRSET     ; assert RTS
-1
+      BSR   UPDATE_UART_CTRL
    ENDIF
       LDB   <ZP_ESCFLAG
       ROLB
       PULS  B,X
       RTS
 
+;; *************************************************************
+;; OS Interface
+;; *************************************************************
+
+OSINIT
+      CLRA           ;; Big Endian Flag
+      LDX   #BRKV
+      LDY   #ZP_ESCFLAG
+      ;; fall through to
+
+;; *************************************************************
+;; File System
+;; *************************************************************
+
+
+OSARGS
+OSBGET
+OSBPUT
+OSCLI
+OSFILE
+OSFILE_LOAD
+OSFILE_SAVE
+OSFIND
+      RTS
 
 ;; *************************************************************
 ;; OSWORD
 ;; *************************************************************
 
-NVWORD
+OSWORD
       CMPA  #$01
       BLO   OSWORD_READLINE
       BEQ   OSWORD_READSYSCLK
@@ -282,7 +245,15 @@ OSWORD_READSYSCLK
       STA  ,X+
       LDA  <ZP_TIME+3
       STA  ,X+
-      RTS
+      ;; Increment the clock each time it's read, as we have no other timer!
+      INC  <ZP_TIME
+      BNE  1F
+      INC  <ZP_TIME+1
+      BNE  1F
+      INC  <ZP_TIME+2
+      BNE  1F
+      INC  <ZP_TIME+3
+1     RTS
 
 OSWORD_WRITESYSCLK
       LDA  ,X+
@@ -302,7 +273,7 @@ OSWORD_SOUND
 ;; OSBYTE
 ;; *************************************************************
 
-NVBYTE
+OSBYTE
       CMPA  #$7C
       BNE   1F
       CLR   <ZP_ESCFLAG
@@ -335,7 +306,20 @@ NVBYTE
       LDX   #$0000
       RTS
 
-NVWRCH
+;; *************************************************************
+;; Input/Output
+;; *************************************************************
+
+OSASCI
+      CMPA  #$0D
+      BNE   OSWRCH
+
+OSNEWL
+      LDA   #$0A
+      JSR   OSWRCH
+      LDA   #$0D
+
+OSWRCH
       PSHS  B,X
 1
       LDB   <ZP_TX_TAIL ; Is there space in the Tx buffer for one more character?
@@ -346,8 +330,12 @@ NVWRCH
       LDX   #TX_BUFFER  ; Write the character to the tail of the Tx buffer
       STA   B,X
       STB   <ZP_TX_TAIL ; Save the updated tail pointer
-      LDB   #$0B        ; Enable Tx interrupts to make sure buffer is serviced
-      STB   UART_IMR
+   IF FLOW_CONTROL == FC_RTS_CTS
+      JSR   UPDATE_UART_CTRL
+   ELSE
+      LDB   #$B5        ; Enable Tx interrupts to make sure buffer is serviced
+      STB   UART
+   ENDIF
       PULS  B,X
       RTS
 
@@ -391,16 +379,34 @@ RESET_HANDLER
       STD   BRKV
       ;; Initialize the UART
       ;; RX INT ENABLED, RTS LOW, TX INT DISABLED, 8N1, CLK/16
-      UART_INIT
+   IF FLOW_CONTROL == FC_RTS_CTS
+      JSR  UPDATE_UART_CTRL
+   ELSE
+      LDA  #$95
+      STA  UART
+   ENDIF
       ;; Enable interrupts
       CLI
       ;; Print the reset message
       LDX   #RESET_MSG
       JSR   PRSTRING
       ;; Enter Basic
-      JMP   $8000
+      JMP   $C000
+
+__CODE_END
+
+      ;; We are placing the manually to work around a asm6809 bug
+      ;; that prevented us filling the rom completely
+   IF CPU_6309
+      ORG   $FFDB
+   ELSE
+      ORG   $FFDC
+   ENDIF
 
 RESET_MSG
+
+__FREESPACE     EQU RESET_MSG-__CODE_END
+
       FCB  $0D
    IF CPU_6309
       IF NATIVE
@@ -418,14 +424,11 @@ RESET_MSG
    ENDIF
       FCB  $00
 
-__CODE_END
-__FREESPACE     EQU $FEF0-__CODE_END
-
 ;; *************************************************************
 ;; Vectors
 ;; *************************************************************
 
-      ORG   $FEF0
+      ORG   $FFF0
 
       FDB   ILL_HANDLER
       FDB   SWI3_HANDLER
@@ -435,83 +438,3 @@ __FREESPACE     EQU $FEF0-__CODE_END
       FDB   SWI_HANDLER
       FDB   NMI_HANDLER
       FDB   RESET_HANDLER
-
-;; *************************************************************
-;; MOS API
-;; *************************************************************
-
-      ORG $FF00
-
-OSINIT
-      CLRA
-      LDX   #BRKV
-      LDY   #ZP_ESCFLAG
-      RTS
-
-      ORG $FFCE
-
-OSFIND
-      RTS
-      NOP
-      NOP
-
-OSGBPB
-      RTS
-      NOP
-      NOP
-
-OSBPUT
-      RTS
-      NOP
-      NOP
-
-OSBGET
-      RTS
-      NOP
-      NOP
-
-OSARGS
-      RTS
-      NOP
-      NOP
-
-OSFILE
-OSFILE_LOAD
-OSFILE_SAVE
-      RTS
-      NOP
-      NOP
-
-OSRDCH
-      JMP NVRDCH
-
-OSASCI
-      CMPA  #$0D
-      BNE   OSWRCH
-
-OSNEWL
-      LDA   #$0A
-      JSR   OSWRCH
-      LDA   #$0D
-
-OSWRCH
-      JMP NVWRCH
-
-OSWORD
-      JMP NVWORD
-
-OSBYTE
-      JMP NVBYTE
-
-OSCLI
-      RTS
-      NOP
-      NOP
-
-
-      FCB $FF
-      FCB $FF
-      FCB $FF
-      FCB $FF
-      FCB $FF
-      FCB $FF

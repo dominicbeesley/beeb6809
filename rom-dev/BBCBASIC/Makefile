@@ -263,7 +263,7 @@ $(FLEXOUT)/FLEXBAS.BIN:	6809BAS.asm $(DEPS)
 
 $(SBC09OUT)/SBC6809BAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
 		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
-		$(AS) $(ASFLAGS) --define SBC09=1 --define BASEADDR=0xC000 --define ASSEMBLER_6809 --define CPU_6809 -o $@ -l $(basename $@).lst $< SBC09_MOS.asm
+		$(AS) $(ASFLAGS) --define SBC09=1 --define BASEADDR=0xC000 --define ASSEMBLER_6809 --define CPU_6809 -o $@ -l $(basename $@).lst $<
 		rm -f SBC09VERSION.inc
 		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
@@ -271,7 +271,7 @@ $(SBC09OUT)/SBC6809BAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
 
 $(SBC09OUT)/SBC6309EBAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
 		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
-		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define BASEADDR=0xC000 --define ASSEMBLER_6809 --define CPU_6309 -o $@ -l $(basename $@).lst $< SBC09_MOS.asm
+		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define BASEADDR=0xC000 --define ASSEMBLER_6809 --define CPU_6309 -o $@ -l $(basename $@).lst $<
 		rm -f SBC09VERSION.inc
 		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
@@ -279,7 +279,7 @@ $(SBC09OUT)/SBC6309EBAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
 
 $(SBC09OUT)/SBC6309NBAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
 		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
-		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define BASEADDR=0xC000 --define ASSEMBLER_6809 --define CPU_6309 --define NATIVE -o $@ -l $(basename $@).lst $< SBC09_MOS.asm
+		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define BASEADDR=0xC000 --define ASSEMBLER_6809 --define CPU_6309 --define NATIVE -o $@ -l $(basename $@).lst $<
 		rm -f SBC09VERSION.inc
 		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
@@ -287,7 +287,7 @@ $(SBC09OUT)/SBC6309NBAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
 
 $(SBC09OUT)/SBC6809BAS_68681.BIN:	6809BAS.asm SBC09_MOS_68681.asm $(DEPS)
 		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
-		$(AS) $(ASFLAGS) --define SBC09=1 --define ASSEMBLER_6809 --define CPU_6809 -o $@ -l $(basename $@).lst $< SBC09_MOS_68681.asm
+		$(AS) $(ASFLAGS) --define SBC09=1 --define UART68681=1 --define ASSEMBLER_6809 --define CPU_6809 -o $@ -l $(basename $@).lst $<
 		rm -f SBC09VERSION.inc
 		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
@@ -295,7 +295,7 @@ $(SBC09OUT)/SBC6809BAS_68681.BIN:	6809BAS.asm SBC09_MOS_68681.asm $(DEPS)
 
 $(SBC09OUT)/SBC6309EBAS_68681.BIN:	6809BAS.asm SBC09_MOS_68681.asm $(DEPS)
 		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
-		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define ASSEMBLER_6309 --define CPU_6309 -o $@ -l $(basename $@).lst $< SBC09_MOS_68681.asm
+		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define UART68681=1 --define ASSEMBLER_6309 --define CPU_6309 -o $@ -l $(basename $@).lst $<
 		rm -f SBC09VERSION.inc
 		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
@@ -303,7 +303,7 @@ $(SBC09OUT)/SBC6309EBAS_68681.BIN:	6809BAS.asm SBC09_MOS_68681.asm $(DEPS)
 
 $(SBC09OUT)/SBC6309NBAS_68681.BIN:	6809BAS.asm SBC09_MOS_68681.asm $(DEPS)
 		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
-		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define ASSEMBLER_6309 --define CPU_6309 --define NATIVE -o $@ -l $(basename $@).lst $< SBC09_MOS_68681.asm
+		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define UART68681=1 --define ASSEMBLER_6309 --define CPU_6309 --define NATIVE -o $@ -l $(basename $@).lst $<
 		rm -f SBC09VERSION.inc
 		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
