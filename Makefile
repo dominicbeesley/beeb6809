@@ -16,10 +16,29 @@ all_chipkit:
 	$(MAKE) -C games all_chipkit
 	$(MAKE) -C demos all_chipkit
 	$(MAKE) -C ssds all_chipkit
-	cat 	CHIPKIT/mos/beeb6809-mos/mosrom.bin \
+
+
+ROMPARTS= 	CHIPKIT/mos/beeb6809-mos/mosrom.bin \
 		CHIPKIT/rom-dev/BBCBASIC/6809bas.bin \
-		CHIPKIT/rom-dev/USBFS/USBFS.bin \
-		>CHIPKIT/ROMIMAGE.BIN	
+		CHIPKIT/rom-dev/HOSTFS/HOSTFS-ck.bin
+ROM= CHIPKIT/ROMIMAGE.BIN
+
+chipkit_rom: 
+	$(MAKE) -C mos/beeb6809-mos all_chipkit
+	$(MAKE) -C rom-dev/BBCBASIC all_chipkit
+	$(MAKE) -C rom-dev/HOSTFS all_chipkit
+	$(MAKE) $(ROM)
+
+$(ROM): $(ROMPARTS)
+	$(eval T := $(shell mktemp))
+	touch $(T)
+	dd if=CHIPKIT/mos/beeb6809-mos/mosrom.bin of=$(T) bs=16384
+	dd if=CHIPKIT/rom-dev/BBCBASIC/6809bas.bin of=$(T) bs=16384 seek=1 conv=nocreat
+	dd if=CHIPKIT/rom-dev/HOSTFS/HOSTFS-ck.bin of=$(T) bs=16384 seek=2 conv=nocreat
+	mv $(T) $(ROM)
+
+		
+
 
 all_beeb:
 	$(MAKE) -C mos all_beeb

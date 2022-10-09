@@ -57,3 +57,4 @@ SBC09/*
 *.bak
 other-tests/test-6309-lic/testrom.bin
 other-tests/test-6309-lic/testrom.lst
+rom-dev/BBCBASIC/testing/fpshow/fpshow.exe

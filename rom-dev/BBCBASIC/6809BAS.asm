@@ -247,7 +247,8 @@ OSCLI_OK		PULS	D,X,U,U,CC,PC
 OSRDCH		JMP	GETCHR
 		
 
-FLEX_READLINE	CLRB					; TODOFLEX - this is very simplistic
+ReadKeysTo_PageInA
+		CLRB					; TODOFLEX - this is very simplistic
 		TFR	D,X
 FLEX_RL_LP	JSR	OSRDCH				; get char
 		CMPA	#$D
@@ -414,11 +415,16 @@ evalDoIntDivide						; L80F9
 		CALL	intWA_ABS			; Ensure RHS is positive
 		LDX	#ZP_INT_WA_B			
 		CALL	popIntAtXNew			; Pop LHS from stack to IntB at $39-$3C
+
+	IF CPU_6309
+		CLRD
+	ELSE
 		CLRA
-		STA	ZP_INT_WA_C
-		STA	ZP_INT_WA_C + 1
-		STA	ZP_INT_WA_C + 2
-		STA	ZP_INT_WA_C + 3			; Clear remainder in IntC
+		CLRB
+	ENDIF
+		STD	ZP_INT_WA_C
+		STD	ZP_INT_WA_C + 2			; Clear remainder in IntC
+
 		CALL	IntWAZero			; Check if IntA is zero
 		BEQ	brkDivideByZero			; Error if divide by zero
 		LDB	#$20				; 32-bit division
@@ -448,8 +454,12 @@ evalDoIntDivide						; L80F9
 		SUBD	ZP_INT_WA + 2
 		PSHS	D
 		LDD	ZP_INT_WA_C + 0
+	IF CPU_6309
+		SBCD	ZP_INT_WA + 0
+	ELSE
 		SBCB	ZP_INT_WA + 1
 		SBCA	ZP_INT_WA + 0
+	ENDIF
 		BCS	4F				; Couldn't subtract, do next bit
 		STD	ZP_INT_WA_C + 0
 		PULS	D
@@ -627,11 +637,7 @@ fpAMant2Int
 		TST	ZP_FPA + 3
 		BEQ	fpMant2Int_CheckSignAndNegate	; Mantissa = $00xxxxxx, real holds an int, jump to check for negative
 fpAMant2Int_lp1
-		LSR	ZP_FPA + 3
-		ROR	ZP_FPA + 4			; Divide the mantissa by 2 to denormalise by one power
-		ROR	ZP_FPA + 5
-		ROR	ZP_FPA + 6
-		INCA
+		CALL	FPAshr1
 		BEQ	fpMant2Int_brkTooBig		; Inc. exponent, if run out of exponent, jump to 'Too big'
 fpAMant2Int_lp2	CMPA	#$A0
 		BHS	fpMant2Int_brkTooBigIfNE	; Exponent is +32, float has been denormalised to an integer
@@ -645,6 +651,18 @@ fpAMant2Int_lp2	CMPA	#$A0
 		CLR	ZP_FPA + 3
 		BRA	fpAMant2Int_lp2			; Loop to keep dividing
 
+FPAshr1
+		CLC
+FPAror1
+		ROR	ZP_FPA + 3
+		ROR	ZP_FPA + 4
+		ROR	ZP_FPA + 5
+		ROR	ZP_FPA + 6
+		ROR	ZP_FPA + 7
+		INCA
+		RTS
+
+
 
 fpFPAtoFPBzeroFPA
 		CALL fpCopyFPAtoFPB
@@ -657,15 +675,18 @@ fpFPAMant2Int_remainder_inFPB				; L8275
 		LDB	ZP_FPA + 3			; get mantissa MSB return 0 or -1 depending on sign
 		BEQ	fpMant2Int_CheckSignAndNegate	; L827E
 L8280
-		LSR	ZP_FPA + 3			; roll A mantissa into B mantissa
-		ROR	ZP_FPA + 4
-		ROR	ZP_FPA + 5
-		ROR	ZP_FPA + 6
+		CALL	FPAshr1
+
+		; slow but small - the original only shifted right 3..6 but the FPAshr1 shifts into
+		; FPA 7 so shift it back out left to recover carry
+
+		ASL	ZP_FPA + 7
+
 		ROR	ZP_FPB + 2
 		ROR	ZP_FPB + 3
 		ROR	ZP_FPB + 4
 		ROR	ZP_FPB + 5
-		INCA
+		TSTA
 		BEQ	fpMant2Int_brkTooBig
 L8293
 		CMPA	#$A0				; compare to A0, i.e. $80 + 32
@@ -673,24 +694,23 @@ L8293
 		CMPA	#$99
 		BHS	L8280				; keep rolling bitwise
 		ADDA	#$08				; else roll bytewise
-		LDB	ZP_FPB + 4
-		STB	ZP_FPB + 5
-		LDB	ZP_FPB + 3
-		STB	ZP_FPB + 4
+		STA	,-S				; save A
+
+		LDD	ZP_FPB + 3
+		STD	ZP_FPB + 4
 		LDB	ZP_FPB + 2
 		STB	ZP_FPB + 3
 		
 		LDB	ZP_FPA + 6
 		STB	ZP_FPB + 2
 		
-		LDB	ZP_FPA + 5
-		STB	ZP_FPA + 6		
-		LDB	ZP_FPA + 4
-		STB	ZP_FPA + 5		
+		LDD	ZP_FPA + 4
+		STD	ZP_FPA + 5		
 		LDB	ZP_FPA + 3
 		STB	ZP_FPA + 4
 		
 		CLR	ZP_FPA + 3
+		LDA	,S+
 		BRA L8293
 fpMant2Int_brkTooBig
 		JUMP	brkTooBig
@@ -702,6 +722,14 @@ fpMant2Int_CheckSignAndNegate				; L82C4
 		BPL	fpMant2Int_RTS			; If positive, jump to return
 fpReal2Int_NegateMantissa				; L82C8
 		;  Negate the mantissa to get integer
+	IF CPU_6309
+		CLRD
+		SUBD	ZP_FPA+5
+		STD	ZP_FPA+5
+		CLRD
+		SBCD	ZP_FPA+3
+		STD	ZP_FPA+3
+	ELSE
 		LDD	#0
 		SUBD	ZP_FPA + 5
 		STD	ZP_FPA + 5
@@ -709,12 +737,13 @@ fpReal2Int_NegateMantissa				; L82C8
 		SBCB	ZP_FPA + 4
 		SBCA	ZP_FPA + 3
 		STD	ZP_FPA + 3
+	ENDIF
 fpMant2Int_RTS						; L82DF
 		RTS
-L82E0
+fpFPASplitToFractPlusInt
 		LDA	ZP_FPA + 2
-		BMI	L82E9
-		CLR	ZP_FP_TMP + 6
+		BMI	L82E9				
+		CLR	ZP_FP_TMP + 6			; if >1 then fix up for int+fract
 		JUMP	fpCheckMant0SetSignExp0
 L82E9		CALL	fpFPAMant2Int_remainder_inFPB
 		LDA	ZP_FPA + 6
@@ -821,11 +850,7 @@ fpAddAtoBStoreA_shr8_B_sk				; L8395:
 		ANDA	#$07
 		BEQ	fpAddAtoBStoreA_sk_sameExp
 fpAddAtoBStoreA_shr1_B_lp					; L839A:
-		LSR	ZP_FPB + 2
-		ROR	ZP_FPB + 3
-		ROR	ZP_FPB + 4
-		ROR	ZP_FPB + 5
-		ROR	ZP_FPB + 6
+		CALL	fpShiftBMantissaRight
 		DECA
 		BNE	fpAddAtoBStoreA_shr1_B_lp
 		BRA	fpAddAtoBStoreA_sk_sameExp
@@ -853,13 +878,9 @@ fpAddAtoBStoreA_shr8_A_sk				; L83D0:
 		TFR	B,A
 		ANDA	#$07
 		BEQ	fpAddAtoBStoreA_sk_sameExp
+		NEGA
 fpAddAtoBStoreA_shr1_A_lp				; L83D5:
-		LSR	ZP_FPA + 3
-		ROR	ZP_FPA + 4
-		ROR	ZP_FPA + 5
-		ROR	ZP_FPA + 6
-		ROR	ZP_FPA + 7
-		DECA
+		CALL	FPAshr1
 		BNE	fpAddAtoBStoreA_shr1_A_lp
 fpAddAtoBStoreA_sk_sameExp				; L83E2
 		LDA	ZP_FPA
@@ -884,11 +905,15 @@ fpAddAtoBstoreA_oppsigns_sk				; L840D
 
 		LDD	ZP_FPB + 5
 		SUBD	ZP_FPA + 6
-		STA	ZP_FPA + 6
+		STD	ZP_FPA + 6
 
 		LDD	ZP_FPB + 3
+	IF CPU_6309
+		SBCD	ZP_FPA + 4
+	ELSE
 		SBCB	ZP_FPA + 5
 		SBCA	ZP_FPA + 4
+	ENDIF
 		STD	ZP_FPA + 4
 
 		LDA	ZP_FPB + 2
@@ -902,8 +927,12 @@ fpAddAtoBstoreA_oppsigns_sk2				; L8435
 		STD	ZP_FPA + 6
 
 		LDD	ZP_FPA + 4
+	IF CPU_6309
+		SBCD	ZP_FPB + 3
+	ELSE
 		SBCB	ZP_FPB + 4
 		SBCA	ZP_FPB + 3
+	ENDIF
 		STD	ZP_FPA + 4
 
 		LDA	ZP_FPA + 3
@@ -1092,7 +1121,7 @@ storeTokenAndCloseUpLine
 ;		RTS
 
 		; on entry A contains a numeric digit
-		; parse number and store in ?????
+		; parse number and store in at U as 8D XX YY ZZ
 		; TODO, there may be a quicker / smaller way of doing this
 		; use shift and add instead of mul and add?
 tokenizeLineNo	
@@ -1105,25 +1134,25 @@ tokLinLp	LDA	,U+
 		BCC	tokLineNoSk1
 		ANDA	#$F
 		STA	ZP_GEN_PTR+1
-		CLR	ZP_GEN_PTR+0		; store as 16 bit no
 
-		LDA	ZP_FPB + 3		; low byte * 10
-		LDB	#10
-		MUL				; this cannot overflow or go minus so don't panic!
-		ADDD	ZP_GEN_PTR		; add to current digit
-		BMI	tokLinOv		; overflowed
-		STD	ZP_GEN_PTR		; store 
-		
-1		LDA	ZP_FPB + 2		; mul old number hi byte by 10
-		LDB	#10
-		MUL
-		BCS	tokLinOv		; top bit of B
-		TSTA				; or top byte of result
-		BNE	tokLinOv		; causes overflow
-		EXG	A,B			; now D = 256 * B 
-2		ADDD	ZP_GEN_PTR
-		STD	ZP_FPB + 2		; store result
+		; mul existing number by 10
+		LDD	ZP_FPB+2
+		ASLB
+		ROLA		
+		ASLB
+		ROLA
+		ADDD	ZP_FPB+2
+		ASLB
+		ROLA
+		BCS	tokLinOv
+
+		; add in new number and check for overflow
+		ADDB	ZP_GEN_PTR+1
+		ADCA	#0
+		STD	ZP_FPB+2
+		BCS	tokLinOv
 		BPL	tokLinLp
+
 tokLinOv
 		SEC
 		RTS				; unstack result
@@ -1154,9 +1183,13 @@ int16atZP_FPB2toBUFasTOKENIZED
 		ORA	#$40
 		STA	2,U			; byte 2 = "01" & MSB[5 downto 0] 
 
+	IF CPU_6309
+		AIM	#$C0,ZP_FPB + 3
+	ELSE
 		LDA	ZP_FPB + 3
 		ANDA	#$C0		
 		STA	ZP_FPB + 3		; mask off all but top two bits of LSB
+	ENDIF
 
 		LDA	ZP_FPB + 2
 		ANDA	#$C0
@@ -1243,7 +1276,8 @@ rtsL8DDF	RTS
 tokNotQuot	CMPA	#':'
 		BNE	tokNotColon
 		
-L8DE7		CLR	ZP_FPB				; start of statement - don't expect line num
+cmdAUTOtokenize	STU	ZP_GEN_PTR+2
+		CLR	ZP_FPB				; start of statement - don't expect line num
 L8DE9		CLR	ZP_FPB + 1			
 		BRA	toklp2
 
@@ -1274,8 +1308,8 @@ tokDot		LDA	,U+
 		CALL	checkIsDotOrNumeric
 		BCS	tokDot
 tokNextSetFlag0_FF
-;L8E1F
 		LEAU	-1,U
+L8E1F
 1		LDA	#$FF
 		STA	ZP_FPB
 		BRA	L8DE9
@@ -1739,6 +1773,10 @@ indStringStore	CALL	str600CRterm			;  Store <cr> at end of string buffer
 
 
 cmdPRINT_HASH						; L9141
+	IF FLEX
+		JUMP	brkFlexNotImpl
+	ELSE
+
 		CALL	decYSaveAndEvalHashChannelAPI
 		PSHS	Y				; save Channel #
 cmdPRINTHAS_lp		
@@ -1779,6 +1817,9 @@ cmdPRINTHASH_STR
 		JSR	OSBPUT
 		DECB
 		BRA	1B
+
+	ENDIF	;FLEX
+
 cmdPRINTHASH_exit
 		LEAS	2,S				; discard stacked channel
 		LEAU	-1,U
@@ -1945,8 +1986,8 @@ rtsCLC_L926A
 ;		
 ;	
 
-;decYEvalForceINT
-;		LEAU	-1,Y
+decUEvalForceINT
+		LEAU	-1,U
 evalForceINT
 		CALL	evalExpressionMAIN
 		CALL	checkTypeInAConvert2INT
@@ -2002,12 +2043,14 @@ cmdCALL			; L92BE!
 L92CC
 		CALL	skipSpacesCheckCommaAtYStepBack
 		BNE	L92F1
+		STX	,--S
 		CALL	findVarAtYSkipSpaces
 		BEQ	L9301
-		LDA	ZP_INT_WA + 0
-		STA	,X+				; var type
+		LDX	,S++
 		LDD	ZP_INT_WA + 2		
 		STD	,X++				; var ptr
+		LDA	ZP_INT_WA + 0
+		STA	,X+				; var type
 		INC 	BAS_StrA
 		BRA	L92CC
 L92F1		CALL	scanNextStmtFromY
@@ -2017,6 +2060,7 @@ L92F1		CALL	scanNextStmtFromY
 		PULS	U
 		JUMP	continue
 L9301
+		LDX	,S++
 		JUMP	brkNoSuchVar
 callusrSetRegsEnterCode				; L9304
 		PSHS	U
@@ -2028,36 +2072,24 @@ callusrSetRegsEnterCode				; L9304
 		LDU	$0464+2
 		JSR	[ZP_INT_WA + 2]
 		PULS	U,PC
-L9314JUMPbrkSyntax
-		JUMP	brkSyntax
 cmdDELETE
 
-			TODO_CMD "DELETE"
-			
-;			;  DELETE
-;		CALL skipSpacesDecodeLineNumber
-;		BCC L9314JUMPbrkSyntax
-;		CALL stackINT_WAasINT
-;		CALL SkipSpaceCheckComma
-;		BNE L9314JUMPbrkSyntax
-;		CALL skipSpacesDecodeLineNumber
-;		BCC L9314JUMPbrkSyntax
-;		CALL scanNextStmt
-;		LDA ZP_INT_WA
-;		STA ZP_NAMELENORVT
-;		LDA ZP_INT_WA + 1
-;		STA ZP_NAMELENORVT + 1
-;		CALL popIntA
-;L9337:
-;		CALL findLineAndDelete  
-;		CALL checkForESC
-;		CALL inc_INT_WA
-;		LDA ZP_NAMELENORVT
-;		CMP ZP_INT_WA
-;		LDA ZP_NAMELENORVT + 1
-;		SBC ZP_INT_WA + 1
-;		BCS L9337
-;		JUMP resetVarsImmedPrompt
+		CALL	skipSpacesDecodeLineNumberNewAPIbrkSyntax
+		CALL	stackINT_WAasINT
+		CALL	skipSpacesCheckCommaAtY
+		LBNE	brkSyntax
+		CALL	skipSpacesDecodeLineNumberNewAPIbrkSyntax
+		CALL	scanNextStmtFromY
+		LDD	ZP_INT_WA+2
+		STD	ZP_NAMELENORVT
+		CALL	popIntANew
+L9337		CALL	findLineAndDelete  
+		CALL	checkForESC
+		CALL	inc_INT_WA
+		LDD	ZP_NAMELENORVT
+		CMPD	ZP_INT_WA+2
+		BHS	L9337
+		JUMP	resetVarsImmedPrompt
 AUTO_RENUM_STARTSTEP_DEF1010				; L934D
 		LDB	#$0A
 		CALL	retB8asUINT			; default first param 10
@@ -2075,161 +2107,127 @@ AUTO_RENUM_STARTSTEP_DEF1010				; L934D
 		JUMP	scanNextStmtFromY
 L9370
 		JUMP	scanNextExpectColonElseCR
-;L9373:
-;		LDA ZP_TOP
-;		STA ZP_FPB
-;		LDA ZP_TOP + 1
-;		STA ZP_FPB + 1
-;L937B:
-;		LDA ZP_PAGE_H
-;		STA ZP_GEN_PTR + 1
-;		LDU #$01
-;		STU ZP_GEN_PTR
-;		RTS
-cmdRENUMBER		; L9384!
 
-			TODO_CMD "RENUMBER"
-			
-;			;  RENUMBER
-;		CALL AUTO_RENUM_STARTSTEP_DEF1010
-;		LDX #ZP_NAMELENORVT
-;		CALL popIntAtX
-;		CALL findTOP
-;		CALL L9373
-;L9392:
-;		LDA (ZP_GEN_PTR)
-;		BMI L93C4
-;		STA (ZP_FPB)
-;		LDA (ZP_GEN_PTR),Y
-;		STA (ZP_FPB),Y
-;		SEC
-;		TYA
-;		ADC ZP_FPB
-;		STA ZP_FPB
-;		BCC L93A6
-;		INC ZP_FPB + 1
-;L93A6:
-;		CMP ZP_HIMEM
-;		LDA ZP_FPB + 1
-;		SBC ZP_HIMEM + 1
-;		BCS brkRENUMBERspace
-;		CALL L947A
-;		BRA L9392
-;brkRENUMBERspace:
-;		BRK
-;		.byte  $00
-;		.byte  tknRENUMBER, " space"
+		; DB: Instead of ZP pointers the 6809 routine uses:
+		; X - points to "number pile" above TOP (was FPB)
+		; U - points to program position (was ZP_GEN_PTR)
+
+renResetPileAndProg				; L9373
+		LDX	ZP_TOP
+renResetProg					; L937B
+		LDA	ZP_PAGE_H
+		CLRB
+		TFR	D,U
+		RTS
+cmdRENUMBER		; L9384!
+			;  RENUMBER
+		CALL	AUTO_RENUM_STARTSTEP_DEF1010
+		LDX	#ZP_NAMELENORVT
+		CALL	popIntAtXNew
+		CALL	findTOP
+		CALL	renResetPileAndProg
+L9392
+		LDD	1,U
+		BMI	renPass2		; end of prog - skip to pass #2
+		STD	,X++			; store in "PILE"
+		CMPX 	ZP_HIMEM
+		BHS	brkRENUMBERspace
+		CALL	renSkipNextLine
+		BRA	L9392
+brkRENUMBERspace
+		DO_BRK_B
+		FCB  $00, tknRENUMBER, " space"
 brkSilly
 		DO_BRK_B
 		FCB	$00, "Silly", 0
-;
-;L93C4:		CALL L937B
-;L93C7:		LDA (ZP_GEN_PTR)
-;		BMI L93E7
-;		LDA ZP_NAMELENORVT + 1
-;		STA (ZP_GEN_PTR)
-;		LDA ZP_NAMELENORVT
-;		STA (ZP_GEN_PTR),Y
-;		CLC
-;		LDA ZP_NAMELENORVT
-;		ADC ZP_INT_WA
-;		STA ZP_NAMELENORVT
-;		LDA #$00
-;		ADC ZP_NAMELENORVT + 1
-;		AND #$7F
-;		STA ZP_NAMELENORVT + 1
-;		CALL L947A
-;		BRA L93C7
-;L93E7:
-;		LDA ZP_PAGE_H
-;		STA ZP_TXTPTR + 1
-;		STZ ZP_TXTPTR
-;L93ED:
-;		LDU #$01
-;		LDA (ZP_TXTPTR),Y
-;		BMI L945A
-;		LDU #$04
-;		STZ ZP_INT_WA + 2
-;L93F7:
-;		LDA (ZP_TXTPTR),Y
-;		LDX ZP_INT_WA + 2
-;		BNE L9405
-;		CMP #$8D
-;		BEQ L941B
-;		CMP #$F4
-;		BEQ L9412
-;L9405:
-;		INY
-;		CMP #$22
-;		BNE L940E
-;		EOR ZP_INT_WA + 2
-;		STA ZP_INT_WA + 2
-;L940E:
-;		CMP #$0D
-;		BNE L93F7
-;L9412:
-;		LDU #$03
-;		LDA (ZP_TXTPTR),Y
-;		CALL L9BF4
-;		BRA L93ED
-;L941B:
-;		CALL decodeLineNumber
-;		CALL L9373
-;L9421:
-;		LDA (ZP_GEN_PTR)
-;		BMI L945C
-;		LDA (ZP_FPB)
-;		CMP ZP_INT_WA + 1
-;		BNE L944A
-;		LDA (ZP_FPB),Y
-;		CMP ZP_INT_WA
-;		BNE L944A
-;		LDA (ZP_GEN_PTR),Y
-;		STA ZP_FPB + 2
-;		LDA (ZP_GEN_PTR)
-;		TAX
-;		LDU ZP_TXTOFF
-;		DEY
-;		LDA ZP_TXTPTR
-;		STA ZP_NAMELENORVT
-;		LDA ZP_TXTPTR + 1
-;		STA ZP_NAMELENORVT + 1
-;		CALL L8D62
-;L9446:
-;		LDU ZP_TXTOFF
-;		BRA L93F7
-;L944A:
-;		CLC
-;		CALL L947A
-;		LDA ZP_FPB
-;		ADC #$02
-;		STA ZP_FPB
-;		BCC L9421
-;		INC ZP_FPB + 1
-;		BRA L9421
-;L945A:
-;		BRA L94B6
-;L945C:
-;		PRINT_STR "Failed at "
-;		LDA (ZP_TXTPTR),Y
-;		STA ZP_INT_WA + 1
-;		INY
-;		LDA (ZP_TXTPTR),Y
-;		STA ZP_INT_WA
-;		CALL int16print_AnyLen -- API CHANGE -- API CHANGE
-;		CALL PrintCRclearPRLINCOUNT
-;		BRA L9446
-;L947A:
-;		INY
-;		LDA (ZP_GEN_PTR),Y
-;		LDU #$01
-;		ADC ZP_GEN_PTR
-;		STA ZP_GEN_PTR
-;		BCC L9488
-;		INC ZP_GEN_PTR + 1
-;		CLC
-;L9488:
-;		RTS
+
+		; pass 2 through program - assign new program line numbers
+
+renPass2					; L93C4
+		CALL	renResetProg
+L93C7		LDA	1,U
+		BMI	renPass3		; check for EOP
+		LDD	ZP_NAMELENORVT+2
+		STD	1,U			; overwrite old line number
+		ADDD	ZP_INT_WA+2		; increment line number
+		ANDA	#$7F			; top bit clear
+		STD	ZP_NAMELENORVT+2	; store it back
+		CALL	renSkipNextLine
+		BRA	L93C7
+
+renPass3					; L93E7
+		CALL	renResetProg
+ren3LineLoop					; L93ED
+		TST	1,U
+		LBMI	resetVarsImmedPrompt	; check for EOP and skip to next pass
+		LEAY	4,U			; point Y at line text data
+		CLR	ZP_INT_WA		; clear state machine flags 
+			; flags are 22 for skip quotes
+ren3CharLoop					; L93F7
+		LDA	,Y+
+		TST	ZP_INT_WA		; test quotes flag
+		BNE	ren3SkNotQuo
+		CMPA	#tknLineNo
+		BEQ	ren3LineNoFnd
+		CMPA	#tknREM
+		BEQ	ren3NextLine
+ren3SkNotQuo					; L9405
+		CMPA	#'"'
+		BNE	ren3SkNotQuo2
+		EORA	ZP_INT_WA
+		STA	ZP_INT_WA
+ren3SkNotQuo2
+		CMPA	#$0D
+		BNE	ren3CharLoop
+ren3NextLine					; L9412
+		CALL	renSkipNextLine
+		BRA	ren3LineLoop
+
+ren3LineNoFnd					; L941B
+		PSHS	U,Y			; preserve line/char pointers
+		LEAU	,Y			; we need to point U at byte after 8D
+		CALL	decodeLineNumber	; ZP_INT_WA+2 now contains line number to update
+		CALL	renResetPileAndProg
+
+		; Pass 4 8D token found scan program and pile for new/old line number
+
+ren4LineLoop					; L9421
+		TST	1,U			; check for EOP
+		BMI	ren4NotFound
+		LDD	,X++			; get original line num from pile
+		CMPD	ZP_INT_WA+2		; compare with 8D number
+		BNE	ren4nomatch
+		LDD	1,U			; get new line number as binary
+		STD	ZP_FPB+2		; store in FPB+2
+		LDU	,S			; get back the intra-line pointer from pass3
+		LEAU	-1,U			; point back at 8D instruction
+		CALL	int16atZP_FPB2toBUFasTOKENIZED	;store updated number back in program at 1,U and move U on
+		PULS	Y,U			; get back our pointers
+		BRA	ren3CharLoop
+ren4nomatch
+		CALL	renSkipNextLine
+		BRA	ren4LineLoop
+ren4NotFound					; L945C
+		LEAX	str_failed_at,PCR
+		JSR	PRSTRING
+		PULS	U,Y
+		LDD	1,U
+		STD	ZP_INT_WA+2
+		CLRA
+		CALL	int16print_AnyLen
+		CALL	PrintCRclearPRLINCOUNT
+		BRA	ren3CharLoop		; do rest of original line in program
+
+str_failed_at
+		FCN "Failed at "
+
+
+renSkipNextLine					; L947A
+		; U pointing at start of line + 1 add length byte to U
+		LDB	3,U
+		CLRA
+		LEAU	D,U
+		RTS
 ;			;  AUTO [num[,num]]
 ;			;  ================
 cmdAUTO			
@@ -2241,7 +2239,8 @@ L9492		CALL	stackINT_WAasINT
 		CALL	int16print_fmt5
 		CALL	ReadKeysTo_InBuf
 		CALL	popIntANew
-		CALL	L8DE7
+		LDU	#BAS_InBuf
+		CALL	cmdAUTOtokenize		
 		LDU	#BAS_InBuf
 		CALL	tokenizeAndStoreAlreadyLineNoDecoded 
 		CALL	ResetVars
@@ -2300,6 +2299,15 @@ cmdDIM_more_dims_q					; L94FB
 		;  ==========
 		;     F F C   = bad DIM !
 cmdDIM_mul_D_by_S					; L9503
+
+	IF CPU_6309
+		MULD	2,S
+		BMI	brkBadDIM
+		ORR	A,B
+		BNE	brkBadDIM		
+		TFR	W,D
+		RTS
+	ELSE
 		STD	ZP_INT_WA_C
 		TSTA
 		BEQ	1F
@@ -2335,7 +2343,7 @@ cmdDIM_mul_D_by_S					; L9503
 		TFR	B,A
 		LDB	ZP_INT_WA_C + 3
 		RTS
-		
+	ENDIF	
 
 brkBadDIM						; L952C
 		DO_BRK_B
@@ -2760,8 +2768,7 @@ cmdVDU					       ; L980D!	      ;	 VDU
 		BEQ	skVDUend
 		CMPA	#tknELSE
 		BEQ	skVDUend
-		LEAU	-1,U
-		CALL	evalForceINT
+		CALL	decUEvalForceINT
 		CALL	doVDUChar_fromWA3
 		CALL	skipSpacesCheckCommaAtY
 		BEQ	cmdVDU
@@ -2878,7 +2885,7 @@ findVARTreatAsMemoryAccess					;L98C1
 		BEQ   memaccStr				; Jump to do $<addr>
 		EORA  #'?'
 		BEQ   memacc8				; Jump to do ?<addr>
-		LDA   #$00
+		CLRA
 		SEC				; Return EQ/CS for invalid name
 anRTS6		RTS
 
@@ -3205,6 +3212,12 @@ L9B17
 		RTS
 ;		
 ;		
+skipSpacesDecodeLineNumberNewAPIbrkSyntax
+		CALL	skipSpacesDecodeLineNumberNewAPI
+		BCC	brkSyntax
+		RTS
+
+
 		; API changed used to scan from ZP_TXTPTR now scan from Y
 skipSpacesDecodeLineNumberNewAPI
 		;		LDU	ZP_TXTPTR
@@ -3212,8 +3225,9 @@ skipSpacesDecodeLineNumberNewAPI
 		CMPA	#tknLineNo
 		BEQ	decodeLineNumber
 		LEAU	-1,U
-		STU	ZP_TXTPTR
-		BRA	__rtsCLC				;  Not line number, return CC
+		STU	ZP_TXTPTR				;  Not line number, return CC
+		CLC
+		RTS
 decodeLineNumber
 		LDA	,U+
 		ASLA
@@ -3231,9 +3245,6 @@ decodeLineNumber
 		SEC
 		RTS
 ;			;  Line number, return CS
-__rtsCLC
-		CLC
-		RTS
 ;			;  Expression Evaluator
 ;			;  ====================
 ;			;  ExpectEquals - evalute =<expr>
@@ -3380,7 +3391,7 @@ evalDoComparePopIntFromMachineStackConvertToRealAndCompare
 		CALL	fpStackWAtoStackReal		; stack LHS real
 		CALL	IntToReal			; convert INT_WA to real in FPA
 		CALL	fpCopyFPAtoFPB			; copy it to FPB
-		CALL	popFPFromStackToPTR1
+		CALL	popFPandSetPTR1toStack
 		CALL	fpCopyPTR1toFPA		; get back stacked LHS real
 		CALL	evalDoCompareRealFPAwithFPB	; compare
 		PULS	B,PC				; get back stored token and finish
@@ -3393,7 +3404,7 @@ evalDoCompareReal			      ;L9C82
 		CALL	evalLevel4
 		PSHS	B				; save B (next char)
 		CALL	checkTypeIntToReal
-		CALL	popFPFromStackToPTR1
+		CALL	popFPandSetPTR1toStack
 		CALL	evalDoCompareRealFPAwithPTR1
 		PULS	B,PC
 
@@ -3442,16 +3453,23 @@ evalDoCompare						; L9CCA
 		STB	4,S				; store B in reserved stack space
 		TSTA
 		BEQ	 L9CC6brkTypeMismatch;		;  <int> <compare> <string> - Type mismatch
-		BMI	 evalDoComparePopIntFromMachineStackConvertToRealAndCompare				;  <int> <compare> <real> - convert and compare
+		BMI	 evalDoComparePopIntFromMachineStackConvertToRealAndCompare	;  <int> <compare> <real> - convert and compare
+
+	IF CPU_6309
+		EIM	#$80,ZP_INT_WA
+	ELSE
+
 		LDA	 ZP_INT_WA + 0
 		EORA	 #$80
 		STA	 ZP_INT_WA + 0			; swap RHS sign bit
+	ENDIF
 					;  Compare current integer with stacked integer
 		PULS	D
 		SUBD	ZP_INT_WA + 2
 		STD	ZP_INT_WA + 2	; subtract least sig
 		PULS	D
 		SBCB	ZP_INT_WA + 1
+		STB	ZP_INT_WA + 1
 		EORA	#$80
 		SBCA	ZP_INT_WA + 0	; subtract most sig
 		ORA	ZP_INT_WA + 1
@@ -3786,7 +3804,7 @@ evalL4RealPlus						;L9E94
 		LBEQ	brkTypeMismatch
 		BMI	L9EA4
 		CALL	IntToReal
-L9EA4		CALL	popFPFromStackToPTR1
+L9EA4		CALL	popFPandSetPTR1toStack
 		CALL	fpFPAeqPTR1addFPA
 evalTokenFromVarTypeReturnReal				; L9EAA
 		LDB	ZP_VARTYPE			; Get back saved token
@@ -3843,7 +3861,7 @@ evalL4RealMinus						; L9EE7
 		BMI	1F
 		CALL	IntToReal
 1							; L9EF7
-		CALL	popFPFromStackToPTR1
+		CALL	popFPandSetPTR1toStack
 		CALL	fpFPAeqPTR1subFPA
 		BRA	evalTokenFromVarTypeReturnReal
 
@@ -3853,7 +3871,7 @@ evalL4IntMinusReal					; L9EFF
 		CALL	popIntANew
 		CALL	fpStackWAtoStackReal
 		CALL	IntToReal
-		CALL	popFPFromStackToPTR1
+		CALL	popFPandSetPTR1toStack
 		CALL	fpFPAeqPTR1subFPAnegFPA
 		BRA	evalTokenFromVarTypeReturnReal
 L9F12
@@ -3869,7 +3887,7 @@ eval3Mul_StackRealEvalAndMul			; L9F23
 		CALL	fpStackWAtoStackReal
 		CALL	evalLevel2			; call eval level 2
 		CALL	checkTypeIntToReal
-L9F2D		CALL	popFPFromStackToPTR1
+L9F2D		CALL	popFPandSetPTR1toStack
 		CALL	fpFPAeqPTR1mulFPA
 		LDA	#$FF
 		LDB	-1,U
@@ -4007,7 +4025,7 @@ evalL3DoRealDiv						; L9FDB
 		CALL	evalLevel2			; Call Evaluator Level 2 - ^
 		STB	ZP_VARTYPE			; save current token
 		CALL	checkTypeIntToReal
-		CALL	popFPFromStackToPTR1
+		CALL	popFPandSetPTR1toStack
 		CALL	fpFPAeqPTR1divFPA
 		LDA	#$FF
 		BRA	divmodfinish
@@ -4047,46 +4065,39 @@ evalL2lp1	LDB	,U+
 ;			;  <expression> ^ <expression>
 ;			;  ---------------------------
 evalDoCARET						;LA027:
-		CALL checkTypeIntToReal
-		TODODEADEND "evalDo^"
-;		CALL fpStackWAtoStackReal
-;		CALL evalLevel1ConvertReal
-;		LDA ZP_FPA + 2
-;		CMP #$87
-;		BCS LA079
-;		CALL L82E0
-;		BNE LA049
-;		CALL popFPFromStackToPTR1
-;		CALL fpCopyPTR1toFPA
-;		LDA ZP_FP_TMP + 6
-;		CALL LA5BE
-;		BRA LA075
-;LA049:
-;		CALL fpCopyFPA_FPTEMP3
-;		LDA ZP_BAS_SP
-;		STA ZP_FP_TMP_PTR1
-;		LDA ZP_BAS_SP + 1
-;		STA ZP_FP_TMP_PTR1 + 1
-;		CALL fpCopyPTR1toFPA
-;		LDA ZP_FP_TMP + 6
-;		CALL LA5BE
-;LA05C:
-;		LDA #$71
-;		CALL fpCopyFPA_X----check was 400+A
-;		CALL popFPFromStackToPTR1
-;		CALL fpCopyPTR1toFPA
-;		CALL fnLN_FPA
-;		CALL fpFPAeqFPTEMP3mulFPA
-;		CALL LA9E2
-;		LDA #$71
-;		CALL LA9A1
-;LA075:
-;		LDA #$FF
-;		BRA evalLevel2again
-;LA079:
-;		CALL fpCopyFPA_FPTEMP3
-;		CALL fpLoad1			;  FloatA=1.0
-;		BRA LA05C
+		CALL 	checkTypeIntToReal
+		CALL 	fpStackWAtoStackReal
+		CALL 	evalLevel1ConvertReal
+		LDA 	ZP_FPA + 2			; get exponent
+		CMPA	#$87				; is it > 87 i.e. FPA > 64
+		BHS 	LA079				; if it is ????
+		CALL	fpFPASplitToFractPlusInt
+		BNE	LA049				; if there's a fractional part then
+							; go to do "complex" routin
+		CALL	popFPandSetPTR1toStack		; else do a simpler X*X*X*X...
+		CALL	fpCopyPTR1toFPA			; move to FPA
+		LDA	ZP_FP_TMP + 6			; get integer part
+		CALL	FPAeqFPAraisedToA			; FPA = FPA ^ INT(A)
+		BRA	LA075retFPval
+LA049		CALL	fpCopyFPA_FPTEMP3
+		LDX 	ZP_BAS_SP
+		CALL	fpCopyXtoFPA
+		LDA	ZP_FP_TMP + 6
+		CALL	FPAeqFPAraisedToA
+LA05C		LDX	#BASWKSP_FPTEMP2
+		CALL	fpCopyFPA_X
+		CALL	popFPandSetPTR1toStack
+		CALL	fpCopyPTR1toFPA
+		CALL	fnLN_FPA
+		CALL	fpFPAeqFPTEMP3mulFPA
+		CALL	fnEXP_int
+		LDX	#BASWKSP_FPTEMP2
+		CALL	fpFPAeqXmulFPA
+LA075retFPval	LDA 	#$FF
+		BRA	evalLevel2again
+LA079		CALL	fpCopyFPA_FPTEMP3
+		CALL	fpLoad1			;  FloatA=1.0
+		BRA	LA05C
 
 
 		; formats a 16 bit integer at ZP_INT_WA + 2 to a string
@@ -4344,18 +4355,14 @@ LA1A5		LDX	#BASWKSP_FPTEMP1		;  Point to $46C
 		LDA	ZP_VARTYPE
 		STA	ZP_FPB + 6
 		CALL	fpAddAtoBStoreA				;  Add
-LA1B2
 		LDA	ZP_FPA + 2
+LA1B2
 		CMPA	#$84
 		BHS	LA1C6				; if >= $84
-		LSR	ZP_FPA + 3
-		ROR	ZP_FPA + 4
-		ROR	ZP_FPA + 5
-		ROR	ZP_FPA + 6
-		ROR	ZP_FPA + 7
-		INC	ZP_FPA + 2
+		CALL	FPAshr1
 		BNE	LA1B2
 LA1C6
+		STA	ZP_FPA + 2
 		LDA	ZP_FPA + 3
 		CMPA	#$A0
 		BHS	setFloatA1_cmdPRINT_num2str_digit
@@ -4774,11 +4781,7 @@ fpAddAtoBstoreinA_sameExp
 		STA	ZP_FPA + 3
 		BCC	anRTS11
 fpRORMantAincExp
-		ROR	ZP_FPA + 3
-		ROR	ZP_FPA + 4
-		ROR	ZP_FPA + 5
-		ROR	ZP_FPA + 6
-		ROR	ZP_FPA + 7
+		CALL	FPAror1
 		INC	ZP_FPA + 2
 		BNE	anRTS11
 		INC	ZP_FPA + 1
@@ -4974,20 +4977,20 @@ fnTAN			; LA59B!
 		LDX	#BASWKSP_FPTEMP4
 		CALL	fpCopyXtoFPA			; get back theta from FPTEMP4
 		CALL	fnCOS_internal1			; get cos theta
-LA5B3
+fpFPAeqFPTEMP3divFPA					; LA5B3
 		LDX	#BASWKSP_FPTEMP3
 		STX	ZP_FP_TMP_PTR1
 		CALL	fpFPAeqPTR1divFPA
 		LDA	#$FF
 		RTS
-LA5BE
+FPAeqFPAraisedToA						; TODO: this could be shortened by using stack to store counter
 		TFR	A,B
 		TSTB
 		BPL	LA5C9
 		NEGA
-		PSHS	A
+		STA	,-S
 		CALL	fpFPAeq1.0divFPA
-		PULS    B
+		LDB	,S+
 LA5C9
 		BEQ	fpLoad1			;  Floata=1.0
 		CALL	fpCopyFPA_FPTEMP1
@@ -5120,6 +5123,7 @@ LA66B
 ;;		LDU	ZP_TXTPTR			; restore text pointer
 	IF CPU_6309
 		PULSW
+		LDB	ZP_FPB
 	ENDIF
 
 		RORB
@@ -5344,18 +5348,17 @@ fpFPAeq_sqr_FPA
 		STA	ZP_FPA + 2
 		PULS	CC
 		BCC	fpFPAeq_sqr_FPA_sk6
-		LSR	ZP_FPA + 3
-		ROR	ZP_FPA + 4
-		ROR	ZP_FPA + 5
-		ROR	ZP_FPA + 6
-		ROR	ZP_FPA + 7
+		CALL	FPAshr1
 fpFPAeq_sqr_FPA_sk6
 		CALL	fpSetRealBto0
+	IF CPU_6309
+		CLRD
+	ELSE
 		CLRA
-		STA	ZP_FP_TMP
-		STA	ZP_FP_TMP + 1
-		STA	ZP_FP_TMP + 2
-		STA	ZP_FP_TMP + 3
+		CLRB
+	ENDIF
+		STD	ZP_FP_TMP
+		STD	ZP_FP_TMP + 2
 		LDA	#$40
 		STA	ZP_FPB + 2
 		STA	ZP_FPB + 7
@@ -5389,8 +5392,12 @@ fpFPAeq_sqr_FPA_sk2
 		SUBD	ZP_FP_TMP + 2
 		STD	ZP_FPA + 6
 		LDD	ZP_FPA + 4
+	IF CPU_6309
+		SBCD	ZP_FP_TMP + 0
+	ELSE
 		SBCB	ZP_FP_TMP + 1
 		SBCA	ZP_FP_TMP + 0
+	ENDIF
 		STD	ZP_FPA + 4
 		LDA	ZP_FPA + 3
 		SBCA	ZP_FPB + 7
@@ -5433,7 +5440,7 @@ fpNormalizeAndReturnFPA					; LA854
 LA861NewAPI
 *		B -> # of iterations
 *		X -> table of constants to use
-*		Y -> constant to use if FPA is too small		( was A )
+*		U -> constant to use if FPA is too small		( was A )
 * IF FPA < 0.5e-40 THEN FPA = U
 * ELSE 
 *	FPTEMP1 = 1/FPA
@@ -5450,7 +5457,7 @@ LA861NewAPI
 		STX	ZP_FP_TMP_PTR2			;						PTR2 = tablestart
 		LDA	ZP_FPA + 2			; get FPA exponent				
 		CMPA	#$40				;						if ABS(FPA)<1E-64
-		BLO	fpYtoPTR1toFPA			; if <-$40 approximate as constant at Y			RETURN default from Y
+		BLO	fpUtoPTR1toFPA			; if <-$40 approximate as constant at Y			RETURN default from Y
 		CALL	fpFPAeq1.0divFPA		;						FPA=1/FPA
 		CALL	fpCopyFPA_FPTEMP1		;						TMP=FPA
 		LDX	ZP_FP_TMP_PTR2			;			
@@ -5468,38 +5475,34 @@ LA886
 		CALL	fpFPAeqPTR1divFPA
 		CALL	fpAdd5toPTR2copytoPTR1
 		JUMP	fpFPAeqPTR1addFPA
-fpYtoPTR1toFPA						; LA896
+fpUtoPTR1toFPA						; LA896
 		STU	ZP_FP_TMP_PTR1
 		JUMP	fpCopyPTR1toFPA
 fnACS
 
-			TODO_CMD "ACS"
 			
-;			;  =ACS
-;		CALL fnASN
-;		BRA fpFPAEqPiDiv2SubFPA
+			;  =ACS
+		CALL	fnASN
+		BRA	fpFPAEqPiDiv2SubFPA
 fnASN
-
-			TODO_CMD "ASN"
-			
-;		CALL evalLevel1ConvertReal
-;		LDA ZP_FPA
-;		BPL LA8AF
-;		STZ ZP_FPA
-;		CALL LA8AF
-;		BRA LA8D2
-;LA8AF:
-;		CALL fpCopyFPA_FPTEMP3
-;		CALL LA929
-;		LDA ZP_FPA + 3
-;		BEQ fpSetFPAPIdiv2
-;		CALL LA5B3
-;		BRA LA8C6
-fpSetFPAPIdiv2						; LA8BE
+		CALL	evalLevel1ConvertReal
+		LDA	ZP_FPA
+		BPL	LA8AF				; jump forward if arg is positive
+		CLR	ZP_FPA				; else make positive
+		CALL	LA8AF				; call positive ASN code (returns with A=FF)
+		BRA	LA8D2				; jump forward to set FPA sign to FF
+LA8AF
+		CALL	fpCopyFPA_FPTEMP3		; FPTEMP3 = FPA
+		CALL	LA929				; call SQR(x*x-1)
+		LDA	ZP_FPA + 3			; check result is zero
+		BEQ	fpSetFPAeqPIdiv2		; if so set FPA=PI/2
+		CALL	fpFPAeqFPTEMP3divFPA		; LA5B3
+		BRA	LA8C6				; Call ATN
+fpSetFPAeqPIdiv2					; LA8BE
 		LDX	#fpConstPiDiv2
 		JUMP	fpCopyXtoFPA
 fnATN
-		CALL evalLevel1ConvertReal
+		CALL	evalLevel1ConvertReal
 LA8C6
 		CALL	fpCheckMant0SetSignExp0
 		BEQ	LA926_retFF
@@ -5647,32 +5650,26 @@ brkExpRange						; LA9BC
 
 fnRAD			; LA9C8!
 
-			TODO_CMD "RAD"
-			
-;			;  =RAD
-;		CALL evalLevel1ConvertReal
-;		LDA #<fpConstDeg2Rad
-;		BRA fpFPAeqXmulFPA_checkusingX!
+			;  =RAD
+		CALL	evalLevel1ConvertReal
+		LDX_FPC fpConstDeg2Rad
+		BRA	fpFPAeqXmulFPA
 fnLOG
 
-			TODO_CMD "LOG"
-			
-;			;  =LOG
-;?		CALL	fnLN
-;?		LDX	#fpConst0_43429
-;?		BRA	fpFPAeqXmulFPA
+			;  =LOG
+		CALL	fnLN
+		LDX_FPC	fpConst0_43429
+		BRA	fpFPAeqXmulFPA
 fnDEG
 
-			TODO_CMD "DEG"
-			
-;			;  =DEG
-;		CALL evalLevel1ConvertReal
-;		LDA #<fpConstRad2Deg
-;		BRA fpFPAeqXmulFPA_checkusingX!
+			;  =DEG
+		CALL	evalLevel1ConvertReal
+		LDX_FPC	fpConstRad2Deg
+		BRA 	fpFPAeqXmulFPA
 fnEXP			;  =EXP
 		CALL	evalLevel1ConvertReal
+fnEXP_int
 		PSHS	U
-LA9E2
 		LDA	ZP_FPA + 2
 		CMPA	#$87
 		BLO	LA9F7
@@ -5683,16 +5680,16 @@ LA9E2
 LA9F0		LDA	ZP_FPA
 		BPL	brkExpRange
 		JUMP	zero_FPA
-LA9F7		CALL	L82E0
+LA9F7		CALL	fpFPASplitToFractPlusInt
 		LDX	#fpConst0_07121
 		LDU	#fpConst1__2
 		LDB	#$03
 		CALL	LA861NewAPI
 		CALL	fpCopyFPA_FPTEMP3
 		LDU	#fpConst_e
-		CALL	fpYtoPTR1toFPA
+		CALL	fpUtoPTR1toFPA
 		LDA	ZP_FP_TMP + 6
-		CALL	LA5BE
+		CALL	FPAeqFPAraisedToA
 		CALL	fpFPAeqFPTEMP3mulFPA
 		PULS	U,PC
 
@@ -5722,23 +5719,17 @@ fnRND_0							; LAA21
 		CLR	ZP_FPA + 7
 		LDA	#$80
 		STA	ZP_FPA + 2
-;		PSHS	U
-;		LDB	#3
-;		LDX	#ZP_RND_WA + 4			; copy random accumulator
-;		LDU	#ZP_FPA + 7			; int mantissa 6 downto 3
-1;		EORA	,-X
-;		STA	,-U
-;		DECB
-;		BPL	1B
-;		PULS	U
-		LDA	ZP_RND_WA+3
-		STA	ZP_FPA+3
-		LDA	ZP_RND_WA+2
-		STA	ZP_FPA+4
-		LDA	ZP_RND_WA+1
-		STA	ZP_FPA+5
-		LDA	ZP_RND_WA+0
-		STA	ZP_FPA+6
+
+
+		; DB: 2022/9/14 - copy to FPA mantissa, most sig 4 bytes NOT reversing order as already BE
+
+		LDX	#4
+1		EORA	ZP_RND_WA-1,X
+		STA	ZP_FPA+2,X
+		LEAX	-1,X
+		BNE	1B
+
+
 		JUMP	fpNormalizeAndReturnFPA
 fnRND_int						; RND(X)
 		LEAU	1,U
@@ -5757,7 +5748,7 @@ LAA52
 		CALL	IntToReal
 		CALL	fpStackWAtoStackReal
 		CALL	fnRND_1
-		CALL	popFPFromStackToPTR1
+		CALL	popFPandSetPTR1toStack
 		CALL	fpFPAeqPTR1mulFPA_internal
 		CALL	fpReal2Int
 		CALL	inc_INT_WA
@@ -5899,62 +5890,45 @@ fileOpen
 	ENDIF
 ;
 fnPI							; LAAFF!
-		CALL	fpSetFPAPIdiv2			; load PI/2 into FPA and increment exponent for PI
+		CALL	fpSetFPAeqPIdiv2			; load PI/2 into FPA and increment exponent for PI
 		INC	ZP_FPA + 2
 		RTS
 
 ;			;  =EVAL string$ - Tokenise and evaluate expression
 ;			;  ================================================
-fnEVAL
+fnEVAL			
+		CALL	evalLevel1
+		LBNE	brkTypeMismatch			;  Evaluate value, error if not string
+		LDB	ZP_STRBUFLEN
+		INC	ZP_STRBUFLEN
+		LDX	#BASWKSP_STRING
+		ABX
+		LDA	#$0D
+		STA	,X				;  Put in terminating <cr>
+		CALL	StackString			;  Stack the string
+			;  String has to be stacked as otherwise would
+			;   be overwritten by any string operations
+			;   called by Evaluator
+		pshs	U
+		ldu	ZP_BAS_SP
+		leau	1,U				; skip length byte on stack
+		CALL 	L8E1F				;  Tokenise string on stack at GPTR
+		ldu	ZP_BAS_SP
+		leau	1,U
+		CALL 	evalAtY				;  Call expression evaluator
+		CALL 	popStackedStringNew		;  Drop string from stack
 
-		TODO_CMD "EVAL"
-			
-;		CALL evalLevel1
-;		BNE JUMPBrkTypeMismatch3		;  Evaluate value, error if not string
-;		INC ZP_STRBUFLEN
-;		LDU ZP_STRBUFLEN			;  Increment string length to add a <cr>
-;		LDA #$0D
-;		STA $0600 - 1,Y				;  Put in terminating <cr>
-;		CALL StackString				;  Stack the string
-;			;  String has to be stacked as otherwise would
-;			;   be overwritten by any string operations
-;			;   called by Evaluator
-;		rep		#PF_I16
-;		.i16
-;		ldx		ZP_TXTPTR2
-;		phx
-;		lda		ZP_TXTOFF2
-;		pha
-;		ldx		ZP_BAS_SP
-;		inx
-;		stx		ZP_TXTPTR2
-;		stx		ZP_GEN_PTR
-;		sep		#PF_I16
-;		.i8
-;		CALL L8E1F				;  Tokenise string on stack at GPTR
-;		STZ ZP_TXTOFF2				;  Point PTRB offset back to start
-;		CALL evalAtY				;  Call expression evaluator
-;		CALL LBCE1				;  Drop string from stack
-;pullPTRBandRTS:
-;		rep			#PF_I16
-;		.i16
-;		PLA
-;		STA ZP_TXTOFF2				;  Restore PTRB
-;		PLX
-;		STX ZP_TXTPTR
-;		sep			#PF_A16
-;		.i8
-;		LDA ZP_VARTYPE				;  Get expression return value
-;		RTS					;  And return
-JUMPBrkTypeMismatch3
-		JUMP brkTypeMismatch
+
+		PULS	U
+		LDA	ZP_VARTYPE			;  Get expression return value
+		RTS					;  And return
 ;
 ;
 fnVAL
 
 			;  =VAL
 		CALL	evalLevel1
-		BNE	JUMPBrkTypeMismatch3
+		LBNE	brkTypeMismatch
 str2Num		LDB	ZP_STRBUFLEN
 		LDX	#BASWKSP_STRING
 		ABX
@@ -6061,17 +6035,21 @@ fnSGN							; LABF5!
 		CALL	evalLevel1
 		LBEQ	brkTypeMismatch
 		BMI	fnSGN_real
-		LDA	ZP_INT_WA + 0
+
+		CALL	IntWAZero
+
 		BMI	returnINTminus1
-		ORA	ZP_INT_WA + 1
-		ORA	ZP_INT_WA + 2
-		ORA	ZP_INT_WA + 3
+
 		BEQ	returnINT
 fnSGN_pos	LDB	#1
 		BRA	returnB8asINT_S
 
 
 fnPOINT			; LAC0E!
+	IF FLEX
+		JUMP	brkFlexNotImpl
+	ELSE
+
 			; TODO: use hw stack?
 		CALL	evalAtYcheckTypeInAConvert2INT
 		CALL	stackINT_WAasINT		; stack X coord
@@ -6092,6 +6070,8 @@ fnPOINT			; LAC0E!
 		LDB	ZP_INT_WA+4
 		BMI	returnINTminus1
 		BRA	returnB8asINT_S
+	ENDIF
+
 fnINSTR
 
 		CALL	evalAtY
@@ -6238,9 +6218,13 @@ fpFPAeqPTR1subFPAnegFPA					; LACC7
 fpNegateFP_A
 		LDA	ZP_FPA + 3
 		BEQ	1F				;  Mantissa=0 - zero
+	IF CPU_6309
+		EIM	#$80,ZP_FPA
+	ELSE
 		LDA	ZP_FPA
 		EORA	#$80
 		STA	ZP_FPA			;  Negate sign fp sign
+	ENDIF
 1		LDA #$FF
 		RTS					;  Return real
 
@@ -6253,6 +6237,14 @@ evalLevel1CheckNotStringAndNegate			; LACDA
 		BMI	fpNegateFP_A			;  -<real> - Jump to negate real
 ;		
 negateIntA	
+	IF CPU_6309
+		CLRD
+		SUBD	ZP_INT_WA+2
+		STD	ZP_INT_WA+2
+		CLRD
+		SBCD	ZP_INT_WA
+		STD	ZP_INT_WA
+	ELSE
 		LDD	#0
 		SUBD	ZP_INT_WA + 2
 		STD	ZP_INT_WA + 2
@@ -6260,6 +6252,7 @@ negateIntA
 		SBCB	ZP_INT_WA + 1
 		SBCA	ZP_INT_WA + 0
 		STD	ZP_INT_WA + 0
+	ENDIF
 A_eq_40_rts	LDA	#$40
 		RTS
 ;		
@@ -6308,7 +6301,8 @@ evalLevel1StringLiteral_lp			;LAD1C:
 ;			;  Evaluate a value - called by functions for value parameters
 ;			;
 evalLevel1						; LAD36
-;				LEAU	1,Y		; TODO - not sure whether to inc here or after
+		; TODO: Could call skipSpacesY here - but this is called a lot so maybe best to 
+		; leave as is for now? - tried this and it reduced clocksp noticeably
 		LDA	,U+				;  Get next character
 		CMPA	#' '
 		BEQ	evalLevel1			;  Skip spaces
@@ -6358,8 +6352,6 @@ NoSuchVar	LDA	ZP_OPT			;  Get assembler OPTion
 		ANDA	#$02
 		BNE	brkNoSuchVar		;  If OPT 2 set, give No such variable error
 		BCS	brkNoSuchVar		;  If invalid variable name, also give error
-;;		TODODEADEND "NoSuchVar - assembler OPT 2 - skip TXTPTR2?"
-;;		STX ZP_TXTOFF2			;  Store
 GetP_percent	LDD	VAR_P_PERCENT+2
 		JUMP	retD16asUINT
 brkNoSuchVar
@@ -6696,7 +6688,7 @@ LAF29
 		PSHS	B
 		CALL	evalLevel1
 		STA	ZP_VARTYPE
-		BEQ	LAF44brkTypeMismatch
+		LBEQ	brkTypeMismatch
 		PULS	B
 		PSHS	U
 		STB	ZP_PRINTFLAG			; dec/hex flag
@@ -6708,8 +6700,6 @@ LAF29
 LAF3F
 		CALL	cmdPRINT_num2str
 		BRA	LAF7AclrArts
-LAF44brkTypeMismatch
-		JUMP brkTypeMismatch
 fnSTRING			; LAF47!
 			
 ;			;  =STRING$
@@ -6717,7 +6707,7 @@ fnSTRING			; LAF47!
 		CALL	stackINT_WAasINT
 		CALL	skipSpacesCheckCommaAtYOrBRK
 		CALL	evalL1BracketAlreadyOpen
-		BNE	LAF44brkTypeMismatch
+		LBNE	brkTypeMismatch
 		PSHS	U
 		CALL	popIntANew
 		LDB	ZP_STRBUFLEN
@@ -7024,7 +7014,7 @@ LB140
 		STX	ZP_GEN_PTR+2			; stick var pointer at ZP_GEN_PTR+2
 		LDA	ZP_VARTYPE
 		BPL	LB165
-		CALL	popFPFromStackToPTR1
+		CALL	popFPandSetPTR1toStack
 		CALL	fpCopyPTR1toFPA
 		BRA	LB168
 LB165		CALL	popIntANew
@@ -7070,14 +7060,20 @@ GetVarValNewAPI						; LB1A0
 		CMPA	#VAR_TYPE_INT
 		BEQ	GetVarValInt			; &04=Integer
 ; little-endian integer
-		LDX	ZP_INT_WA + 2			; &02=Little-endian integer, TODO: check speed / size trade off with swapendian defined elsewhere if short of space
-		LDD	,X++
-		EXG	A,B
-		STD	ZP_INT_WA + 2
-		LDD	,X++
-		EXG	A,B
-		STD	ZP_INT_WA + 0
+		PSHS	U
+		LDU	ZP_INT_WA + 2			; &02=Little-endian integer, TODO: check speed / size trade off with swapendian defined elsewhere if short of space
+		LDX	#ZP_INT_WA
+		CALL	getLEUtoX
 		LDA	#VAR_TYPE_INT
+		PULS	U,PC
+
+getLEUtoX
+		LDD	,U++
+		EXG	A,B
+		STD	2,X
+		LDD	,U++
+		EXG	A,B
+		STD	0,X
 		RTS
 ;;^^^
 
@@ -7297,8 +7293,6 @@ cmdWIDTH
 		STB	ZP_WIDTH
 LB322continue
 		JUMP	continue
-LB325brkMismatch
-		JUMP	brkTypeMismatch
 evalAtYAndStoreEvaledExpressioninStackedVarPTr		; LB328
 		CALL evalAtY
 		; the pointer to the variable (and it's type) are on the stack above the return pointer
@@ -7325,7 +7319,7 @@ storeEvaledExpressioninVarAtZP_GEN_PTR			; LB338
 		CMPA	#VAR_TYPE_REAL
 		BEQ	storeEvaledExpressioninRealVarAtZP_GEN_PTR
 		LDA	ZP_VARTYPE
-		BEQ	LB325brkMismatch
+		LBEQ	brkTypeMismatch
 		BPL	storeInt1
 		CALL	fpReal2Int
 storeInt1						;LB347:
@@ -7357,7 +7351,7 @@ storeByte
 		RTS
 storeEvaledExpressioninRealVarAtZP_GEN_PTR		; LB360
 		LDA	ZP_VARTYPE
-		BEQ	LB325brkMismatch
+		LBEQ	brkTypeMismatch
 		BMI	skIntToReal1
 		CALL	IntToReal
 skIntToReal1						; LB369
@@ -7652,8 +7646,12 @@ cmdNEXTfoundLoopVar
 		SUBD	(2+FORSTACK_OFFS_TO),U		;7
 		BNE	cmdNEXTnoZ			;3
 		LDD	0,X				;5
+	IF CPU_6309
+		SBCD	(0+FORSTACK_OFFS_TO),U
+	ELSE
 		SBCB	(1+FORSTACK_OFFS_TO),U		;5
 		SBCA	(0+FORSTACK_OFFS_TO),U		;5
+	ENDIF
 		BNE	cmdNEXTnoZ2			;3
 		TSTB					;2
 		BNE	cmdNEXTnoZ2			;3
@@ -7661,11 +7659,16 @@ cmdNEXTfoundLoopVar
 		BRA	cmdNEXTexecLoop			;3
 cmdNEXTnoZ
 		LDD	0,X				;5
+	IF CPU_6309
+		SBCD	(0+FORSTACK_OFFS_TO),U
+	ELSE
 		SBCB	(1+FORSTACK_OFFS_TO),U		;5
 		SBCA	(0+FORSTACK_OFFS_TO),U		;5
+	ENDIF
 							;=31
 cmdNEXTnoZ2
 		LDA	0,X
+cmdNextnoz3
 		EORA	(0+FORSTACK_OFFS_TO),U
 		EORA	(0+FORSTACK_OFFS_STEP),U
 		BPL	cmdNEXTcksign2
@@ -7712,11 +7715,7 @@ cmdNEXTnoZLE
 							;=31
 cmdNEXTnoZ2LE
 		LDA	3,X
-		EORA	(0+FORSTACK_OFFS_TO),U
-		EORA	(0+FORSTACK_OFFS_STEP),U
-		BPL	cmdNEXTcksign2
-		BCC	cmdNEXTexecLoop
-		BRA	cmdNEXTloopFinished
+		BRA	cmdNextnoz3
 
 cmdNEXTloopFinished					; LB5AE
 		LDB	ZP_FOR_LVL_X_15
@@ -7764,8 +7763,7 @@ cmdFOR
 		; TODO some recalcs of X could be done by LEAX?
 			;  FOR
 		CALL	findVarOrAllocEmpty
-		BEQ	brkFORVariable
-		BCS	brkFORVariable
+		BLS	brkFORVariable				; error if CS or Z
 		CALL	pushVarPtrAndType
 		CALL	skipToEqualsOrBRKY
 		CALL	evalAtYAndStoreEvaledExpressioninStackedVarPTr
@@ -7774,11 +7772,10 @@ cmdFOR
 		BNE	brkNoTO
 		LDB	ZP_FOR_LVL_X_15
 		CMPB	#FORSTACK_ITEM_SIZE*FORSTACK_MAX_ITEMS
-		BCC	brkTooManyFORs
+		BHS	brkTooManyFORs
 		LDX	#BASWKSP_FORSTACK
 		ABX
 		STX	ZP_EXTRA_SAVE
-		LDB	ZP_FOR_LVL_X_15
 		ADDB	#FORSTACK_ITEM_SIZE
 		STB	ZP_FOR_LVL_X_15
 		LDD	ZP_GEN_PTR+2			; addr of control var
@@ -7810,17 +7807,15 @@ cmdFORskINTnoSTEP					; LB677
 		STD	FORSTACK_OFFS_STEP + 2,X
 cmdFORskipExecBody					; LB68F
 		CALL	scanNextStmtAndTrace
-		LDB	ZP_FOR_LVL_X_15
-		LDX	#BASWKSP_FORSTACK + FORSTACK_OFFS_LOOP - FORSTACK_ITEM_SIZE
-		STU	B,X				; store Y pointer to body statement in FOR stack (2 before next pointer!)
+		LDX	ZP_EXTRA_SAVE
+		STU	FORSTACK_OFFS_LOOP,X				; store Y pointer to body statement in FOR stack (2 before next pointer!)
 		JUMP	skipSpacesAtYexecImmed
 cmdFORskipskReal					; LB6A1
 
 		CALL	evalAtY
 		CALL	checkTypeIntToReal
 		LDX	ZP_EXTRA_SAVE
-		LDB	#FORSTACK_OFFS_TO
-		ABX
+		LEAX	FORSTACK_OFFS_TO,X
 		CALL	fpCopyFPA_X			; store TO value (real)
 		CALL	fpLoad1				; FloatA=1.0 (load default STEP)
 		CALL	skipSpacesY
@@ -7832,8 +7827,7 @@ cmdFORskipskReal					; LB6A1
 cmdFORrealNoStep					; LB6C7
 		LEAU	-1,U
 		LDX	ZP_EXTRA_SAVE
-		LDB	#FORSTACK_OFFS_STEP
-		ABX
+		LEAX	FORSTACK_OFFS_STEP,X
 		CALL	fpCopyFPA_X
 		BRA	cmdFORskipExecBody
 
@@ -7848,8 +7842,7 @@ intGOSUB_FPB_2	CALL	scanNextStmtFromY		; LB6DC
 		BHS	brkTooManyGosubs
 		LDX	#BASWKSP_GOSUBSTACK
 		ASLB
-		ABX
-		STU	,X				; store text pointer on stack
+		STU	B,X				; store text pointer on stack
 		INC	ZP_GOSUB_LVL
 		BRA	cmdGOTODecodedLineNumber
 brkTooManyGosubs
@@ -7869,8 +7862,7 @@ cmdRETURN
 		DEC	ZP_GOSUB_LVL
 		LDX	#BASWKSP_GOSUBSTACK-2
 		ASLB
-		ABX
-		LDU	,X
+		LDU	B,X
 LB71A		JUMP	continue
 
 			;============================
@@ -7911,8 +7903,8 @@ cmdON							; LB75B!
 		CMPA	#tknERROR
 		BEQ	cmdONERROR				;  ON ERROR
 
-		LEAU	-1,U
-		CALL	evalForceINT				;  Evaluate ON <num>
+		CALL	decUEvalForceINT			;  Evaluate ON <num>
+		LDB	,U
 		CMPB 	#tknPROC
 		BEQ 	cmdOnGSP				;  ON <num> PROC
 		LEAU	1,U
@@ -7967,7 +7959,7 @@ cmdOnFound							; LB7B6
 		JUMP	cmdGOTODecodedLineNumber
 cmdOnFoundGOSUB							; LB7CA
 		CALL	decodeLineNumberFindProgLine
-		LDU	ZP_TXTOFF
+;;		LDU	ZP_TXTOFF
 		CALL	findNextStmt				; find $0D or ':' to use as return from GOSUB
 		JUMP	intGOSUB_FPB_2
 cmdOnSkipNoMatch2
@@ -8039,6 +8031,12 @@ findProgLineOrBRK
 ;;;LB844:
 ;;		JUMP scanNextContinue
 
+	IF FLEX
+cmdINPUT_HASH						; LB847
+		JUMP	brkFlexNotImpl
+	ELSE
+
+
 cmdINPUTBGETtoX
 1		JSR	OSBGET
 		STA 	,X+
@@ -8096,6 +8094,8 @@ cmdINPUT_HASH_StoreAtVarPtr
 		CALL	popIntAtZP_GEN_PTRNew
 		CALL	storeEvaledExpressioninVarAtZP_GEN_PTR
 		BRA	cmdINPUT_HASH_lp
+
+	ENDIF	;FLEX
 ;LB8B2:
 ;		PLA
 ;		PLA
@@ -8277,10 +8277,11 @@ cmdREAD_dataItemFound
 IntWAZero
 		PSHS	A
 		LDA	ZP_INT_WA
+		BMI	1F
 		ORA	ZP_INT_WA + 1
 		ORA	ZP_INT_WA + 2
 		ORA	ZP_INT_WA + 3
-		PULS	A,PC
+1		PULS	A,PC
 
 
 cmdUNTIL
@@ -8330,8 +8331,7 @@ cmdREPEAT
 ReadKeysTo_InBuf
 		LDA	#BAS_InBuf / $100
 	IF FLEX = 1
-		CLRB
-		CALL	FLEX_READLINE
+		CALL	ReadKeysTo_PageInA
 	ELSE
 ReadKeysTo_PageInA
 		CLRB
@@ -8487,16 +8487,20 @@ ResetStackProgStartRepeatGosubFor
 		STD	ZP_READ_PTR				;  DATA pointer = PAGE
 		LDD	ZP_HIMEM				;  STACKBOT=HIMEM
 		STD	ZP_BAS_SP
+	IF CPU_6309
+		AIM	#$7F,ZP_LISTO
+	ELSE
 		LDA	ZP_LISTO
 		ANDA	#$7F
 		STA	ZP_LISTO
+	ENDIF
 		CLR	ZP_REPEAT_LVL
 		CLR	ZP_FOR_LVL_X_15
 		CLR	ZP_GOSUB_LVL;			;  Clear REPEAT, FOR, GOSUB stacks
 		RTS					;  DATA pointer = PAGE
 ;		
 ;		
-popFPFromStackToPTR1			; pop FP from stack, set out old stack pointer in PTR1
+popFPandSetPTR1toStack			; pop FP from stack, set out old stack pointer in PTR1
 		LDY	ZP_BAS_SP
 		STY	ZP_FP_TMP_PTR1
 		LEAY	5,Y
@@ -8572,81 +8576,81 @@ delocaliseAtZP_GEN_PTR
 
 		;delocalise Dynamic String
 
-		LDB	,U+				; get stacked string length
-		BEQ	2F
 		LDX	ZP_GEN_PTR + 2			; string params pointer
+		LDB	,U+				; get stacked string length
 		STB	3,X
-		LDX	,X				; string pointer
+		BEQ	delocExit
+		LDX	,X				; get pointer to string?
+		BRA	strCpFin
 
-1		LDA	,U+
-		STA	,X+
-		DECB
-		BNE	1B
+
+delocCopyB
+		CALL	copyBatUtoX
+
 2							; LBC8D:
 delocExit
 		STU	ZP_BAS_SP
 		PULS	U,PC
 
-delocalizeStaticString					; LBC95
-		LDB	,U+				; get stacked string length
-		BEQ	2F
-		LDX	ZP_GEN_PTR + 2			; get address to restore string to 
-1							; LBC9C
-		LDA	,U+
+copyBatUtoX
+1		LDA	,U+
 		STA	,X+
 		DECB
 		BNE	1B
-		LDA	#$0D
+		RTS
+
+
+delocalizeStaticString					; LBC95
+		LDX	ZP_GEN_PTR + 2			; get address to restore string to 
+		LDB	,U+				; get stacked string length
+strCpFin
+		BEQ	2F
+		CALL	copyBatUtoX
+2		LDA	#$0D
 		STA	,X+
 		BRA	delocExit
 delocalizeNum						; LBCAA
 		LDX	ZP_GEN_PTR + 2
 		LDB	ZP_NAMELENORVT			; get var type
-		DECB
-1		LDA	,U+				; for 0 (do 1 byte), for 4,5 do 4,5 bytes
-		STA	,X+
-		DECB
-		BPL	1B
+		BEQ	delocCopy1
+		CMPB	#2
+		BNE	delocCopyB
+		CALL	getLEUtoX			; copy and reverse bytes
 		BRA	delocExit
+delocCopy1
+		LEAU	3,U				; stacked as a 4 byte INT TODO: store as 1 byte int?
+		INCB
+		BRA	delocCopyB
 
 		; new API - trashes A, X
 popStackedStringNew					; LBCD2
 
 		PSHS	U
 		LDU	ZP_BAS_SP
-		LDA	,U+				; first byte contains length
-		STA	ZP_STRBUFLEN
-		BEQ	delocExit
 		LDX	#BASWKSP_STRING
-2		LDB	,U+
-		STB	,X+
-		DECA
-		BNE	2B
+		LDB	,U+				; first byte contains length
+		STB	ZP_STRBUFLEN
+		BEQ	delocExit
+		CALL	copyBatUtoX
+		CLRA					; indicate string
 		BRA	delocExit		
 
 
 		; New API - after call all regs preserved
 popIntANew
-		PSHS	D,U
-		LDU	ZP_BAS_SP
-		LDD	,U++
-		STD	ZP_INT_WA
-		LDD	,U++
-		STD	ZP_INT_WA+2
-		STU	ZP_BAS_SP
-		PULS	D,U,PC
+		PSHS	D,U,X
+		LDX	#ZP_INT_WA
+		BRA	1F
 popIntAtZP_GEN_PTRNew				; LBD06
 		LDX #ZP_GEN_PTR			; TODO - WORK THIS LOT OUT!
 		; NOTE: trashes A,B
 popIntAtXNew					; LBD08
-		PSHS	U
-		LDU	ZP_BAS_SP
-		LDD	,U++
-		STD	0,X
-		LDD	,U++
-		STD	2,X
+		PSHS	D,U,X
+1		LDU	ZP_BAS_SP
+		LDB	#4
+		CALL	copyBatUtoX
 		STU	ZP_BAS_SP
-		PULS	U,PC
+		PULS	D,U,X,PC
 UpdStackByBCheckFull
 		LDX	ZP_BAS_SP
 		SEX
@@ -8902,6 +8906,7 @@ StoreFileAddressNext
 		LEAU	4,U				; Point to next address
 StoreFileAddress
 		PSHS	X
+		LDX	#0
 		BCC	StoreFileBigAddr
 		EXG	A,B				; Swap to make little-endian
 		EXG	X,D
