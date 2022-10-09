@@ -254,6 +254,8 @@ $(FLEXOUT)/FLEXBAS.BIN:	6809BAS.asm $(DEPS)
 
 		./freespace.pl <$(basename $@).sym >> fl_$(notdir $(basename $@))_free.txt
 
+$(SBC09OUT)/SBC09BAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
+		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define ASSEMBLER_6809 --define CPU_6809 -o $@ -l $(basename $@).lst $< SBC09_MOS.asm
 
 $(BEEBOUT)/6809BAS.bin: $(DEPS)
 $(BEEBOUT)/6809BAS-6309ass.bin: $(DEPS)
@@ -263,6 +265,7 @@ $(CHIPKITOUT)/6809BAS-6309ass.bin: $(DEPS)
 $(CHIPKITOUT)/6809BAS-6502ass.bin: $(DEPS)
 $(FLEXOUT)/FLEXBAS.bin: $(DEPS)
 $(FLEXOUT)/FLEXBBC.bin: $(DEPS)
+$(SBC09OUT)/SBC09BAS.bin: $(DEPS)
 $(MATCHBOXOUT)/6809BAS.bin: $(DEPS)
 
 

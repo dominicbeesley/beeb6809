@@ -18,14 +18,20 @@ VERSIONSTR 	MACRO
 
 	IF	FLEX=1
 			INCLUDE		"../../includes/flex/flexlib.inc"
-	ELSE
+	ELSIF	SBC09!=1
 			INCLUDE		"../../includes/mosrom.inc"
 			INCLUDE		"../../includes/oslib.inc"
 	ENDIF
 
 DEBUG			EQU	1
+
+	IF	SBC09=1
+LOADADDR		EQU $C000
+COMPADDR		EQU $C000
+	ELSE
 LOADADDR		EQU $8000
 COMPADDR		EQU $8000
+	ENDIF
 
 ZP_MOS_ERROR_PTR_QRY	EQU	$FD		; TODOFLEX - move this defn somewhere?
 
@@ -41,7 +47,13 @@ ZP_MOS_ERROR_PTR_QRY	EQU	$FD		; TODOFLEX - move this defn somewhere?
 
 ************************** START MAIN ROM CODE ******************************
 			CODE
-	IF FLEX != 1
+	IF SBC09 = 1
+ROMSTART
+        		BRA   ROM_LANGST
+HeaderCopyright
+         		FCB   0
+         		VERSIONSTR
+	ELSIF FLEX != 1
 ROMSTART		
 			INCLUDE		"./rom-header-tube.asm"
 			CMPA	#1

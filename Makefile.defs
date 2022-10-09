@@ -12,10 +12,12 @@ RELDIR:=$(shell realpath --relative-to=$(TOP) $(shell dirname $(CALLER_MAKE)))
 BEEBOUT=$(TOP)/BEEB/$(RELDIR)
 CHIPKITOUT=$(TOP)/CHIPKIT/$(RELDIR)
 FLEXOUT=$(TOP)/FLEX/$(RELDIR)
+SBC09OUT=$(TOP)/SBC09/$(RELDIR)
 MATCHBOXOUT=$(TOP)/MATCHBOX/$(RELDIR)
 TARGETS_BEEB_PRE=$(addprefix $(BEEBOUT)/,$(TARGETS) $(TARGETS_BEEB))
 TARGETS_CHIPKIT_PRE=$(addprefix $(CHIPKITOUT)/,$(TARGETS) $(TARGETS_CHIPKIT))
 TARGETS_FLEX_PRE=$(addprefix $(FLEXOUT)/,$(TARGETS_FLEX))
+TARGETS_SBC09_PRE=$(addprefix $(SBC09OUT)/,$(TARGETS_SBC09))
 TARGETS_MATCHBOX_PRE=$(addprefix $(MATCHBOXOUT)/,$(TARGETS_MATCHBOX))
 
 $(CHIPKITOUT)/%.hex $(CHIPKITOUT)/%.sym $(CHIPKITOUT)/%.lst: 	%.asm	$(DEPS)
@@ -30,6 +32,9 @@ $(MATCHBOXOUT)/%.hex $(MATCHBOXOUT)/%.sym $(MATCHBOXOUT)/%.lst:	%.asm	$(DEPS)
 $(FLEXOUT)/%.hex $(FLEXOUT)/%.sym $(FLEXOUT)/%.lst:	%.asm	$(DEPS)
 		$(AS) $(ASFLAGS) --define MACH_FLEX=1 -S -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+$(SBC09OUT)/%.hex $(SBC09OUT)/%.sym $(SBC09OUT)/%.lst:	%.asm	$(DEPS)
+		$(AS) $(ASFLAGS) --define MACH_SBC09=1 -S -o $@ -l $(basename $@).lst $<
+		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 
 $(CHIPKITOUT)/%.bin $(CHIPKITOUT)/%.sym $(CHIPKITOUT)/%.lst: 	%.asm	$(DEPS)
 		$(AS) $(ASFLAGS) --define MACH_CHIPKIT=1 -o $@ -l $(basename $@).lst $<
@@ -42,11 +47,13 @@ $(MATCHBOXOUT)/%.bin $(MATCHBOXOUT)/%.sym $(MATCHBOXOUT)/%.lst:	%.asm	$(DEPS)
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 
 
-all:		all_beeb all_chipkit all_matchbox all_flex 
+all:		all_beeb all_chipkit all_matchbox all_flex all_sbc09
 all_chipkit:	dirs_chipkit $(TARGETS_CHIPKIT_PRE) $(TARGETS_EXTRA) $(TARGETS_EXTRA_CHIPKIT)
 all_beeb:	dirs_beeb $(TARGETS_BEEB_PRE) $(TARGETS_EXTRA) $(TARGETS_EXTRA_BEEB)
 all_matchbox: 	dirs_matchbox $(TARGETS_MATCHBOX_PRE)
 all_flex: 	dirs_flex $(TARGETS_FLEX_PRE)
+all_sbc09: 	dirs_sbc09 $(TARGETS_SBC09_PRE)
+
 dirs_chipkit:	
 		mkdir -p $(CHIPKITOUT)
 dirs_beeb:	
@@ -55,9 +62,11 @@ dirs_matchbox:
 		mkdir -p $(MATCHBOXOUT)
 dirs_flex:	
 		mkdir -p $(FLEXOUT)
+dirs_sbc09:
+		mkdir -p $(SBC09OUT)
 
 clean:		
-		$(foreach cln,$(TARGETS_CHIPKIT_PRE) $(TARGETS_BEEB_PRE) $(TARGETS_MATCHBOX_PRE) $(TARGETS_FLEX_PRE), \
+		$(foreach cln,$(TARGETS_CHIPKIT_PRE) $(TARGETS_BEEB_PRE) $(TARGETS_MATCHBOX_PRE) $(TARGETS_FLEX_PRE) $(TARGETS_SBC09_PRE), \
 			rm -f $(basename $(cln)).bin $(basename $(cln)).lst $(basename $(cln)).sym $(basename $(cln)).hex ;\
 			rm -f $(cln) \
 		)

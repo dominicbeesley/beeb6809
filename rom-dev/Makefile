@@ -19,6 +19,9 @@ all_chipkit:
 all_flex:
 	$(MAKE) -C BBCBASIC all_flex
 
+all_sbc09:
+	$(MAKE) -C BBCBASIC all_sbc09
+
 all_matchbox:
 	$(MAKE) -C BBCBASIC all_matchbox
 	
