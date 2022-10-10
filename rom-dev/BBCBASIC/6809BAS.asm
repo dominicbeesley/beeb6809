@@ -25,9 +25,9 @@ VERSIONSTR 	MACRO
 
 DEBUG			EQU	1
 
-	IF	SBC09=1
-LOADADDR		EQU $C000
-COMPADDR		EQU $C000
+	IF	BASEADDR
+LOADADDR		EQU BASEADDR
+COMPADDR		EQU BASEADDR
 	ELSE
 LOADADDR		EQU $8000
 COMPADDR		EQU $8000
@@ -1775,6 +1775,8 @@ indStringStore	CALL	str600CRterm			;  Store <cr> at end of string buffer
 cmdPRINT_HASH						; L9141
 	IF FLEX
 		JUMP	brkFlexNotImpl
+	ELSIF SBC09
+		JUMP	brkSBC09NotImpl
 	ELSE
 
 		CALL	decYSaveAndEvalHashChannelAPI
@@ -2517,6 +2519,9 @@ L9670		LEAU	1,U
 	IF FLEX = 1
 brkFlexNotImpl	DO_BRK_B
 		FCB	$FE, "Not implemented in FLEX OS", 0
+	ELSIF SBC09 = 1
+brkSBC09NotImpl	DO_BRK_B
+		FCB	$FE, "Not implemented in SBC09", 0	
 	ENDIF
 
 			;  Jump to set TRACE OFF
@@ -2543,6 +2548,8 @@ L968B
 varSetTime_Dollar					; L968E
 	IF FLEX = 1
 		JUMP	brkFlexNotImpl
+	ELSIF SBC09 = 1
+		JUMP	brkSBC09NotImpl
 	ELSE
 		LEAU	1,U				; skip '$'
 		CALL	styZP_TXTPTR2_skipSpacesExectEqEvalExp
@@ -2672,7 +2679,7 @@ cmdMode			; L975F!
 
 		CALL	evalForceINT
 		CALL	scanNextStmtFromY
-	IF FLEX != 1						; TODOFLEX - assuming that this either has no effect or we're on the TUBE?
+	IF FLEX != 1 AND SBC09 != 1				; TODOFLEX - assuming that this either has no effect or we're on the TUBE?
 		JSR	OSByte82
 		LEAX	1,X
 		BNE	L9797					; machine high order address != $FFFF, skip memory clash check
@@ -5693,7 +5700,7 @@ LA9F7		CALL	fpFPASplitToFractPlusInt
 		CALL	fpFPAeqFPTEMP3mulFPA
 		PULS	U,PC
 
-	IF FLEX != 1
+	IF FLEX != 1 AND SBC09 != 1
 callOSByte81withXYfromINT
 		CALL	evalLevel1checkTypeStoreAsINT
 		LDA	#$81
@@ -5805,6 +5812,8 @@ fnUSR			; LAAA9!
 fnVPOS			; LAABC!
 	IF FLEX
 		JUMP	brkFlexNotImpl
+	ELSIF SBC09 = 1
+		JUMP	brkSBC09NotImpl
 	ELSE
 		LDA	#$86
 		JSR	OSBYTE
@@ -5817,6 +5826,8 @@ fnVPOS			; LAABC!
 fnEXT
 	IF FLEX = 1
 		JUMP	brkFlexNotImpl
+	ELSIF SBC09 = 1
+		JUMP	brkSBC09NotImpl
 	ELSE
 		LDA	#$02			; 02=Read EXT
 		BRA	varGetFInfo
@@ -5826,6 +5837,8 @@ fnEXT
 varGetPTR
 	IF FLEX = 1
 		JUMP	brkFlexNotImpl
+	ELSIF SBC09 = 1
+		JUMP	brkSBC09NotImpl
 	ELSE
 		CLRA				; 00=Read PTR
 varGetFInfo
@@ -5844,6 +5857,8 @@ varGetFInfo
 fnBGET
 	IF FLEX = 1
 		JUMP	brkFlexNotImpl
+	ELSIF SBC09 = 1
+		JUMP	brkSBC09NotImpl
 	ELSE
 		CALL	evalHashChannel		; Evaluate #channel, save TXTPTR, Y=channel
 		JSR	OSBGET			; Read byte
@@ -5855,6 +5870,8 @@ fnBGET
 fnOPENIN
 	IF FLEX = 1
 		JUMP	brkFlexNotImpl
+	ELSIF SBC09 = 1
+		JUMP	brkSBC09NotImpl
 	ELSE
 		LDA #$40
 		BRA fileOpen			;  OPENIN is OSFIND $40
@@ -5864,6 +5881,8 @@ fnOPENIN
 fnOPENOUT
 	IF FLEX = 1
 		JUMP	brkFlexNotImpl
+	ELSIF SBC09 = 1
+		JUMP	brkSBC09NotImpl
 	ELSE
 		LDA #$80
 		BRA fileOpen			;  OPENOUT is OSFIND $80
@@ -5873,12 +5892,16 @@ fnOPENOUT
 fnOPENUP
 	IF FLEX = 1
 		JUMP	brkFlexNotImpl
+	ELSIF SBC09 = 1
+		JUMP	brkSBC09NotImpl
 	ELSE
 		LDA #$C0			;  OPENUP is OSFIND $C0
 	ENDIF
 fileOpen
 	IF FLEX = 1
 		JUMP	brkFlexNotImpl
+	ELSIF SBC09 = 1
+		JUMP	brkSBC09NotImpl
 	ELSE
 		PSHS	A
 		CALL	evalLevel1
@@ -5999,6 +6022,8 @@ fnINKEY		;  =INKEY
 fnEOF
 	IF FLEX = 1
 		JUMP	brkFlexNotImpl
+	ELSIF SBC09 = 1
+		JUMP	brkSBC09NotImpl
 	ELSE
 		CALL	evalHashChannel		; Evaluate #channel, save TXTPTR, Y=channel
 		LEAX	,Y			; X=channel
@@ -6048,6 +6073,8 @@ fnSGN_pos	LDB	#1
 fnPOINT			; LAC0E!
 	IF FLEX
 		JUMP	brkFlexNotImpl
+	ELSIF SBC09 = 1
+		JUMP	brkSBC09NotImpl
 	ELSE
 
 			; TODO: use hw stack?
@@ -6415,6 +6442,8 @@ evalL1ImmedHex_skNotDig					; LADE4
 fnADVAL
 	IF FLEX  = 1
 		JUMP	brkFlexNotImpl
+	ELSIF SBC09 = 1
+		JUMP	brkSBC09NotImpl
 	ELSE
 		CALL	evalLevel1checkTypeStoreAsINT
 		PSHS	y
@@ -6532,6 +6561,8 @@ SwapEndian
 varGetTIME_DOLLAR
 	IF FLEX = 1
 		JUMP	brkFlexNotImpl
+	ELSIF SBC09 = 1
+		JUMP	brkSBC09NotImpl
 	ELSE
 		LEAU	1,U
 		PSHS	U
@@ -7234,6 +7265,8 @@ defErrBas
 cmdSOUND						; LB2C8
 	IF FLEX = 1
 		JUMP	brkFlexNotImpl
+	ELSIF SBC09 = 1
+		JUMP	brkSBC09NotImpl
 	ELSE
 		CALL	evalForceINT
 		LDA	#OSWORD_SOUND
@@ -7254,6 +7287,9 @@ LB2CD		LDX	ZP_INT_WA + 2			; store 16 bit number on stack - reversing bytes
 cmdENVELOPE			; LB2EC!
 	IF FLEX = 1
 		JUMP	brkFlexNotImpl
+	ELSE
+	IF SBC09 = 1
+		JUMP	brkSBC09NotImpl
 	ELSE
 		CALL	evalForceINT
 		LDA	#OSWORD_ENVELOPE
@@ -7276,6 +7312,7 @@ sndPullBthenAtoZP_SAVE_BUF_OSWORD_A				; LB307
 		DECB
 		BPL	1B
 		PULS	A				; get back OSWORD #
+	ENDIF ; SBC09
 OSWORD_continue
 		PSHS	U
 		JSR	OSWORD
@@ -8034,6 +8071,9 @@ findProgLineOrBRK
 	IF FLEX
 cmdINPUT_HASH						; LB847
 		JUMP	brkFlexNotImpl
+	ELSIF SBC09 = 1
+cmdINPUT_HASH						; LB847
+		JUMP	brkSBC09NotImpl
 	ELSE
 
 
@@ -8919,6 +8959,8 @@ StoreFileBigAddr
 cmdSAVE							; LBE55
 	IF FLEX = 1
 		JUMP	brkFlexNotImpl
+	ELSIF SBC09 = 1
+		JUMP	brkSBC09NotImpl
 	ELSE
 		PSHS	U
 		CALL	findTOP
@@ -8963,6 +9005,8 @@ cmdOSCLI
 cmdEXTEq					; LBE93
 	IF FLEX = 1
 		JUMP	brkFlexNotImpl
+	ELSIF SBC09 = 1
+		JUMP	brkSBC09NotImpl
 	ELSE
 		LDA	#$03			; 03=Set extent
 		BRA	varSetFInfo
@@ -8973,6 +9017,8 @@ cmdEXTEq					; LBE93
 varSetPTR					; LBE97
 	IF FLEX = 1
 		JUMP	brkFlexNotImpl
+	ELSIF SBC09 = 1
+		JUMP	brkSBC09NotImpl
 	ELSE
 		LDA	#$01			; 01=Set pointer
 varSetFInfo					; LBE99
@@ -8995,6 +9041,8 @@ varSetFInfo					; LBE99
 cmdCLOSE					; LBEAE
 	IF FLEX = 1
 		JUMP	brkFlexNotImpl
+	ELSIF SBC09 = 1
+		JUMP	brkSBC09NotImpl		
 	ELSE
 		CALL	evalHashChannel		; Evaluate #channel, save TXTPTR, Y=channel
 		CLRA				; A=$00 for CLOSE
@@ -9006,6 +9054,8 @@ cmdCLOSE					; LBEAE
 cmdBPUT						; LBEBD
 	IF FLEX = 1
 		JUMP	brkFlexNotImpl
+	ELSIF SBC09 = 1
+		JUMP	brkSBC09NotImpl		
 	ELSE
 		CALL	evalHashChannel		; Evaluate #channel, save TXTPTR, Y=channel
 		CALL	checkCommaThenEvalAtYcheckTypeInAConvert2INT
@@ -9108,7 +9158,13 @@ fpConst0_07121		FCB	$7D, $11, $D4, $B1, $D1	;  7.1206463996e-02
 			FCB	$81, $00, $00, $00, $00	;   1.0
 fpConst1__2		FCB	$81, $00, $00, $00, $00	;   1.0
 
-__CODE_END
 
+	IF SBC09=1
+		INCLUDE "SBC09_MOS.asm"
+	ELSE
+__CODE_END
 __FREESPACE 	EQU $C000-__CODE_END
+	ENDIF
+
+
 
