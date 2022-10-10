@@ -1,4 +1,4 @@
-AS=asm6809 -v -9 
+AS=asm6809 -v -9
 
 TARGETS=		6809BAS.bin \
 			6809BAS-6502ass.bin \
@@ -12,7 +12,12 @@ TARGETS_BEEB=		TESTASM.ssd \
 
 TARGETS_FLEX= 		FLEXBAS.BIN
 
-TARGETS_SBC09= 		SBC09BAS.BIN
+TARGETS_SBC09=			SBC6809BAS_68681.BIN \
+			SBC6309EBAS_68681.BIN \
+			SBC6309NBAS_68681.BIN \
+			SBC6809BAS.BIN \
+			SBC6309EBAS.BIN \
+			SBC6309NBAS.BIN
 
 TARGETS_MATCHBOX=	6809BAS.bin \
 			6809BAS-6502ass.bin \
@@ -36,7 +41,7 @@ DEPS=			$(BASEDIR)/includes/hardware.inc \
 			tokenstable.asm \
 			6809-assembler.gen.asm \
 			6309-assembler.gen.asm \
-			6809BAS.asm			
+			6809BAS.asm
 
 ROMNO=E
 HOSTFSDIR=~/hostfs/beebroms/
@@ -111,10 +116,10 @@ $(BEEBOUT)/test-asm-beeb-%.ffb:$(BEEBOUT)/test-asm-beeb-%.bbc
 	basictool -t $< $@
 
 
-XROARASMTEST=$(BEEBOUT)/test-asm-xroar-1.bin $(BEEBOUT)/test-asm-xroar-2.bin $(BEEBOUT)/test-asm-xroar-3.bin  $(BEEBOUT)/test-asm-xroar-4.bin 
+XROARASMTEST=$(BEEBOUT)/test-asm-xroar-1.bin $(BEEBOUT)/test-asm-xroar-2.bin $(BEEBOUT)/test-asm-xroar-3.bin  $(BEEBOUT)/test-asm-xroar-4.bin
 BBCASMTEST=$(BEEBOUT)/test-asm-beeb-1.ffb $(BEEBOUT)/test-asm-beeb-2.ffb $(BEEBOUT)/test-asm-beeb-3.ffb $(BEEBOUT)/test-asm-beeb-4.ffb
 
-XROARASMTEST63=$(BEEBOUT)/test-asm-xroar-63-1.bin $(BEEBOUT)/test-asm-xroar-63-2.bin $(BEEBOUT)/test-asm-xroar-63-3.bin $(BEEBOUT)/test-asm-xroar-63-4.bin $(BEEBOUT)/test-asm-xroar-63-5.bin  $(BEEBOUT)/test-asm-xroar-63-6.bin $(BEEBOUT)/test-asm-xroar-63-7.bin $(BEEBOUT)/test-asm-xroar-63-8.bin $(BEEBOUT)/test-asm-xroar-63-9.bin 
+XROARASMTEST63=$(BEEBOUT)/test-asm-xroar-63-1.bin $(BEEBOUT)/test-asm-xroar-63-2.bin $(BEEBOUT)/test-asm-xroar-63-3.bin $(BEEBOUT)/test-asm-xroar-63-4.bin $(BEEBOUT)/test-asm-xroar-63-5.bin  $(BEEBOUT)/test-asm-xroar-63-6.bin $(BEEBOUT)/test-asm-xroar-63-7.bin $(BEEBOUT)/test-asm-xroar-63-8.bin $(BEEBOUT)/test-asm-xroar-63-9.bin
 BBCASMTEST63=$(BEEBOUT)/test-asm-beeb-63-1.ffb $(BEEBOUT)/test-asm-beeb-63-2.ffb $(BEEBOUT)/test-asm-beeb-63-3.ffb $(BEEBOUT)/test-asm-beeb-63-4.ffb $(BEEBOUT)/test-asm-beeb-63-5.ffb $(BEEBOUT)/test-asm-beeb-63-6.ffb $(BEEBOUT)/test-asm-beeb-63-7.ffb $(BEEBOUT)/test-asm-beeb-63-8.ffb $(BEEBOUT)/test-asm-beeb-63-9.ffb
 
 
@@ -256,13 +261,53 @@ $(FLEXOUT)/FLEXBAS.BIN:	6809BAS.asm $(DEPS)
 
 		./freespace.pl <$(basename $@).sym >> fl_$(notdir $(basename $@))_free.txt
 
-$(SBC09OUT)/SBC09BAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
-		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define ASSEMBLER_6809 --define CPU_6809 -o $@ -l $(basename $@).lst $<
+$(SBC09OUT)/SBC6809BAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
+		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
+		$(AS) $(ASFLAGS) --define SBC09=1 --define BASEADDR=0xC000 --define ASSEMBLER_6809 --define CPU_6809 -o $@ -l $(basename $@).lst $<
+		rm -f SBC09VERSION.inc
 		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
+$(SBC09OUT)/SBC6309EBAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
+		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
+		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define BASEADDR=0xC000 --define ASSEMBLER_6809 --define CPU_6309 -o $@ -l $(basename $@).lst $<
+		rm -f SBC09VERSION.inc
+		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
+		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
+
+$(SBC09OUT)/SBC6309NBAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
+		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
+		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define BASEADDR=0xC000 --define ASSEMBLER_6809 --define CPU_6309 --define NATIVE -o $@ -l $(basename $@).lst $<
+		rm -f SBC09VERSION.inc
+		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+
+		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
+
+$(SBC09OUT)/SBC6809BAS_68681.BIN:	6809BAS.asm SBC09_MOS_68681.asm $(DEPS)
+		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
+		$(AS) $(ASFLAGS) --define SBC09=1 --define UART68681=1 --define ASSEMBLER_6809 --define CPU_6809 -o $@ -l $(basename $@).lst $<
+		rm -f SBC09VERSION.inc
+		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+
+		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
+
+$(SBC09OUT)/SBC6309EBAS_68681.BIN:	6809BAS.asm SBC09_MOS_68681.asm $(DEPS)
+		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
+		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define UART68681=1 --define ASSEMBLER_6309 --define CPU_6309 -o $@ -l $(basename $@).lst $<
+		rm -f SBC09VERSION.inc
+		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+
+		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
+
+$(SBC09OUT)/SBC6309NBAS_68681.BIN:	6809BAS.asm SBC09_MOS_68681.asm $(DEPS)
+		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
+		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define UART68681=1 --define ASSEMBLER_6309 --define CPU_6309 --define NATIVE -o $@ -l $(basename $@).lst $<
+		rm -f SBC09VERSION.inc
+		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+
+		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
 $(BEEBOUT)/6809BAS.bin: $(DEPS)
 $(BEEBOUT)/6809BAS-6309ass.bin: $(DEPS)
@@ -272,7 +317,10 @@ $(CHIPKITOUT)/6809BAS-6309ass.bin: $(DEPS)
 $(CHIPKITOUT)/6809BAS-6502ass.bin: $(DEPS)
 $(FLEXOUT)/FLEXBAS.bin: $(DEPS)
 $(FLEXOUT)/FLEXBBC.bin: $(DEPS)
-$(SBC09OUT)/SBC09BAS.bin: $(DEPS)
+$(SBC09OUT)/SBC6809BAS.bin: $(DEPS)
+$(SBC09OUT)/SBC6309EBAS.bin: $(DEPS)
+$(SBC09OUT)/SBC6309NBAS.bin: $(DEPS)
+$(SBC09OUT)/SBC6809BAS_68681.bin: $(DEPS)
+$(SBC09OUT)/SBC6309EBAS_68681.bin: $(DEPS)
+$(SBC09OUT)/SBC6309NBAS_68681.bin: $(DEPS)
 $(MATCHBOXOUT)/6809BAS.bin: $(DEPS)
-
-
