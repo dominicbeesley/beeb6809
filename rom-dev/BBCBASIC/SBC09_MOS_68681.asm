@@ -42,6 +42,8 @@ RX_BUFFER    EQU  $7E80
 TX_BUFFER    EQU  $7F80
 
 UART         EQU  $FE00
+MMU0         EQU  $FE10
+MMU1         EQU  $FE20
 
 UART_MRA     EQU UART+0x0
 UART_SRA     EQU UART+0x1
@@ -61,7 +63,8 @@ UART_CRB     EQU UART+0xa
 UART_THRB    EQU UART+0xb
 UART_RHRB    EQU UART+0xb
 UART_IVR1    EQU UART+0xc
-UART_OPCR    EQU UART+0xd
+UART_IPR     EQU UART+0xd ; read input port
+UART_OPCR    EQU UART+0xd ; write
 UART_OPRSET  EQU UART+0xe ; write
 UART_STARTCT EQU UART+0xe ; read command
 UART_OPRCLR  EQU UART+0xf ; write
@@ -70,7 +73,11 @@ UART_STOPCT  EQU UART+0xf ; read command
 UART_RXINT   EQU  $01
 UART_TXINT   EQU  $04
 
-;;   ORG $C000
+JP1          EQU  $04     ; IP2 - Enable MMU
+JP2          EQU  $20     ; IP3 - 8K Mode - hack to IP5
+JP3          EQU  $10     ; IP4 - unused
+
+      ORG $F000
 
 ;; *************************************************************
 ;; UART Initialization
@@ -94,8 +101,60 @@ UART_INIT MACRO
       LDA  #$0A          ; Timer Int, Rx Int enabled; Rx Int disabled
       STA  UART_IMR
       LDA  UART_STARTCT  ; Start the counter-timer
-      LDA  #%00000100
-      STA  UART_OPCR     ; Ouput timer squarewave on OP3 for debugging only
+;;      LDA  #%00000100
+;;      STA  UART_OPCR     ; Ouput timer squarewave on OP3 for debugging only
+
+      LDA  UART_IPR      ; Read jumpers
+      BITA #JP1          ; Test jumper JP1 (Enable MMU)
+      BNE DONE           ; JP1 not fitted, so don't initialiaze MMU
+      BITA #JP2          ; Test jumper JP2 (8K Mode)
+      BEQ MMU_8K         ; JP3 fitted, so use 8K Mode
+
+;; MMU 7 is write protect (16K mode) or Block LSB (8K Mode)
+;; MMU 6:5 is device (00=ROM0, 01=ROM1, 10=RAM, 11=External)
+;; MMU 4:0 is block
+
+      ;; On reset the MMU is disabled, with block size set to 16K
+
+MMU_16K
+      LDA #%01000000     ; 0000-3FFF -> RAM block 0
+      STA MMU0 + 0
+      LDA #%01000001     ; 4000-7FFF -> RAM block 1
+      STA MMU0 + 1
+      LDA #%00000000     ; 8000-BFFF -> ROM0 block 0
+      STA MMU0 + 2
+      LDA #%00000001     ; C000-FFFF -> ROM0 block 1
+      STA MMU0 + 3
+
+      ;; Enable the MMU with 16K block size
+      LDA #%00010000     ; OP4 = low (MMU Enabled, output is inverted)
+      STA UART_OPRSET
+
+      BRA DONE
+
+MMU_8K
+      LDA #%01000000     ; 0000-1FFF -> RAM block 0
+      STA MMU0 + 0
+      LDA #%01000001     ; 2000-3FFF -> RAM block 1
+      STA MMU1 + 0
+      LDA #%01000010     ; 4000-5FFF -> RAM block 2
+      STA MMU0 + 1
+      LDA #%01000011     ; 6000-7FFF -> RAM block 3
+      STA MMU1 + 1
+      LDA #%00000000     ; 8000-9FFF -> ROM0 block 0
+      STA MMU0 + 2
+      LDA #%10000000     ; A000-BFFF -> ROM0 block 1
+      STA MMU1 + 2
+      LDA #%00000001     ; C000-DFFF -> ROM0 block 2
+      STA MMU0 + 3
+      LDA #%10000001     ; E000-FFFF -> ROM0 block 3
+      STA MMU1 + 3
+
+      ;; Enable the MMU with 8K block size
+      LDA #%00011000     ; OP4 = low (MMU Enabled, output is inverted)
+      STA UART_OPRSET    ; OP3 = low (8K block size, output is inverted)
+
+DONE
       ENDM
 
 ;; *************************************************************
