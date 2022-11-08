@@ -117,9 +117,9 @@ UART_INIT MACRO
       ;; On reset the MMU is disabled, with block size set to 16K
 
 MMU_16K
-      LDA #%01000000     ; 0000-3FFF -> RAM block 0
+      LDA #%10000000     ; 0000-3FFF -> RAM block 0
       STA MMU0 + 0
-      LDA #%01000001     ; 4000-7FFF -> RAM block 1
+      LDA #%10000001     ; 4000-7FFF -> RAM block 1
       STA MMU0 + 1
       LDA #%00000000     ; 8000-BFFF -> ROM0 block 0
       STA MMU0 + 2
@@ -133,21 +133,21 @@ MMU_16K
       BRA DONE
 
 MMU_8K
-      LDA #%01000000     ; 0000-1FFF -> RAM block 0
+      LDA #%10000000     ; 0000-1FFF -> RAM block 0
       STA MMU0 + 0
-      LDA #%01000001     ; 2000-3FFF -> RAM block 1
+      LDA #%10000001     ; 2000-3FFF -> RAM block 1
       STA MMU1 + 0
-      LDA #%01000010     ; 4000-5FFF -> RAM block 2
+      LDA #%10000010     ; 4000-5FFF -> RAM block 2
       STA MMU0 + 1
-      LDA #%01000011     ; 6000-7FFF -> RAM block 3
+      LDA #%10000011     ; 6000-7FFF -> RAM block 3
       STA MMU1 + 1
       LDA #%00000000     ; 8000-9FFF -> ROM0 block 0
       STA MMU0 + 2
-      LDA #%10000000     ; A000-BFFF -> ROM0 block 1
+      LDA #%00100000     ; A000-BFFF -> ROM0 block 1
       STA MMU1 + 2
       LDA #%00000001     ; C000-DFFF -> ROM0 block 2
       STA MMU0 + 3
-      LDA #%10000001     ; E000-FFFF -> ROM0 block 3
+      LDA #%00100001     ; E000-FFFF -> ROM0 block 3
       STA MMU1 + 3
 
       ;; Enable the MMU with 8K block size
