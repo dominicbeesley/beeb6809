@@ -74,7 +74,7 @@ UART_RXINT   EQU  $01
 UART_TXINT   EQU  $04
 
 JP1          EQU  $04     ; IP2 - Enable MMU
-JP2          EQU  $20     ; IP3 - 8K Mode - hack to IP5
+JP2          EQU  $08     ; IP3 - 8K Mode - hack to IP5
 JP3          EQU  $10     ; IP4 - unused
 
       ORG $F000
@@ -90,7 +90,11 @@ UART_INIT MACRO
       STA  UART_MRA
       LDA  #%00000101    ; ENABLE TX AND RX
       STA  UART_CRA
-      LDA  #%11101110    ; External 16x -> 115200 baud
+      LDA  #%10000000    ; Set Channel A Rx Extend Bit
+      STA  UART_CRA
+      LDA  #%10100000    ; Set Channel A Tx Extend Bit
+      STA  UART_CRA
+      LDA  #%10001000    ; Internal 115,200 baus
       STA  UART_CSRA
       LDA  #%01110000    ; Timer Mode, Clock = XTAL/16 = 3686400 / 16 = 230400 Hz
       STA  UART_ACR
