@@ -17,6 +17,7 @@ option) any later version.
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "array.h"
 #include "c-strcase.h"
@@ -93,6 +94,8 @@ static void pseudo_include(struct prog_line *);
 static void pseudo_includebin(struct prog_line *);
 static void pseudo_end(struct prog_line *);
 static void pseudo_nop(struct prog_line *);
+static void pseudo_error(struct prog_line *);
+static void pseudo_warn(struct prog_line *);
 
 struct pseudo_op {
 	const char *name;

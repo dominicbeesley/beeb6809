@@ -54,6 +54,7 @@ static int isa = asm6809_isa_6809;
 static int max_program_depth = 8;
 static int setdp = -1;
 static int verbosity = 0;
+static int relative_includes = 1;
 
 static struct option long_options[] = {
 	{ "bin", no_argument, &output_format, OUTPUT_BINARY },
