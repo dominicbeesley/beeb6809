@@ -43,9 +43,9 @@ DEPS=			$(BASEDIR)/includes/hardware.inc \
 			6309-assembler.gen.asm \
 			6809BAS.asm
 
-ROMNO=E
+ROMNO=A
 HOSTFSDIR=~/hostfs/beebroms/
-GETSYMSFLAGS=-rom 8
+GETSYMSFLAGS=-rom A
 
 include		../../Makefile.defs
 
