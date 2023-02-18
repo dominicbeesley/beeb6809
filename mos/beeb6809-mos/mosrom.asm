@@ -491,7 +491,7 @@ x_vdu_no_q
 		cmpb	#$F7
 		eorb	#$FF
 		bcc	LC553
-		cmpb	#$13
+		cmpb	#13
 
 LC553		tst	zp_vdu_status			;	C553
 		bmi	x_reenable_vdu_if_vdu6		;	vdu disabled
