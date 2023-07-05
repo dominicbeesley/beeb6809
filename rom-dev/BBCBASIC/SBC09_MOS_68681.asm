@@ -482,13 +482,13 @@ RESET_MSG
       FCB  $00
 
 __CODE_END
-__FREESPACE     EQU $FEF0-__CODE_END
+__FREESPACE     EQU $F7F0-__CODE_END
 
 ;; *************************************************************
 ;; Vectors
 ;; *************************************************************
 
-      ORG   $FEF0
+      ORG   $F7F0
 
       FDB   ILL_HANDLER
       FDB   SWI3_HANDLER
