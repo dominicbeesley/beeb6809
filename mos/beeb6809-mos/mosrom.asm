@@ -491,7 +491,7 @@ x_vdu_no_q
 		cmpb	#$F7
 		eorb	#$FF
 		bcc	LC553
-		cmpb	#$13
+		cmpb	#13
 
 LC553		tst	zp_vdu_status			;	C553
 		bmi	x_reenable_vdu_if_vdu6		;	vdu disabled
@@ -626,7 +626,7 @@ LC5FC		ldb	vduvar_TXT_CUR_Y		;	C5FC
 ;; cursor at top of window
 x_cursor_at_top_of_window
 		CLC
-		jsr	x_move_text_cursor_to_next_line ;	C60B
+		jsr	x_text_cursor_off_screen ;	C60B
 	IF CPU_6809
 		lda	#$08				;	C60E
 		bita	zp_vdu_status			;	C610
@@ -708,7 +708,7 @@ x_text_cursor_down
 		bhs	LC69B
 		inc	vduvar_TXT_CUR_Y
 		bra	x_setup_displayaddress_and_cursor_position
-LC69B		jsr	x_move_text_cursor_to_next_line
+LC69B		jsr	x_text_cursor_off_screen
 	IF CPU_6809
 		lda	#$08
 		bita	zp_vdu_status
@@ -1707,7 +1707,7 @@ LCD34		sta	sysvar_CUR_OSHWM		;	CD34
 						;	CD3C
 ;; ----------------------------------------------------------------------------
 ;; :move text cursor to next line (direction up/down depends on CC_C)
-x_move_text_cursor_to_next_line
+x_text_cursor_off_screen
 		lda	zp_vdu_status
 		bita	#$02
 		bne	LCD47				; scrolling disabled

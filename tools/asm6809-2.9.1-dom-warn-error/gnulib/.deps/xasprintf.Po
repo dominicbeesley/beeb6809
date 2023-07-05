@@ -1,8 +1,0 @@
-xasprintf.o: xasprintf.c ../config.h xvasprintf.h \
- /usr/lib/gcc/x86_64-pc-cygwin/9.3.0/include/stdarg.h
-
-../config.h:
-
-xvasprintf.h:
-
-/usr/lib/gcc/x86_64-pc-cygwin/9.3.0/include/stdarg.h:

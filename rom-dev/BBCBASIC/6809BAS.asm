@@ -2257,6 +2257,7 @@ L94B6		JUMP	resetVarsImmedPrompt
 ;			;  DIM name - Reserve memory
 ;			;  -------------------------
 cmdDIM_reserve_mem					; L94BC
+		leau	1,U
 		CALL	findVarOrAllocEmpty		;  Step back, find/create variable
 		BEQ brkBadDIM
 		BCS brkBadDIM				;  Error if string variable or bad variable name
@@ -2372,7 +2373,7 @@ L9541
 cmdDIM_strArray						; L9563
 		DEC	ZP_FPB + 4			; String or Integer, 4 bytes needed
 		INCB					; length += 1
-		LDA	,X+				; Get ext character
+		LDA	,X+				; Get next character
 		CMPA	#'('
 		LBNE	cmdDIM_reserve_mem		; No '(', jump to reserve memory
 
