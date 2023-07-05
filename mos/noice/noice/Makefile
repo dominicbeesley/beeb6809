@@ -1,7 +1,8 @@
 
 TARGETS=
-TARGETS_EXTRA=	mon-noice-6309-chipkit.bin \
-		mon-noice-6309-chipkit-ovr.ovr \
+TARGETS_EXTRA_CHIPKIT=	mon-noice-6309-chipkit.bin \
+		mon-noice-6309-chipkit-ovr.ovr
+TARGETS_EXTRA_BEEB= \
 		mon-noice-6309-beeb.bin \
 		mon-noice-6309-beeb-ovr.ovr \
 		mon-noice-6809-beeb.bin \
@@ -13,7 +14,7 @@ TARGETS_EXTRA=	mon-noice-6309-chipkit.bin \
 		mon-noice-6309-beeb-flex-ovr.ovr \
 		mon-noice-6809-beeb-flex-ovr.ovr \
 		mon-noice-6309-beeb-debug.ovr
-CLEAN_EXTRA=	mon-noice-6309-chipkit.bin \
+CLEAN_EXTRA_CHIPKIT=	mon-noice-6309-chipkit.bin \
 		mon-noice-6309-chipkit-ovr.ovr \
 		mon-noice-6309-beeb.bin \
 		mon-noice-6309-beeb-ovr.ovr \

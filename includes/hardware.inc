@@ -2,6 +2,7 @@
 
 rti_opcode		EQU	$3B
 
+	IF MACH_CHIPKIT | MACH_BEEB
 JIM			EQU	$FD00
 
 * mos ROM memory map location
@@ -12,6 +13,7 @@ sheila_MEM_DEBUG_SAVE	EQU	$FE32
 
 ROMCTL_BITS_FLEX	EQU	$10
 
+	ENDIF
 	IF MACH_BEEB
 ;TODO: naming - harmonize with 6502
 sheila_MEM_CTL			EQU $FE31
@@ -67,7 +69,6 @@ sheila_MEMC_SCROFF	EQU	$FE33
 	ENDIF
 
 
-
 * HARDWARELOC - area of RAM used for memory mapped hardware
 HARDWARELOC				EQU $FC00
 HARDWARELOC_END				EQU $FEFF
@@ -81,6 +82,7 @@ OFF_NMI_VEC	EQU	$C
 OFF_RES_VEC	EQU	$E
 HW_VECTOR_COUNT	EQU	8
 
+	IF MACH_BEEB | MACH_CHIPKIT
 ***********************************************************************
 * CRTC                                                                *
 ***********************************************************************
@@ -221,6 +223,7 @@ sheila_1770_wdc_trk	equ	$FE85
 sheila_1770_wdc_sec	equ	$FE86
 sheila_1770_wdc_dat	equ	$FE87
 
+	ENDIF
 ***********************************************************************
 * TUBE                                                                *
 ***********************************************************************

@@ -6,6 +6,9 @@ TARGETS_BEEB=		mosrom-6809.bin \
 			mosrom.bin \
 			mosrom-nat.bin \
 			hostfs			
+TARGETS_SBC09= mosrom-6809.bin \
+			mosrom.bin \
+			mosrom-nat.bin
 
 HOSTFSDIR := ~/hostfs/beebroms
 
@@ -89,6 +92,52 @@ $(BEEBOUT)/mosrom-nat.bin:	mosrom.asm $(DEPS)
 			echo "WAITFORSTOP" >>$(BEEBOUT)/mosloadandrun-nat.noi
 			echo "GO 2000" >>$(BEEBOUT)/mosloadandrun-nat.noi
 
+$(SBC09OUT)/mosrom-6809.bin:	mosrom.asm $(DEPS)
+			./mkversion.sh
+			$(AS) -v --define CPU_6809=1 --define MACH_SBC09=1 -o $@ -l $(basename $@).lst $<
+			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+						
+			./makeloadnoi.sh $(SBC09OUT) mosrom-6809.bin >$(SBC09OUT)/mosloadandrun-6809.noi
+			cat $(basename $@).sym >>$(SBC09OUT)/mosloadandrun-6809.noi
+
+			if [ -a ./extras.noi ]; then \
+				cat ./extras.noi >>$(SBC09OUT)/mosloadandrun-6809.noi; \
+			fi
+
+
+			echo "WAITFORSTOP" >>$(BEEBOUT)/mosloadandrun-6809.noi
+			echo "GO 2000" >>$(BEEBOUT)/mosloadandrun-6809.noi
+
+$(SBC09OUT)/mosrom.bin:	mosrom.asm $(DEPS)
+			./mkversion.sh
+			$(AS) -v -3 --define CPU_6309=1 --define MACH_SBC09=1 -o $@ -l $(basename $@).lst $<
+			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+						
+			./makeloadnoi.sh $(SBC09OUT) mosrom.bin >$(SBC09OUT)/mosloadandrun.noi
+			cat $(basename $@).sym >>$(SBC09OUT)/mosloadandrun.noi
+
+			if [ -a ./extras.noi ]; then \
+				cat ./extras.noi >>$(SBC09OUT)/mosloadandrun.noi; \
+			fi
+
+			echo "WAITFORSTOP" >>$(SBC09OUT)/mosloadandrun.noi
+			echo "GO 2000" >>$(SBC09OUT)/mosloadandrun.noi
+
+$(SBC09OUT)/mosrom-nat.bin:	mosrom.asm $(DEPS)
+			./mkversion.sh
+			$(AS) -v -3 --define NATIVE=1 --define CPU_6309=1 --define MACH_SBC09=1 -o $@ -l $(basename $@).lst $<
+			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+						
+			./makeloadnoi.sh $(SBC09OUT) mosrom-nat.bin >$(SBC09OUT)/mosloadandrun-nat.noi
+			cat $(basename $@).sym >>$(SBC09OUT)/mosloadandrun-nat.noi
+
+			if [ -a ./extras.noi ]; then \
+				cat ./extras.noi >>$(SBC09OUT)/mosloadandrun-nat.noi; \
+			fi
+
+
+			echo "WAITFORSTOP" >>$(SBC09OUT)/mosloadandrun-nat.noi
+			echo "GO 2000" >>$(SBC09OUT)/mosloadandrun-nat.noi
 
 #clean:
 #		-rm *.bin

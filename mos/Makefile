@@ -12,6 +12,8 @@ all_beeb:
 	$(MAKE) -C beeb6809-mos all_beeb
 	$(MAKE) -C beebMOSloader-noice all_beeb
 
+all_sbc09:
+	$(MAKE) -C beeb6809-mos all_sbc09
 	
 clean:
 	$(MAKE) -C noice/noice clean
