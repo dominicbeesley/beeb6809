@@ -25,6 +25,8 @@ while (<IN>) {
 			$minaddr = $addr;
 		}		
 
+	} elsif ($l =~ /^S9/) {
+			#ignore
 	} elsif ($l) {
 		die "Unrecognised SREC line $l";
 	}
@@ -63,6 +65,8 @@ while (<IN>) {
 			$lastaddr++;
 		}
 
+	} elsif ($l =~ /^S9/) {
+		#ignore
 	} elsif ($l) {
 		die "Unrecognised SREC line $l";
 	}
