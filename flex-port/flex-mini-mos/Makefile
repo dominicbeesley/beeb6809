@@ -22,8 +22,8 @@ $(BEEBOUT)/flex-mini-mos-noice.bin:	flex-mini-mos.asm $(DEPS) ../../mos/noice/no
 			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 						
 
-			echo "L $(shell cygpath -w $(BEEBOUT)/flex-mini-mos-noice.bin) 1100 B" >$(BEEBOUT)/flex-mini-mosloadandrun.noi
-			echo "L $(shell cygpath -w $(BEEBOUT)/minimos-load.hex)" >>$(BEEBOUT)/flex-mini-mosloadandrun.noi
+			echo "L $(shell $(WINPATH) $(BEEBOUT)/flex-mini-mos-noice.bin) 1100 B" >$(BEEBOUT)/flex-mini-mosloadandrun.noi
+			echo "L $(shell $(WINPATH) $(BEEBOUT)/minimos-load.hex)" >>$(BEEBOUT)/flex-mini-mosloadandrun.noi
 			cat $(basename $@).sym >>$(BEEBOUT)/flex-mini-mosloadandrun.noi
 			echo "GO 0F00" >>$(BEEBOUT)/flex-mini-mosloadandrun.noi
 

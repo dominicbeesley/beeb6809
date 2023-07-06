@@ -26,7 +26,7 @@ $(HOSTFSDIR)/%.bin.inf: %.bin.inf
 #		echo "REG PC modplay_debug" >> $(CHIPKITOUT)/loadgameandsyms.noi
 
 $(BEEBOUT)/loadgame.noi:	$(BEEBOUT)/modplay09.bin
-		./makeloadnoi.sh $(BEEBOUT)/loadgame.noi
+		cat "LOAD $(shell $(WINPATH) $(BEEBOUT)/modplay09.hex)" > $(BEEBOUT)/loadgame.noi
 		cat $(BEEBOUT)/loadgame.noi $(BEEBOUT)/modplay09.sym > $(BEEBOUT)/loadgameandsyms.noi
 		echo "REG PC modplay_debug" >> $(BEEBOUT)/loadgameandsyms.noi
 		

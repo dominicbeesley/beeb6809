@@ -4,5 +4,6 @@ include		../../../Makefile.defs
 ASFLAGS=-v
 
 $(BEEBOUT)/line-1.noi:	$(BEEBOUT)/line-1.hex
-		./makeloadnoi.sh "$(BEEBOUT)" line-1 2000
+		echo "LOAD $(shell $(WINPATH) $(BEEBOUT)/line-1.hex)" > $(BEEBOUT)/loadgame.noi
+		echo 'REG PC $$2000' >> $(BEEBOUT)/loadgame.noi
 
