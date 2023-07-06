@@ -1,10 +1,7 @@
 .PHONY:		all
 
-all: all_beeb all_chipkit all_flex all_matchbox hardware-overview.html
+all: all_beeb all_chipkit all_flex all_matchbox all_sbc09
 	$(MAKE) -C other-tests all
-
-hardware-overview.html:	hardware-overview.md
-	./scripts/Markdown-Master/Markdown.pl <$< >$@
 
 all_chipkit:
 	# NOTE: MOS/UTILS needs noice to be reinstated for chipkit somehow 
