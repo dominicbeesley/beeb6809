@@ -3,6 +3,6 @@ include		../../Makefile.defs
 
 ASFLAGS=-3 -v
 
-vrupt-1.noi:	vrupt-1.hex
-		./makeloadnoi.sh vrupt-1 2000
+$(CHIPKITOUT)/vrupt-1.noi:	$(CHIPKITOUT)/vrupt-1.hex
+		$(MAKELOADNOI) $(basename $<) 2000
 

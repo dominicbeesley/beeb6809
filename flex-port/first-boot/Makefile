@@ -20,15 +20,15 @@ $(FLEXOUT)/FLEX.COR.hex:	FLEX.COR
 	../../scripts/flex/flexbin2hex.pl $< >$@
 
 $(FLEXOUT)/boot.noi: $(FLEXOUT)/FLEX.COR.hex	$(FLEXOUT)/FLEX.SYS.hex	
-	echo "L $(shell cygpath -w "$(FLEXOUT)/FLEX.COR.hex")" >$(FLEXOUT)/boot.noi.tmp
-#	echo "L $(shell cygpath -w "$(FLEXOUT)/FLEX.SYS.hex")" >$(FLEXOUT)/boot.noi.tmp
+	echo "L $(shell $(WINPATH) "$(FLEXOUT)/FLEX.COR.hex")" >$(FLEXOUT)/boot.noi.tmp
+#	echo "L $(shell $(WINPATH) "$(FLEXOUT)/FLEX.SYS.hex")" >$(FLEXOUT)/boot.noi.tmp
 	
-#	echo "L $(shell cygpath -w "../flex-srcs/getsyms/FLEX.TXT.hex")" >$(FLEXOUT)/boot.noi.tmp
-#	echo "L $(shell cygpath -w "../flex-srcs/getsyms/FLEXFMS.TXT.hex")" >>$(FLEXOUT)/boot.noi.tmp
-#	echo "L $(shell cygpath -w "../flex-srcs/getsyms/SPOOL.TXT.hex")" >>$(FLEXOUT)/boot.noi.tmp
+#	echo "L $(shell $(WINPATH) "../flex-srcs/getsyms/FLEX.TXT.hex")" >$(FLEXOUT)/boot.noi.tmp
+#	echo "L $(shell $(WINPATH) "../flex-srcs/getsyms/FLEXFMS.TXT.hex")" >>$(FLEXOUT)/boot.noi.tmp
+#	echo "L $(shell $(WINPATH) "../flex-srcs/getsyms/SPOOL.TXT.hex")" >>$(FLEXOUT)/boot.noi.tmp
 
-	echo "L $(shell cygpath -w "$(FLEXOUT)/drv_wd177x.hex")" >>$(FLEXOUT)/boot.noi.tmp
-	echo "L $(shell cygpath -w "$(FLEXOUT)/drv_mostermio.hex")" >>$(FLEXOUT)/boot.noi.tmp
+	echo "L $(shell $(WINPATH) "$(FLEXOUT)/drv_wd177x.hex")" >>$(FLEXOUT)/boot.noi.tmp
+	echo "L $(shell $(WINPATH) "$(FLEXOUT)/drv_mostermio.hex")" >>$(FLEXOUT)/boot.noi.tmp
 
 	cat $(FLEXOUT)/drv_wd177x.sym >>$(FLEXOUT)/boot.noi.tmp 
 	cat $(FLEXOUT)/drv_mostermio.sym >>$(FLEXOUT)/boot.noi.tmp 

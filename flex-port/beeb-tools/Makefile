@@ -21,7 +21,7 @@ $(BEEBOUT)/flextools.ssd: ssd/include.lst $(addprefix $(BEEBOUT)/, $(TARGETS_TOO
 $(BEEBOUT)/%.noi:	$(BEEBOUT)/%.bin
 	# assume all utils in this directory to run from 1900
 	# symbols
-	echo "L $(shell cygpath -w "$<") 1900 B" >$@
+	echo "L $(shell $(WINPATH) "$<") 1900 B" >$@
 	cat $(basename $<).sym >>$@
 	echo "REG PC 1900" >> $@
 

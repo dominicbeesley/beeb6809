@@ -3,6 +3,6 @@ include		../../Makefile.defs
 
 ASFLAGS=-3 -v
 
-vinc-1.noi:	vinc-1.hex
-		./makeloadnoi.sh vinc-1 2000
+$(CHIPKITOUT)/vinc-1.noi:	$(CHIPKITOUT)/vinc-1.hex
+		$(MAKELOADNOI) $(basename $<) 2000
 

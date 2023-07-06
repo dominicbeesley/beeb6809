@@ -20,6 +20,9 @@ TARGETS_FLEX_PRE=$(addprefix $(FLEXOUT)/,$(TARGETS_FLEX))
 TARGETS_SBC09_PRE=$(addprefix $(SBC09OUT)/,$(TARGETS_SBC09))
 TARGETS_MATCHBOX_PRE=$(addprefix $(MATCHBOXOUT)/,$(TARGETS_MATCHBOX))
 
+WINPATH=$(SCRIPTS)/winpath.sh
+MAKELOADNOI=$(SCRIPTS)/makeloadnoi.sh
+
 $(CHIPKITOUT)/%.hex $(CHIPKITOUT)/%.sym $(CHIPKITOUT)/%.lst: 	%.asm	$(DEPS)
 		$(AS) $(ASFLAGS)  --define MACH_CHIPKIT=1 -S -o $@ -l $(basename $@).lst $<
 		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym

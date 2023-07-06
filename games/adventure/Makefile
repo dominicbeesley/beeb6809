@@ -31,7 +31,8 @@ tiles/charac.til tiles/main.pal gen-vars.inc over-back.til over-back.til.cuts ov
 		src-graphics/tile-cutter.xml
 
 		-mkdir -p tiles
-		$(TILECUT) "$(shell cygpath -w "src-graphics/tile-cutter.xml")"
+###		$(TILECUT) "$(shell cygpath -w "src-graphics/tile-cutter.xml")"
+## TODO: Grab new tilecut from 6502
 
 		echo -n -e "CHARAC_SPR_LEN\tequ\t" > gen-vars.inc
 		stat -c%s tiles/charac.til >> gen-vars.inc
@@ -45,7 +46,7 @@ maps/home.bin: maps/home.tmx tiles
 		scripts/makemaps.pl maps/home.tmx tiles/over-back.til.cuts tiles/over-front.til.cuts maps/home.bin
 
 $(BEEBOUT)/loadgame.noi:	$(BEEBOUT)/game.hex
-		./makeloadnoi.sh $(BEEBOUT)/loadgame.noi
+		cat "LOAD $(shell $(WINPATH) $(BEEBOUT)/game.hex)" > $(BEEBOUT)/loadgame.noi
 		cat $(BEEBOUT)/loadgame.noi $(BEEBOUT)/game.sym > $(BEEBOUT)/loadgameandsyms.noi
 		echo "REG PC \$$E00" >> $(BEEBOUT)/loadgameandsyms.noi
 
