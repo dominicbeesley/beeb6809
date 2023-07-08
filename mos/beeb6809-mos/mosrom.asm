@@ -4481,9 +4481,9 @@ mos_handle_swi3
 		pshs	CC,A,X
 		SEI						; disable interrupts - 6809 doesn't do that for us!
 	IF NATIVE
-		ldx	16,S
+		ldx	17,S
 	ELSE
-		ldx	14,S					; points at byte after SWI instruction
+		ldx	15,S					; points at byte after SWI instruction
 	ENDIF
 		stx	zp_mos_error_ptr
 		stx	2,S					; set X on return to this
