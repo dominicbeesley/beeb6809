@@ -4157,7 +4157,8 @@ LDA5B		lda	vec_table - 1,y			;	DA5B
 		sta	zp_mos_keynumfirst		;	DA66
 		
 	IF MACH_BEEB
-		jsr	ACIA_reset_from_CTL_COPY				; reset ACIA
+	;; TODO: Reinstate / check / fix - was buggering up debugging
+;;		jsr	ACIA_reset_from_CTL_COPY				; reset ACIA
 	ENDIF
 
 		DEBUG_INFO "Setup vias"
@@ -9608,7 +9609,7 @@ debug_print_ch	; TODO - do debug on serial port
 	ELSE
 
 debug_print_ch	pshs	A,X
-		ldx	#100
+		ldx	#400
 		lda	#ACIA_TDRE
 2		bita	sheila_ACIA_CTL
 		bne	1F
