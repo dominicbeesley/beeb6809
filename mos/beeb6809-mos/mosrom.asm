@@ -383,7 +383,7 @@ mos_handle_res_resnmi
 		beq	mos_handle_res_skip_clear_mem1	; it's a power up
 	ELSIF MACH_SBC09
 
-		SBC09_INIT				; initialize UART
+		SBC09_INIT				; initialize UART and MMU
 
 		; TODO: SBC09: what to do about CTRL/BREAK - look at 68C681, is there a way to detect power up vs reset?
 		clr	A
@@ -624,10 +624,9 @@ LDAA2		lda	#$27				;set T1 (hi) to &27 this sets T1 to &270E (9998 uS)
 mos_cat_swroms
 		DEBUG_INFO	"catalogue ROMs"
 		clrb
-
 ; Check sideways ROMS and make catalogue; X=0 
 mos_cat_swroms_lp
-		jsr	mos_select_SWROM_B		;set up ROM latch and RAM copy to X
+		jsr	mos_select_SWROM_B		;set up ROM latch and RAM copy to B
 		ldy	#copyright_symbol_backwards+4	;set X to point to offset in table
 		ldb	$8007				;get copyright offset from ROM
 							; DF0C = )C( BRK
@@ -640,9 +639,8 @@ mos_cat_swroms_lp
 		decb					;(s)
 		bne	1B				;and if still +ve go back to check next byte
 ;; there are no matches, if a match found ignore lower priority ROM ???CHECK???
-mos_ignore_lower_priority_ROM
-		ldb	zp_mos_curROM			;get RAM copy of ROM No. in B
 
+		ldb	zp_mos_curROM			;get RAM copy of ROM No. in B
 mos_cat_swroms_cmplp_nexthighter			; LDAD5
 		incb					;increment B to check 
 		cmpb	#$10				;if ROM 15 is current ROM
@@ -650,31 +648,32 @@ mos_cat_swroms_cmplp_nexthighter			; LDAD5
 							;to store catalogue byte
 		ldx	#$8000
 mos_cat_swroms_cmplp
-		lda	zp_mos_curROM
-		sta	sheila_ROMCTL_SWR		;set cur ROM
+		; swapped sense here from 6502
+		jsr	mos_select_SWROM_B		; swap to higher rom, B contains lower rom
 		lda	,x				;Get byte 
-		stb	sheila_ROMCTL_SWR		;switch back to new ROM
+		jsr	mos_select_SWROM_B		;switch back again to lower B contains higher rom
 		cmpa	,x+				;and compare with previous byte called
 		bne	mos_cat_swroms_cmplp_nexthighter;if not the same then go back and do it again
 							;with next rom up
 		cmpx	#$C000				;&84 (all 16k checked) DB: Note OS1.2 only compares first 1K TODO: put this back to 1K?
 		blo	mos_cat_swroms_cmplp		;then check next byte(s)
 mos_cat_swroms_skipnotrom			; LDAFB
-		ldb	zp_mos_curROM			;B=(&F4)
 		bra	mos_cat_swroms_skipnext		;always &DB0C
+
 mos_cat_swroms_skipvalid				; LDAFF	
-		ldb	zp_mos_curROM
-		stb	sheila_ROMCTL_SWR
+		; we should now be pointing at current i.e. lower ROM
 		lda	$8006				;get rom type
 		ldx	#oswksp_ROMTYPE_TAB
+		ldb	zp_mos_curROM
 		sta	B,X				;store it in catalogue
 		anda	#$8F				;check for BASIC (bit 7 not set)
 		bne	mos_cat_swroms_skipnext		;if not BASIC the DB0C
 		stb	sysvar_ROMNO_BASIC		;else store X at BASIC pointer
 mos_cat_swroms_skipnext					;LDB0C
+		ldb	zp_mos_curROM
 		incb					;increment X to point to next ROM
-		cmpb	#$10				;is it 15 or less
-		blo	mos_cat_swroms_lp			;if so goto &DABD for next ROM
+		cmpb 	#$10				;is it 15 or less
+		blo	mos_cat_swroms_lp		;if so goto &DABD for next ROM
 
 ;TODO - Speech
 ;; Check SPEECH System; X=&10 
@@ -850,9 +849,19 @@ mos_OSRDRM
 		puls	B,PC
 ;mos_select_SWROM_X:
 mos_select_SWROM_B
+		pshs	A
+		lda	zp_mos_curROM
 		stb	zp_mos_curROM			;RAM copy of rom latch 
+	IF MACH_SBC09
+		; TODO: make this more coherent odd/even like Blitter?
+		andb	#$F
+		rolb
+		stb	SBC09_MMU0 + 2			; write mmu for 8000-BFFF
+	ELSE
 		stb	sheila_ROMCTL_SWR		;write to rom latch
-		rts					;and return
+	ENDIF
+		tfr	A,B
+		puls	A,PC				;and return
 ;; ----------------------------------------------------------------------------
 mos_handle_irq
 		jmp	[IRQ1V]				;	DC24
@@ -866,7 +875,7 @@ mos_handle_swi2
 ;; ----------------------------------------------------------------------------
 ;; BRK handling routine	- TODO: test for native mode!
 mos_handle_swi3
-		pshs	CC,A,X
+		pshs	CC,D,X
 		SEI						; disable interrupts - 6809 doesn't do that for us!
 	IF NATIVE
 		ldx	16,S
@@ -885,7 +894,7 @@ mos_handle_swi3
 								; ROMS may use BRK for their own purposes 
 		ldb	sysvar_CUR_LANG				; get current language
 		jsr	mos_select_SWROM_B			; and activate it
-		puls	CC,A,X					; restore A,X,CC
+		puls	CC,D,X					; restore A,X,CC
 		CLI						; allow interrupts
 		jmp	[BRKV]					; and JUMP via BRKV (normally into current language)
 ;; ----------------------------------------------------------------------------
@@ -4698,8 +4707,8 @@ mos_OSBYTE_143_b_cmd_x_param
 LF16E		ldy	#oswksp_ROMTYPE_TAB		
 		tst	B,Y				; read bit 7 on rom map (no rom has type 254 &FE)
 		bpl	1F				; skip if bit 7 not set (no service entry)
-		stb	zp_mos_curROM			; switch in paged ROM
-		stb	sheila_ROMCTL_SWR
+		jsr	mos_select_SWROM_B
+		ldb	zp_mos_curROM			; pass in B as current ROM
 		jsr	$8003				; call service routine
 		tsta					; check to see if A is reset
 		beq	2F				; if it is do no more roms
@@ -4707,8 +4716,7 @@ LF16E		ldy	#oswksp_ROMTYPE_TAB
 1		decb					; decrement
 		bpl	LF16E				; go again?
 2		ldb	,S+				; get back original rom #
-		stb	zp_mos_curROM			; switch in paged ROM
-		stb	sheila_ROMCTL_SWR
+		jsr	mos_select_SWROM_B
 		tsta					; set Z if A=0
 		puls	Y,PC				; return result still in A, B corrupted (original low byte of X)
 
@@ -7159,8 +7167,7 @@ x_enter_extended_vector
 		;	0	CC
 
 
-		stb	zp_mos_curROM			; Set OS copy and hardware
-		stb	sheila_ROMCTL_SWR		; SWR #
+		jsr	mos_select_SWROM_B
 
 		puls	CC,B,X,PC			; jump to ROM routine
 
@@ -7200,8 +7207,7 @@ x_return_addess_from_ROM_indirection
 		;	0	CC
 
 		ldb	2,S				; get back saved SWR #
-		stb	zp_mos_curROM			; reset MOS SWR #
-		stb	sheila_ROMCTL_SWR		; and hardware
+		jsr	mos_select_SWROM_B
 		puls	B,CC				; restore flags and B
 		leas	3,S				; skip unwanted
 
