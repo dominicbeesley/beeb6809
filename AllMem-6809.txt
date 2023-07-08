@@ -1,3 +1,8 @@
+; TODO: 2023-07-08 make all SEI/CLI in the MOS leave FIQ's enabled
+; TODO: 2023-07-08 make all vectors extended
+; TODO: 2023-07-08 reuse original vector area for per-rom workspace?
+; TODO: 2023-07-08 add ROMSEL OS routine to select rom and return current in B and use throughout OS/roms
+
 API Changes for 6809
 ======================================
 
