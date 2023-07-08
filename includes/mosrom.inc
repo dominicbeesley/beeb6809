@@ -1,3 +1,5 @@
+	;TODO: SBC09 - machine type?
+	;TODO: CHIPKIT - machine type?
 mos_MACHINE_TYPE_BYTE			EQU $63
 
 * Address of MOS ROM base
