@@ -543,7 +543,8 @@ LDA5B		lda	vec_table - 1,y			;	DA5B
 		sta	zp_mos_keynumfirst		;	DA66
 		
 	IF MACH_BEEB
-		jsr	ACIA_reset_from_CTL_COPY				; reset ACIA
+	;; TODO: Reinstate / check / fix - was buggering up debugging
+;;		jsr	ACIA_reset_from_CTL_COPY				; reset ACIA
 	ENDIF
 
 	IF MACH_BEEB | MACH_CHIPKIT
@@ -878,9 +879,9 @@ mos_handle_swi3
 		pshs	CC,D,X
 		SEI						; disable interrupts - 6809 doesn't do that for us!
 	IF NATIVE
-		ldx	16,S
+		ldx	17,S
 	ELSE
-		ldx	14,S					; points at byte after SWI instruction
+		ldx	15,S					; points at byte after SWI instruction
 	ENDIF
 		stx	zp_mos_error_ptr
 		stx	2,S					; set X on return to this
@@ -900,6 +901,9 @@ mos_handle_swi3
 ;; ----------------------------------------------------------------------------
 ;; DEFAULT BRK HANDLER
 mos_DEFAULT_BRK_HANDLER
+
+		DEBUG_INFO "mos_DEFAULT_BRK_HANDLER"
+
 		ldy	zp_mos_error_ptr
 		leay	1,Y
 		jsr	printAtY				;print message - including error number - TODO - is this right?
@@ -5784,7 +5788,7 @@ debug_print_ch	; TODO - do debug on serial port
 debug_print_ch	pshs	A,X
 	;TODO: SBC09: debug over 2nd channel
 	IF MACH_BEEB | MACH_CHIPKIT
-		ldx	#100
+		ldx	#400
 		lda	#ACIA_TDRE
 2		bita	sheila_ACIA_CTL
 		bne	1F
