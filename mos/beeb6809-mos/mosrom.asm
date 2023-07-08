@@ -884,7 +884,7 @@ mos_handle_swi3
 		ldx	15,S					; points at byte after SWI instruction
 	ENDIF
 		stx	zp_mos_error_ptr
-		stx	2,S					; set X on return to this
+		stx	3,S					; set X on return to this
 
 		lda	zp_mos_curROM				; get currently active ROM
 		sta	sysvar_ROMNO_ATBREAK			; and store it in &24A
