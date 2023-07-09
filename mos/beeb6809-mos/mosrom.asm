@@ -7281,7 +7281,8 @@ _OSWRCH		jmp	OSWRCH_bounce			;	FFEE
 _OSWORD		jmp	OSWORD_bounce			;	FFF1
 _OSBYTE		jmp	OSBYTE_bounce			;	FFF4
 _OSCLI		jmp	OSCLI_bounce			;	FFF7
-		FCB	"Ishbel"			; this was the original vectors
+_OSROMSEL	jmp	mos_select_SWROM_B		;       FFFA		; NEW: select rom in B, return old in B
+		jmp	dummy_vector_RTS		;	FFFD
 
 		SECTION	"tables_and_strings"
 MOSSTRINGSEND

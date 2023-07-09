@@ -1,7 +1,24 @@
 ; TODO: 2023-07-08 make all SEI/CLI in the MOS leave FIQ's enabled
 ; TODO: 2023-07-08 make all vectors extended
 ; TODO: 2023-07-08 reuse original vector area for per-rom workspace?
-; TODO: 2023-07-08 add ROMSEL OS routine to select rom and return current in B and use throughout OS/roms
+
+Breaking Changes 9/7/2023
+=========================
+
+## Rom Select Register
+
+To support different hardware where the ROM select register is not at FE30, a 
+new OS call OSROMSEL has been added at FFFA on entry the B register contains
+the ROM to be selected, the previous ROM is returned in B.
+
+
+
+## TODO: JGH has moved things around?
+
+The addresses of the non-MOS1.2 routines seem to have moved around in Client09
+since the 6809 mos was started, look at harmonizing?
+
+
 
 API Changes for 6809
 ======================================
