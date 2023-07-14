@@ -473,6 +473,17 @@ RESET_HANDLER
       ;; Print the reset message
       LDX   #RESET_MSG
       JSR   PRSTRING
+      ;; Print the MMU configuration
+      LDA   UART_IPR
+      LDX   #MMU_DISABLED_MSG
+      BITA  #JP1
+      BNE   MMU_MSG
+      LDX   #MMU_8K_MSG
+      BITA  #JP2
+      BEQ   MMU_MSG
+      LDX   #MMU_16K_MSG
+MMU_MSG
+      JSR   PRSTRING
       ;; Enter Basic
       JMP   $8000
 
@@ -493,6 +504,15 @@ RESET_MSG
       FCB  $11                ; XON
    ENDIF
       FCB  $00
+
+MMU_DISABLED_MSG
+   FCB "MMU Disabled",10,13,0
+
+MMU_8K_MSG
+   FCB "MMU Enabled, 8KB block size",10,13,0
+
+MMU_16K_MSG
+   FCB "MMU Enabled, 16KB block size",10,13,0
 
 ;; *************************************************************
 ;; Start of FUXIX Boot Loader
