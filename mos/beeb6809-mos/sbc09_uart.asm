@@ -40,8 +40,7 @@ SBC09_INIT MACRO
                 sta     SBC09_UART_CTU+1
                 lda     #OP_BIT_RTS_A                             ; assert rts
                 sta     SBC09_UART_OPRSET
-;;                lda     #IMR_CTR|IMR_RxRDY_A                    ; timer int, rx int enabled; tx int disabled
-                lda     #IMR_CTR                                  ; timer int, rx int enabled; tx int disabled
+                lda     #IMR_CTR|IMR_RxRDY_A                      ; timer int, rx int enabled; tx int disabled
                 sta     SBC09_UART_IMR
                 lda     SBC09_UART_STARTCT                        ; start the counter-timer
 ;;      LDA  #%00000100

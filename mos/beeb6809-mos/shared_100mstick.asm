@@ -49,6 +49,14 @@ LDE0A
 		jsr	irq_sound			;and do routine sound processes
 		SEI					;bar interrupts
 		dec	mosvar_SOUND_SEMAPHORE		;DEC envelope processing byte back to FF
+	ELSE
+		;TODO: SBC09 - just discard all the sounds!
+		ldx	#4
+1		jsr	mos_OSBYTE_145
+		bcc	1B
+		leax	1,X
+		cmpx	#8
+		bne	1B
 	ENDIF
 
 
