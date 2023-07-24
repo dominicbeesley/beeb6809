@@ -15,7 +15,7 @@ HOSTFSDIR := ~/hostfs/beebroms
 include		../../Makefile.defs
 
 DEPS=			../../includes/hardware.inc ../../includes/common.inc ../../includes/mosrom.inc extras.noi 
-DEPS_MAIN=		irq1_main.asm vdu_chardefs.asm  vdu_main.asm
+DEPS_MAIN=		irq1_main.asm vdu_chardefs.asm  vdu_main.asm sound_main.asm
 DEPS_SBC09=		sbc09_irq1.asm  sbc09_uart.asm  sbc09_vdu_uart.asm  
 
 CLEAN_EXTRA=$(addprefix $(CHIPKITOUT)/,mosloadandrun.noi mosloadandsyms.noi \

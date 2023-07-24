@@ -1,8 +1,6 @@
 
 ; main sound routines
 
-	IF INCLUDE_SOUND
-M_SOUND	macro
 
 ;; Silence a sound channel; X=channel number 
 x_Silence_a_sound_channel				; LEB03
@@ -420,5 +418,3 @@ mostbl_Pitch_lookup1
 mostbl_Pitch_lookup2
 		FCB	$E7,$D7,$CB,$C3,$B7,$AA,$A2,$9A ;	EE07
 		FCB	$92,$8A,$82,$7A			;	EE0F
-	mend
-	ENDIF	; INCLUDE_SOUND

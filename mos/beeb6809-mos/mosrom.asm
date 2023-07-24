@@ -3606,7 +3606,7 @@ LEAF3rts
 ;	rts					;	EB02
 ;; ----------------------------------------------------------------------------
 	IF INCLUDE_SOUND
-		M_SOUND
+		include "sound_main.asm"
 	ENDIF ; INCLUDE_SOUND
 ;; ----------------------------------------------------------------------------
 ;; : set current filing system ROM/PHROM
