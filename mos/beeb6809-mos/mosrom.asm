@@ -356,9 +356,12 @@ mos_default_illegalop
 
 ;; ----------------------------------------------------------------------------
 mos_handle_res
+	IF MACH_SBC09
+		ldb	#1				; default to the MOS being mapped in slot #1 if reset vector called
+mos_handle_boot_menu
+	ENDIF
 		lda	#$3B				; rti instruction ( was $40 for 6502)
 ; Store RTI in 1st byte of NMI space
-mos_handle_res_resnmi
 		sta	vec_nmi				; store rti at start of NMI space
 		SEI					; turn of interrupts in case
 		lds	#STACKTOP			; this is different to 6502, setup system stack at PAGE 1
@@ -856,7 +859,6 @@ mos_select_SWROM_B
 	IF MACH_SBC09
 		; TODO: make this more coherent odd/even like Blitter?
 		andb	#$F
-		rolb
 		stb	SBC09_MMU0 + 2			; write mmu for 8000-BFFF
 	ELSE
 		stb	sheila_ROMCTL_SWR		;write to rom latch
@@ -5695,6 +5697,11 @@ XIRQV		FDB	mos_handle_irq			; $FFF8
 XSWIV		FDB	mos_handle_swi			; $FFFA
 XNMIV		FDB	mos_handle_nmi			; $FFFC
 XRESETV		FDB	mos_handle_res			; $FFFE
+	IF MACH_SBC09
+		FDB	mos_handle_boot_menu		; $F800		; boot menu entry point, current mapping in B
+		FCB	"SBC09MOS"
+		FCN	"Midi-mos test"	;TODO: pick up version number here?
+	ENDIF
 
 *******************************************************************************
 * 6809 debug and specials
@@ -5786,7 +5793,6 @@ debug_print_ch	; TODO - do debug on serial port
 	ELSE
 
 debug_print_ch	pshs	A,X
-	;TODO: SBC09: debug over 2nd channel
 	IF MACH_BEEB | MACH_CHIPKIT
 		ldx	#400
 		lda	#ACIA_TDRE
@@ -5798,6 +5804,8 @@ debug_print_ch	pshs	A,X
 		anda	#$7F
 		sta	sheila_ACIA_DATA	
 	ENDIF
+		jsr	mos_VDU_WRCH
+		;TODO: SBC09: debug over 2nd channel
 		puls	A,X,PC
 	ENDIF
 

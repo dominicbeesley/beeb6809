@@ -6,15 +6,17 @@ TARGETS_BEEB=		mosrom-6809.bin \
 			mosrom.bin \
 			mosrom-nat.bin \
 			hostfs			
-TARGETS_SBC09= mosrom-6809.bin \
-			mosrom.bin \
-			mosrom-nat.bin
+TARGETS_SBC09= mosrom-6809.srec \
+			mosrom.srec \
+			mosrom-nat.srec
 
 HOSTFSDIR := ~/hostfs/beebroms
 
 include		../../Makefile.defs
 
-DEPS=../../includes/hardware.inc ../../includes/common.inc ../../includes/mosrom.inc extras.noi 
+DEPS=			../../includes/hardware.inc ../../includes/common.inc ../../includes/mosrom.inc extras.noi 
+DEPS_MAIN=		irq1_main.asm vdu_chardefs.asm  vdu_main.asm
+DEPS_SBC09=		sbc09_irq1.asm  sbc09_uart.asm  sbc09_vdu_uart.asm  
 
 CLEAN_EXTRA=$(addprefix $(CHIPKITOUT)/,mosloadandrun.noi mosloadandsyms.noi \
 	 mosloadandsymsrun.noi) \
@@ -30,7 +32,7 @@ $(BEEBOUT)/hostfs:
 		cp $(BEEBOUT)/mosrom-6809.bin $(HOSTFSDIR)/M.MOS6809
 		cp $(BEEBOUT)/mosrom-nat.bin $(HOSTFSDIR)/M.MOS630N
 
-$(CHIPKITOUT)/mosrom.bin:	mosrom.asm $(DEPS) 
+$(CHIPKITOUT)/mosrom.bin:	mosrom.asm $(DEPS) $(DEPS_MAIN)
 			./mkversion.sh
 			$(AS) $(ASFLAGS) --define MACH_CHIPKIT=1 -o $@ -l $(basename $@).lst $<
 			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
@@ -45,7 +47,7 @@ $(CHIPKITOUT)/mosrom.bin:	mosrom.asm $(DEPS)
 			echo "WAITFORSTOP" >>$(CHIPKITOUT)/mosloadandrun.noi
 			echo "GO 2000" >>$(CHIPKITOUT)/mosloadandrun.noi
 
-$(BEEBOUT)/mosrom-6809.bin:	mosrom.asm $(DEPS)
+$(BEEBOUT)/mosrom-6809.bin:	mosrom.asm $(DEPS) $(DEPS_MAIN)
 			./mkversion.sh
 			$(AS) -v --define CPU_6809=1 --define MACH_BEEB=1 --define BLITTER=1 -o $@ -l $(basename $@).lst $<
 			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
@@ -61,7 +63,7 @@ $(BEEBOUT)/mosrom-6809.bin:	mosrom.asm $(DEPS)
 			echo "WAITFORSTOP" >>$(BEEBOUT)/mosloadandrun-6809.noi
 			echo "GO 2000" >>$(BEEBOUT)/mosloadandrun-6809.noi
 
-$(BEEBOUT)/mosrom.bin:	mosrom.asm $(DEPS)
+$(BEEBOUT)/mosrom.bin:	mosrom.asm $(DEPS) $(DEPS_MAIN)
 			./mkversion.sh
 			$(AS) -v -3 --define CPU_6309=1 --define MACH_BEEB=1 --define BLITTER=1 -o $@ -l $(basename $@).lst $<
 			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
@@ -76,7 +78,7 @@ $(BEEBOUT)/mosrom.bin:	mosrom.asm $(DEPS)
 			echo "WAITFORSTOP" >>$(BEEBOUT)/mosloadandrun.noi
 			echo "GO 2000" >>$(BEEBOUT)/mosloadandrun.noi
 
-$(BEEBOUT)/mosrom-nat.bin:	mosrom.asm $(DEPS)
+$(BEEBOUT)/mosrom-nat.bin:	mosrom.asm $(DEPS) $(DEPS_MAIN)
 			./mkversion.sh
 			$(AS) -v -3 --define NATIVE=1 --define CPU_6309=1 --define MACH_BEEB=1 --define BLITTER=1 -o $@ -l $(basename $@).lst $<
 			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
@@ -92,12 +94,12 @@ $(BEEBOUT)/mosrom-nat.bin:	mosrom.asm $(DEPS)
 			echo "WAITFORSTOP" >>$(BEEBOUT)/mosloadandrun-nat.noi
 			echo "GO 2000" >>$(BEEBOUT)/mosloadandrun-nat.noi
 
-$(SBC09OUT)/mosrom-6809.bin:	mosrom.asm $(DEPS)
+$(SBC09OUT)/mosrom-6809.srec:	mosrom.asm $(DEPS) $(DEPS_SBC09)
 			./mkversion.sh
-			$(AS) -v --define CPU_6809=1 --define MACH_SBC09=1 -o $@ -l $(basename $@).lst $<
+			$(AS) -S -v --define CPU_6809=1 --define MACH_SBC09=1 -o $@ -l $(basename $@).lst $<
 			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 						
-			./makeloadnoi.sh $(SBC09OUT) mosrom-6809.bin >$(SBC09OUT)/mosloadandrun-6809.noi
+			./makeloadnoi.sh $(SBC09OUT) mosrom-6809.srec >$(SBC09OUT)/mosloadandrun-6809.noi
 			cat $(basename $@).sym >>$(SBC09OUT)/mosloadandrun-6809.noi
 
 			if [ -a ./extras.noi ]; then \
@@ -108,12 +110,12 @@ $(SBC09OUT)/mosrom-6809.bin:	mosrom.asm $(DEPS)
 			echo "WAITFORSTOP" >>$(BEEBOUT)/mosloadandrun-6809.noi
 			echo "GO 2000" >>$(BEEBOUT)/mosloadandrun-6809.noi
 
-$(SBC09OUT)/mosrom.bin:	mosrom.asm $(DEPS)
+$(SBC09OUT)/mosrom.srec:	mosrom.asm $(DEPS)	$(DEPS_SBC09)
 			./mkversion.sh
-			$(AS) -v -3 --define CPU_6309=1 --define MACH_SBC09=1 -o $@ -l $(basename $@).lst $<
+			$(AS) -S -v -3 --define CPU_6309=1 --define MACH_SBC09=1 -o $@ -l $(basename $@).lst $<
 			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 						
-			./makeloadnoi.sh $(SBC09OUT) mosrom.bin >$(SBC09OUT)/mosloadandrun.noi
+			./makeloadnoi.sh $(SBC09OUT) mosrom.srec >$(SBC09OUT)/mosloadandrun.noi
 			cat $(basename $@).sym >>$(SBC09OUT)/mosloadandrun.noi
 
 			if [ -a ./extras.noi ]; then \
@@ -123,12 +125,12 @@ $(SBC09OUT)/mosrom.bin:	mosrom.asm $(DEPS)
 			echo "WAITFORSTOP" >>$(SBC09OUT)/mosloadandrun.noi
 			echo "GO 2000" >>$(SBC09OUT)/mosloadandrun.noi
 
-$(SBC09OUT)/mosrom-nat.bin:	mosrom.asm $(DEPS)
+$(SBC09OUT)/mosrom-nat.srec:	mosrom.asm $(DEPS)	$(DEPS_SBC09)
 			./mkversion.sh
-			$(AS) -v -3 --define NATIVE=1 --define CPU_6309=1 --define MACH_SBC09=1 -o $@ -l $(basename $@).lst $<
+			$(AS) -S -v -3 --define NATIVE=1 --define CPU_6309=1 --define MACH_SBC09=1 -o $@ -l $(basename $@).lst $<
 			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 						
-			./makeloadnoi.sh $(SBC09OUT) mosrom-nat.bin >$(SBC09OUT)/mosloadandrun-nat.noi
+			./makeloadnoi.sh $(SBC09OUT) mosrom-nat.srec >$(SBC09OUT)/mosloadandrun-nat.noi
 			cat $(basename $@).sym >>$(SBC09OUT)/mosloadandrun-nat.noi
 
 			if [ -a ./extras.noi ]; then \

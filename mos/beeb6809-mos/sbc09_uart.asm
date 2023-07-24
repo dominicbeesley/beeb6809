@@ -18,6 +18,8 @@ UART_XTAL       EQU     3686400
 UART_T0DIV      EQU     (((UART_XTAL/16)/100)/2)-1
 
 SBC09_INIT MACRO
+                ; B contains the current 16K bank # from BOOT menu
+
                 lda     #MR1_PARITY_MODE_OFF|MR1_PARITY_BITS_8    ; no parity, 8 bits/char - mr1a,b
                 sta     SBC09_UART_MRA
                 lda     #MR2_TxCTS|MR2_STOP_BITS_1                ; cts enable tx, 1.000 stop bits - mr2a,b
@@ -32,11 +34,14 @@ SBC09_INIT MACRO
                 sta     SBC09_UART_CSRA
                 lda     #ACR_CT_MODE_SQ_X1_DIV16                  ; timer mode, clock = xtal/16 = 3686400 / 16 = 230400 hz
                 sta     SBC09_UART_ACR
-                ldd     #UART_T0DIV                               ; 16-bit write to counter to get a 100hz tick
-                std     SBC09_UART_CTU
+                lda     #UART_T0DIV/256                           ; 16-bit write to counter to get a 100hz tick
+                sta     SBC09_UART_CTU
+                lda     #UART_T0DIV%256                           ; 16-bit write to counter to get a 100hz tick
+                sta     SBC09_UART_CTU+1
                 lda     #OP_BIT_RTS_A                             ; assert rts
                 sta     SBC09_UART_OPRSET
-                lda     #IMR_CTR|IMR_RxRDY_A                      ; timer int, rx int enabled; tx int disabled
+;;                lda     #IMR_CTR|IMR_RxRDY_A                    ; timer int, rx int enabled; tx int disabled
+                lda     #IMR_CTR                                  ; timer int, rx int enabled; tx int disabled
                 sta     SBC09_UART_IMR
                 lda     SBC09_UART_STARTCT                        ; start the counter-timer
 ;;      LDA  #%00000100
@@ -57,10 +62,11 @@ MMU_16K
                 sta     SBC09_MMU0 + 0
                 lda     #%10000001                                ; 4000-7fff -> ram block 1
                 sta     SBC09_MMU0 + 1
-                lda     #%00000000                                ; 8000-bfff -> rom0 block 0
-                sta     SBC09_MMU0 + 2
-                lda     #%00000001                                ; c000-ffff -> rom0 block 1
-                sta     SBC09_MMU0 + 3
+
+                
+                stb     SBC09_MMU0 + 3
+                decb
+                stb     SBC09_MMU0 + 2
 
       ;; Enable the MMU with 16K block size
                 lda     #%00010000     ; op4 = low (mmu enabled, output is inverted)
