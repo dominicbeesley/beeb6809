@@ -3988,8 +3988,13 @@ keyb_check_key_code_API
 
 	ELSE ; NOT INCLUDE_KEYBOARD
 KEYV_default
+	bvs	1F				;if V is clear then leave interrupt routine
+	bcc	1F
+
+	jmp	KEYV_keyboard_scan
+
 	;TODO: SBC09: ? not sure about this
-	clra
+1	clra
 	rts
 
 	ENDIF ; INCLUDE_KEYBOARD
@@ -4171,8 +4176,8 @@ mos_STAR_HELP
 ;; ----------------------------------------------------------------------------
 ;; OSBYTE 122  KEYBOARD SCAN FROM &10 (16);  
 clc_then_mos_OSBYTE_122
-		CLC					; clear carry to fall through without doing KEYV
 mos_OSBYTE_122						; LF0CD
+		CLC
 		ldx	#$10				; lowest key to scan (Q)
 ;; OSBYTE 121  KEYBOARD SCAN FROM VALUE IN X
 mos_OSBYTE_121
@@ -4180,12 +4185,12 @@ mos_OSBYTE_121
 							;JMPs via KEYV and hence return from osbyte
 							;however KEYV will return here... 
 
+KEYV_keyboard_scan
 	IF INCLUDE_KEYBOARD
  *************************************************************************
  *        Scan Keyboard C=1, V=0 entry via KEYV (or from CLC above)      *
  *************************************************************************
 
-KEYV_keyboard_scan
 		m_txa					;if X is +ve goto F0D9
 		bpl	LF0D9				;
 		tfr	A,B
@@ -4252,6 +4257,15 @@ keyb_hw_enable_scan2
 		bra	keyb_hw_enable_scan
 
 	ELSE ; NOT INCLUDE_KEYBOARD
+		tfr	X,D
+		tstb
+		bmi	1F
+		ldx	#-1
+		lda	#$FF
+		rts
+
+1		ldx	#0
+		clra
 		rts
 	ENDIF ; INCLUDE_KEYBOARD
 ;; ----------------------------------------------------------------------------
