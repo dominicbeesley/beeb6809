@@ -370,6 +370,25 @@ BAUD_WORD	EQU SER_BAUD_CLOCK_IN/(BAUD_RATE*16)
 
 	ELSIF MYELIN
 		; no claim to make?
+	ELSIF SBC09
+                lda     #MR1_PARITY_MODE_OFF|MR1_PARITY_BITS_8    ; no parity, 8 bits/char - mr1a,b
+                sta     SBC09_UART_MRB
+                lda     #MR2_TxCTS|MR2_STOP_BITS_1                ; cts enable tx, 1.000 stop bits - mr2a,b
+                sta     SBC09_UART_MRB
+                lda     #CRA_TxEN|CRA_RxEN                        ; enable tx and rx
+                sta     SBC09_UART_CRB
+                lda     #CRA_CMD_SET_RxBRG                        ; set channel a rx extend bit
+                sta     SBC09_UART_CRB
+                lda     #CRA_CMD_SET_TxBRG                        ; set channel a tx extend bit
+                sta     SBC09_UART_CRB
+                lda     #%10111011                                ; internal 9,600 baud
+                sta     SBC09_UART_CSRB
+
+		; block RTS by default unless reading
+		ldb     #OP_BIT_RTS_B
+		stb     SBC09_UART_OPRCLR			; de-assert rts
+
+
 	ELSE
 		lda	#156
 		ldx	#ACIA_CTL_RxInit
@@ -531,7 +550,7 @@ HostFSCV
 		beq	HostFSCVQuit
 		lbra	MyosFSCV
 HostFSCV6
-	IF MYELIN
+	IF MYELIN | SBC09
 		rts
 	ELSE
 		lda	#156
@@ -2288,6 +2307,16 @@ SendWait
 		sta	S16550_TXR
 		rts
 
+	ELSIF SBC09
+SendData
+		sta	,-S
+		lda	#SR_TxRDY
+SendWait	bita	SBC09_UART_SRB
+		beq	SendWait
+
+		lda	,S+
+		sta	SBC09_UART_THRB
+		rts
 
 	ELSIF MYELIN
 SendData
@@ -2363,6 +2392,42 @@ ReadDataOk
 		cmpa	#HOSTFS_ESC
 		SEC
 		rts					; CS=Data present, EQ/NE=HOSTFS_ESC
+
+	ELSIF SBC09
+ReadData
+		PSHS	CC,B
+		SEI
+		lda	#SR_RxRDY
+		bita	SBC09_UART_SRB
+		bne	ReadDataOk			; Data present already even though we blocked
+		; 
+		ldb     #OP_BIT_RTS_B
+		stb     SBC09_UART_OPRSET		; assert rts
+
+		ldb	#10
+1		bita	SBC09_UART_SRB
+		bne	ReadDataOk
+		decb
+		bne	1B
+
+		ldb     #OP_BIT_RTS_B
+		stb     SBC09_UART_OPRCLR		; de-assert rts
+
+		;
+		PULS	CC,B
+		CLC
+		rts					; CC=No data present
+ReadDataOk
+		lda	SBC09_UART_RHRB
+
+		ldb     #OP_BIT_RTS_B
+		stb     SBC09_UART_OPRCLR			; de-assert rts
+
+		PULS	CC,B
+		cmpa	#HOSTFS_ESC
+		SEC
+		rts					; CS=Data present, EQ/NE=HOSTFS_ESC
+
 
 	ELSIF MYELIN
 ReadData

@@ -11,6 +11,7 @@ TARGETS_CHIPKIT=HOSTFS-ck.bin \
 		loadHOSTFSandsyms.noi \
 		loadHOSTFS.noi
 
+TARGETS_SBC09=HOSTFS-sbc09.srec
 
 DEPS=	../../includes/hardware.inc \
 		../../includes/common.inc \
@@ -57,6 +58,8 @@ $(BEEBOUT)/loadHOSTFS-myelin-andsyms.noi $(BEEBOUT)/loadHOSTFS-myelin.noi: $(BEE
 		cat $(BEEBOUT)/loadHOSTFS-myelin.noi $(BEEBOUT)/HOSTFS-myelin.sym $(BEEBOUT)/../../mos/beeb6809-mos/mosrom.sym >$(BEEBOUT)/loadHOSTFS-myelin-andsyms.noi
 		echo -e "WAITFORSTOP 1\nR PC mos_handle_res\n" >>$(BEEBOUT)/loadHOSTFS-myelin-andsyms.noi
 
-
 $(BEEBOUT)/HOSTFS.bin: $(DEPS)
 $(BEEBOUT)/HOSTFS-myelin.bin: $(DEPS)
+
+$(SBC09OUT)/HOSTFS-sbc09.srec: HOSTFS-sbc09.asm $(DEPS)
+		asm6809 -S -9 -d MACH_SBC09=1 -o $@ HOSTFS-sbc09.asm
