@@ -7,6 +7,7 @@ mos_VDU_WRCH
 1		bitb	SBC09_UART_SRA
 		beq	1B
 		sta	SBC09_UART_THRA
+		CLC
 		puls	B,PC
 
 
