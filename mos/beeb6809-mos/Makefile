@@ -97,6 +97,9 @@ $(BEEBOUT)/mosrom-nat.bin:	mosrom.asm $(DEPS) $(DEPS_MAIN)
 $(SBC09OUT)/mosrom-6809.srec:	mosrom.asm $(DEPS) $(DEPS_SBC09)
 			./mkversion.sh
 			$(AS) -S -v --define CPU_6809=1 --define MACH_SBC09=1 -o $@ -l $(basename $@).lst $<
+
+			srec_cat $@ -fill 0xFF 0x8000 0xC000 -offset -0x8000 -o $(basename $@).bin -binary
+
 			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 						
 			./makeloadnoi.sh $(SBC09OUT) mosrom-6809.srec >$(SBC09OUT)/mosloadandrun-6809.noi
@@ -113,6 +116,9 @@ $(SBC09OUT)/mosrom-6809.srec:	mosrom.asm $(DEPS) $(DEPS_SBC09)
 $(SBC09OUT)/mosrom.srec:	mosrom.asm $(DEPS)	$(DEPS_SBC09)
 			./mkversion.sh
 			$(AS) -S -v -3 --define CPU_6309=1 --define MACH_SBC09=1 -o $@ -l $(basename $@).lst $<
+
+			srec_cat $@ -fill 0xFF 0x8000 0xC000 -offset -0x8000 -o $(basename $@).bin -binary
+
 			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 						
 			./makeloadnoi.sh $(SBC09OUT) mosrom.srec >$(SBC09OUT)/mosloadandrun.noi
@@ -128,6 +134,9 @@ $(SBC09OUT)/mosrom.srec:	mosrom.asm $(DEPS)	$(DEPS_SBC09)
 $(SBC09OUT)/mosrom-nat.srec:	mosrom.asm $(DEPS)	$(DEPS_SBC09)
 			./mkversion.sh
 			$(AS) -S -v -3 --define NATIVE=1 --define CPU_6309=1 --define MACH_SBC09=1 -o $@ -l $(basename $@).lst $<
+
+			srec_cat $@ -fill 0xFF 0x8000 0xC000 -offset -0x8000 -o $(basename $@).bin -binary
+
 			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 						
 			./makeloadnoi.sh $(SBC09OUT) mosrom-nat.srec >$(SBC09OUT)/mosloadandrun-nat.noi
