@@ -315,24 +315,36 @@ $(SBC09OUT)/MINIMOS-6309NBAS_68681.BIN:	6809BAS.asm SBC09_MOS_68681.asm $(DEPS)
 
 $(SBC09OUT)/6809BAS.srec: 6809BAS.asm $(DEPS)
 		$(AS) $(ASFLAGS) --define ASSEMBLER_6809 --define CPU_6809 --define MACH_BEEB=1 -S -o $@ -l $(basename $@).lst $<
+
+		srec_cat $@ -fill 0xFF 0x8000 0xC000 -offset -0x8000 -o $(basename $@).bin -binary
+
 		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
 $(SBC09OUT)/6309BAS.srec: 6809BAS.asm $(DEPS)
 		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6309 --define CPU_6309 --define MACH_BEEB=1 -S -o $@ -l $(basename $@).lst $<
+
+		srec_cat $@ -fill 0xFF 0x8000 0xC000 -offset -0x8000 -o $(basename $@).bin -binary
+
 		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
 $(SBC09OUT)/6368BAS.srec: 6809BAS.asm $(DEPS)
 		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6809 --define CPU_6309 --define MACH_BEEB=1 -S -o $@ -l $(basename $@).lst $<
+
+		srec_cat $@ -fill 0xFF 0x8000 0xC000 -offset -0x8000 -o $(basename $@).bin -binary
+
 		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
 $(SBC09OUT)/6809BAS-6502ass.srec: 6809BAS-6502ass.asm $(DEPS)
 		$(AS) $(ASFLAGS) --define ASSEMBLER_6809 --define CPU_6809 --define MACH_BEEB=1 -S -o $@ -l $(basename $@).lst $<
+
+		srec_cat $@ -fill 0xFF 0x8000 0xC000 -offset -0x8000 -o $(basename $@).bin -binary
+
 		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
