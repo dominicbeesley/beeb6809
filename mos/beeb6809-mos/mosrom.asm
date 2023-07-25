@@ -485,6 +485,7 @@ LDA11		tfr	b,a					;A=B
 		rora						;Get carry back into carry flag
 	ELSE
 		clr	zp_mos_INT_A		; TODO: SBC09: not sure what to put in flags here
+		SEC
 	ENDIF ; MACH_BEEB|MACH_CHIPKIT
 x_set_up_page_2
 		ldx	#$9C					;
@@ -509,11 +510,15 @@ x_set_up_page_2
 		sta	sysvar_STARTUP_OPT			;and store at &28F
 		ldx	#$90					;X=&90
 		
-
-		DEBUG_INFO	"Setup page 2"
-
 ;; : set up page 2; on entry	   &28D=0 Warm reset, X=&9C, Y=&7E ; &28D=1 Power up  , X=&90, Y=&8D ; &28D=2 Cold reset, X=&9C, Y=&87 
 x_set_up_page_2_2
+		tfr	X,D
+		tfr	B,A
+		jsr	debug_print_hex
+		tfr	Y,D
+		tfr	B,A
+		jsr	debug_print_hex
+		DEBUG_INFO	"Setup page 2"		
 		clra
 x_setup_pg2_lp0	
 		cmpx	#$CE					;zero &200+X to &2CD
