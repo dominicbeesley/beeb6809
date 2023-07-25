@@ -65,3 +65,4 @@ rom-dev/BBCBASIC/testing/fpshow/fpshow.exe
 VERSION-date.gen.asm
 sbc09-midimos.sublime-workspace
 sbc09-midimos.sublime-workspace
+*.sublime-workspace
