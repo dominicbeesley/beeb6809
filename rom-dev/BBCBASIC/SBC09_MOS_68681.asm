@@ -2,6 +2,14 @@
 ;; Configuration
 ;; *************************************************************
 
+
+;
+; Minimal SBC09 FUZIX Boot ROM, based on Dominic Beesley's Blitter-sbc09 boot rom
+;
+FUZIX_IMG_BLK  equ     $02     ; the starting MMU page for the kernel image (binary format)
+FUZIX_RUN_BLK  equ     $80     ; the starting MMU page for the base of the kernel at run-time
+
+
    include "SBC09VERSION.inc"
 
 FC_NONE      EQU 0
@@ -98,21 +106,25 @@ UART_INIT MACRO
       STA  UART_CSRA
       LDA  #%01110000    ; Timer Mode, Clock = XTAL/16 = 3686400 / 16 = 230400 Hz
       STA  UART_ACR
-      LDD  #(2304/2-1)   ; 16-bit write to counter to get a 100Hz tick
-      STD  UART_CTU
       LDA  #%00000001    ; assert RTS
       STA  UART_OPRSET
+
+      LDA  UART_IPR      ; Read jumpers
+      BITA #JP3          ; Test jumper JP3 (Boot FUZIX)
+      LBEQ FUZIX         ; JP3 fitted, so boot FUZIX
+
+      LDD  #(2304/2-1)   ; 16-bit write to counter to get a 100Hz tick
+      STD  UART_CTU
       LDA  #$0A          ; Timer Int, Rx Int enabled; Rx Int disabled
       STA  UART_IMR
       LDA  UART_STARTCT  ; Start the counter-timer
-;;      LDA  #%00000100
-;;      STA  UART_OPCR     ; Ouput timer squarewave on OP3 for debugging only
-
+;;    LDA  #%00000100
+;;    STA  UART_OPCR     ; Ouput timer squarewave on OP3 for debugging only
       LDA  UART_IPR      ; Read jumpers
       BITA #JP1          ; Test jumper JP1 (Enable MMU)
-      BNE DONE           ; JP1 not fitted, so don't initialiaze MMU
+      BNE  DONE          ; JP1 not fitted, so don't initialiaze MMU
       BITA #JP2          ; Test jumper JP2 (8K Mode)
-      BEQ MMU_8K         ; JP3 fitted, so use 8K Mode
+      BEQ  MMU_8K        ; JP2 fitted, so use 8K Mode
 
 ;; MMU 7 is write protect (16K mode) or Block LSB (8K Mode)
 ;; MMU 6:5 is device (00=ROM0, 01=ROM1, 10=RAM, 11=External)
@@ -440,9 +452,6 @@ RESET_HANDLER
       CLRA
       TFR   A,DP
 
-   IF NATIVE
-      LDMD #$01
-   ENDIF
       ;; Initialize Zero Page
       LDX  #ZP_START
 1
@@ -455,10 +464,25 @@ RESET_HANDLER
       ;; Initialize the UART
       ;; RX INT ENABLED, RTS LOW, TX INT DISABLED, 8N1, CLK/16
       UART_INIT
+      ;; Enter 6309 native mode
+   IF NATIVE
+      LDMD #$01
+   ENDIF
       ;; Enable interrupts
       CLI
       ;; Print the reset message
       LDX   #RESET_MSG
+      JSR   PRSTRING
+      ;; Print the MMU configuration
+      LDA   UART_IPR
+      LDX   #MMU_DISABLED_MSG
+      BITA  #JP1
+      BNE   MMU_MSG
+      LDX   #MMU_8K_MSG
+      BITA  #JP2
+      BEQ   MMU_MSG
+      LDX   #MMU_16K_MSG
+MMU_MSG
       JSR   PRSTRING
       ;; Enter Basic
       JMP   $8000
@@ -480,6 +504,144 @@ RESET_MSG
       FCB  $11                ; XON
    ENDIF
       FCB  $00
+
+MMU_DISABLED_MSG
+   FCB "MMU Disabled",10,13,0
+
+MMU_8K_MSG
+   FCB "MMU Enabled, 8KB block size",10,13,0
+
+MMU_16K_MSG
+   FCB "MMU Enabled, 16KB block size",10,13,0
+
+;; *************************************************************
+;; Start of FUXIX Boot Loader
+;; *************************************************************
+
+FUZIX
+      LDS   #$100
+
+      LDA   #%10111011    ; INTERNAL 9,600 BAUD
+      STA   UART_CSRA
+
+      LDA   #%10000100     ; 0000-3FFF -> RAM block 4
+      STA   MMU0 + 0
+      LDA   #%00000001     ; C000-FFFF -> ROM0 block 1
+      STA   MMU0 + 3
+
+;; Enable the MMU with 16K block size
+      LDA   #%00010000     ; OP4 = low (MMU Enabled, output is inverted)
+      STA   UART_OPRSET
+
+      ;; Fuzix Boot messsage
+
+      LDX   #FUZIX_INIT_MSG
+      JSR   SER_SEND_STRX
+
+      ;; Copy FUZIX Kernel from ROM to RAM
+
+      LDX   #FUZIX_COPY_MSG
+      JSR   SER_SEND_STRX
+
+      LDA   #FUZIX_IMG_BLK
+      LDB   #FUZIX_RUN_BLK
+FLOOP1
+      STA   MMU0 + 1
+      STB   MMU0 + 2
+      PSHS  a
+      LDX   #$4000         ; length
+      LDU   #$4000         ; source block (ROM)
+      LDY   #$8000         ; destination block (RAM)
+FLOOP2
+      LDA   ,U+
+      STA   ,Y+
+      LEAX  -1,X
+      BNE   FLOOP2
+      PULS  A
+      INCA
+      INCB
+      CMPA  #FUZIX_IMG_BLK+4
+      BNE   FLOOP1
+
+      ;; copy "bounce" code at chipram 100 onwards (we expect 0..200 to be free)
+
+      LDX   #FUZIX_BOOT_MSG
+      JSR   SER_SEND_STRX
+
+      ;; set up task 0 to have SYS at top (this code), ChipRAM at ram 0-BFFF and SYS screen memory C000-BFFF
+
+      LDA   #FUZIX_RUN_BLK
+      STA   MMU0 + 0
+      LDA   #FUZIX_RUN_BLK+1
+      STA   MMU0 + 1
+      LDA   #FUZIX_RUN_BLK+2
+      STA   MMU0 + 2
+
+      ;; we should now be in map 0 with mmu enabled in 16K mode with this ROM (EXT) mapped at top
+      ;; copy the bounce code to low memory at 100
+
+      ;; copy user task to bank 0
+      LDU   #UT0_R
+      LDY   #$100
+      LDX   #UT0_END-UT0+1
+1
+      LDA   ,U+
+      STA   ,Y+
+      LEAX  -1,X
+      BNE   1B
+
+      ;; jump to user task in bank 0
+      JMP   $100
+
+UT0_R
+      ORG   $100
+      PUT   UT0_R
+UT0
+      ;; this is the "bounce" task that is copied to
+
+      ;; map in top page of RAM in supervisor task
+      LDA   #FUZIX_RUN_BLK+3
+      STA   MMU0 + 3
+
+      ;; call the kernel
+      JMP   $200
+UT0_END
+      ORG   UT0_R + UT0_END - UT0
+      PUT   UT0_R + UT0_END - UT0
+
+SER_SEND_STRX
+      PSHS  A
+1
+      LDA   ,X+
+      BEQ   2F
+      BSR   SER_SEND_A
+      BRA   1B
+2
+      PULS  A,PC
+
+
+SER_SEND_A
+      STB   ,-S
+      LDB   #UART_TXINT
+1
+      BITB  UART_SRA
+      BEQ   1B
+      STA   UART_THRA
+      PULS  B,PC
+
+FUZIX_INIT_MSG
+      FCB     "FUZIX BOOT ROM FOR SBC09",13,10,13,10,0
+
+FUZIX_COPY_MSG
+      FCB     "Copying Kernel Image from ROM to RAM",13,10,13,10,0
+
+FUZIX_BOOT_MSG
+      FCB     "Starting image at 00 0200",13,10,13,10,0
+
+;; *************************************************************
+;; End of FUZIX Boot Loader
+;; *************************************************************
+
 
 __CODE_END
 __FREESPACE     EQU $F7F0-__CODE_END
