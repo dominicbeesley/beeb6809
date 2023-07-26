@@ -280,7 +280,11 @@ mostbl_SYSVAR_DEFAULT_SETTINGS				; LD976
 		FCB	$00					; DA VDU Q len
 		FCB	$09					; DB TAB char
 		FCB	$1B					; DC ESCAPE char
+	IF MACH_SBC09
+		FCB	$00					; Flow control flag - TEST
+	ELSE
 		FCB	$01					; DD Input buffer C0-CF interpretation
+	ENDIF
 
 		FCB	$D0					; DE Input buffer D0-DF interpretation
 		FCB	$E0					; DF Input buffer E0-EF interpretation
@@ -1496,7 +1500,7 @@ LE1BB		SEC					;set carry
 		lda	#$00				;else Input buffer so A=0
 		sta	sysvar_KEYB_SOFTKEY_LENGTH	;store as length of key string
 		sta	sysvar_VDU_Q_LEN		;and length of VDU queque
-LE1CB		jsr	x_mos_SEV_and_CNPV				;then enter via count purge vector any 
+LE1CB		jsr	x_mos_SEV_and_CNPV		;then enter via count purge vector any 
 							;user routines
 		puls	CC,A,PC				;restore flags, A and exit
 
@@ -1513,6 +1517,13 @@ mos_CNPV_default_entry_point				; LE1D1
 		bvc	LE1DA				;if bit 6 is set then E1DA
 		lda	mosbuf_buf_start,X		;else start of buffer=end of buffer
 		sta	mosbuf_buf_end,X		;
+
+	IF MACH_SBC09
+		cmpx	#0
+		bne	1F
+		jsr	IRQ_SET_RTS
+1		
+	ENDIF
 		rts					;and exit
 ;; ----------------------------------------------------------------------------
 LE1DA		pshs	B,CC				;push flags
@@ -1964,6 +1975,12 @@ mos_REMV_default_entry_point				; LE464
 1		stb	mosbuf_buf_start,x			;store updated pointer
 		cmpb	mosbuf_buf_end,x			;check if buffer empty
 		bne	1F					;if not the same buffer is not empty so exit
+	IF MACH_SBC09
+		cmpx	#0
+		bne	9F
+		jsr	IRQ_SET_RTS
+9	
+	ENDIF
 		cmpx	#2					;if buffer is input (0 or 1)
 		blo	1F					;then E48F
 
@@ -2122,6 +2139,7 @@ mos_OSBYTE_153
 LE513		CLC					;clear carry 
 		rts					;and exit
 
+	IF INCLUDE_KEYBOARD
 ;; ----------------------------------------------------------------------------
 ;; get a byte from keyboard buffer and interpret as necessary; on entry A=cursor editing status 1=return &87-&8B,  ; 2= use cursor keys as soft keys 11-15 ; this area not reached if cursor editing is normal 
 mos_interpret_keyb_byte					; LE515
@@ -2175,6 +2193,7 @@ x_ERROR_EDITING
 ;	pla					;	E537
 ;	tax					;	E538
 	ENDIF
+	ENDIF ; INCLUDE_KEYBOARD
 ;; get byte from buffer
 x_get_byte_from_buffer					; LE539
 		jsr	mos_OSBYTE_145			;get byte from buffer X
@@ -2192,6 +2211,7 @@ x_get_byte_from_buffer					; LE539
 		LDY_B	sysvar_RS423_MODE		;else Y=RS423 mode (0 treat as keyboard )
 		bne	x_exit_with_carry_clear		;if not 0 ignore escapes etc. goto E592
 1							; LE551
+	IF INCLUDE_KEYBOARD
 		tsta					;test A (was tay)
 		bpl	x_exit_with_carry_clear		;if code is less than &80 its simple so E592
 		pshs	A
@@ -2225,6 +2245,9 @@ x_get_byte_from_buffer					; LE539
 		puls	X
 ;	pla					;restore X
 ;	tax					;
+	ENDIF
+	ELSE ; INCLUDE_KEYBOARD
+		bra	x_exit_with_carry_clear
 	ENDIF
 mos_check_eco_get_byte_from_kbd			; LE577
 		;	TODO econet

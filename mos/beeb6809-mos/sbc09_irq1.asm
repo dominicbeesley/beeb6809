@@ -22,16 +22,21 @@ IRQ_RX
 2		lda	#SR_RxRDY
 		bita	SBC09_UART_SRA
 		beq	1F
-		lda	SBC09_UART_RHRA
-		ldx	#0 			; keyboard buffer
-		jsr 	jmpINSV
+		ldb	SBC09_UART_RHRA
+		clra
+		tfr	D,Y
+		jsr	x_INSERT_byte_in_Keyboard_buffer
+		
 		bra	2B
 
-1               ldb     #OP_BIT_RTS_A
+1               
+		tst	sysvar_KEYB_FLOWCTL
+		beq	IRQ_EXIT		; flow control off
+		ldb     #OP_BIT_RTS_A
                 stb     SBC09_UART_OPRCLR     	; de-assert rts
 		bra	IRQ_EXIT
 
 IRQ_SET_RTS
                 ldb     #OP_BIT_RTS_A
-                stb     SBC09_UART_OPRSET     	; de-assert rts
+                stb     SBC09_UART_OPRSET     	; assert rts
                 rts
