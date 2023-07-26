@@ -381,7 +381,7 @@ BAUD_WORD	EQU SER_BAUD_CLOCK_IN/(BAUD_RATE*16)
                 sta     SBC09_UART_CRB
                 lda     #CRA_CMD_SET_TxBRG                        ; set channel a tx extend bit
                 sta     SBC09_UART_CRB
-                lda     #%10111011                                ; internal 9,600 baud
+                lda     #%11001100                                ; internal 19,200 baud
                 sta     SBC09_UART_CSRB
 		; block RTS by default unless reading
 		ldb     #OP_BIT_RTS_B
