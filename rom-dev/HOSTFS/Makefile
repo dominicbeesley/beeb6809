@@ -62,6 +62,6 @@ $(BEEBOUT)/HOSTFS.bin: $(DEPS)
 $(BEEBOUT)/HOSTFS-myelin.bin: $(DEPS)
 
 $(SBC09OUT)/HOSTFS-sbc09.srec: HOSTFS-sbc09.asm $(DEPS)
-		asm6809 -S -9 -d MACH_SBC09=1 -o $@ HOSTFS-sbc09.asm
+		asm6809 -S -9 -d MACH_SBC09=1 -l $(basename $@).lst -o $@ HOSTFS-sbc09.asm
 
 		srec_cat $@ -fill 0xFF 0x8000 0xC000 -offset -0x8000 -o $(basename $@).bin -binary
