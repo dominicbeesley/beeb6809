@@ -2,88 +2,86 @@
 ;; Configuration
 ;; *************************************************************
 
-
 ;
 ; Minimal SBC09 FUZIX Boot ROM, based on Dominic Beesley's Blitter-sbc09 boot rom
 ;
-FUZIX_IMG_BLK  equ     $02     ; the starting MMU page for the kernel image (binary format)
-FUZIX_RUN_BLK  equ     $80     ; the starting MMU page for the base of the kernel at run-time
-
+FUZIX_IMG_BLK     EQU   $02   ; the starting MMU page for the kernel image (binary format)
+FUZIX_RUN_BLK     EQU   $80   ; the starting MMU page for the base of the kernel at run-time
 
    include "SBC09VERSION.inc"
 
-FC_NONE      EQU 0
-FC_XON_XOFF  EQU 1
-FC_RTS_CTS   EQU 2
+FC_NONE        EQU   0
+FC_XON_XOFF    EQU   1
+FC_RTS_CTS     EQU   2
 
-FLOW_CONTROL EQU FC_RTS_CTS
+FLOW_CONTROL   EQU   FC_RTS_CTS
 
 ;; Threshold at which RTS is asserted
-FC_LO_THRESH EQU $80
+FC_LO_THRESH   EQU   $80
 
 ;; Threshold at which RTS is de-asserted
-FC_HI_THRESH EQU $C0
+FC_HI_THRESH   EQU   $C0
 
 ;; *************************************************************
 ;; Memory
 ;; *************************************************************
 
-ZP_START     EQU  $00f0
+ZP_START       EQU   $00f0
 
-ZP_TIME      EQU  $00f0
-ZP_RX_HEAD   EQU  $00f4
-ZP_RX_TAIL   EQU  $00f5
-ZP_TX_HEAD   EQU  $00f6
-ZP_TX_TAIL   EQU  $00f7
-ZP_XOFF      EQU  $00f8
-ZP_ERRPTR    EQU  $00fd
-ZP_ESCFLAG   EQU  $00ff
+ZP_TIME        EQU   $00f0
+ZP_RX_HEAD     EQU   $00f4
+ZP_RX_TAIL     EQU   $00f5
+ZP_TX_HEAD     EQU   $00f6
+ZP_TX_TAIL     EQU   $00f7
+ZP_XOFF        EQU   $00f8
+ZP_ERRPTR      EQU   $00fd
+ZP_ESCFLAG     EQU   $00ff
 
-ZP_END       EQU  $00fF
+ZP_END         EQU   $00fF
 
-BRKV         EQU  $0202
+BRKV           EQU   $0202
 
 ;; Rx Buffer is 0x7e00-0x7eFF - Set in middle as B,X addressing is used (B is signed)
-RX_BUFFER    EQU  $7E80
+RX_BUFFER      EQU   $7E80
 
 ;; Tx Buffer is 0x7f00-0x7FFF - Set in middle as B,X addressing is used (B is signed)
-TX_BUFFER    EQU  $7F80
+TX_BUFFER      EQU   $7F80
 
-UART         EQU  $FE00
-MMU0         EQU  $FE10
-MMU1         EQU  $FE20
+UART           EQU   $FE00
+MMU0           EQU   $FE10
+MMU1           EQU   $FE20
 
-UART_MRA     EQU UART+0x0
-UART_SRA     EQU UART+0x1
-UART_CSRA    EQU UART+0x1
-UART_CRA     EQU UART+0x2
-UART_THRA    EQU UART+0x3
-UART_RHRA    EQU UART+0x3
-UART_ACR     EQU UART+0x4
-UART_ISR     EQU UART+0x5
-UART_IMR     EQU UART+0x5
-UART_CTU     EQU UART+0x6
-UART_CTL     EQU UART+0x7
-UART_MRB     EQU UART+0x8
-UART_SRB     EQU UART+0x9
-UART_CSRB    EQU UART+0x9
-UART_CRB     EQU UART+0xa
-UART_THRB    EQU UART+0xb
-UART_RHRB    EQU UART+0xb
-UART_IVR1    EQU UART+0xc
-UART_IPR     EQU UART+0xd ; read input port
-UART_OPCR    EQU UART+0xd ; write
-UART_OPRSET  EQU UART+0xe ; write
-UART_STARTCT EQU UART+0xe ; read command
-UART_OPRCLR  EQU UART+0xf ; write
-UART_STOPCT  EQU UART+0xf ; read command
+UART_MRA       EQU   UART+0x0
+UART_SRA       EQU   UART+0x1
+UART_CSRA      EQU   UART+0x1
+UART_CRA       EQU   UART+0x2
+UART_THRA      EQU   UART+0x3
+UART_RHRA      EQU   UART+0x3
+UART_ACR       EQU   UART+0x4
+UART_ISR       EQU   UART+0x5
+UART_IMR       EQU   UART+0x5
+UART_CTU       EQU   UART+0x6
+UART_CTL       EQU   UART+0x7
+UART_MRB       EQU   UART+0x8
+UART_SRB       EQU   UART+0x9
+UART_CSRB      EQU   UART+0x9
+UART_CRB       EQU   UART+0xa
+UART_THRB      EQU   UART+0xb
+UART_RHRB      EQU   UART+0xb
+UART_IVR1      EQU   UART+0xc
+UART_IPR       EQU   UART+0xd  ; read input port
+UART_OPCR      EQU   UART+0xd  ; write
+UART_OPRSET    EQU   UART+0xe  ; write
+UART_STARTCT   EQU   UART+0xe  ; read command
+UART_OPRCLR    EQU   UART+0xf  ; write
+UART_STOPCT    EQU   UART+0xf  ; read command
 
-UART_RXINT   EQU  $01
-UART_TXINT   EQU  $04
+UART_RXINT     EQU   $01
+UART_TXINT     EQU   $04
 
-JP1          EQU  $04     ; IP2 - Enable MMU
-JP2          EQU  $08     ; IP3 - 8K Mode - hack to IP5
-JP3          EQU  $10     ; IP4 - unused
+JP1            EQU   $04   ; IP2 - Enable MMU
+JP2            EQU   $08   ; IP3 - 8K Mode - hack to IP5
+JP3            EQU   $10   ; IP4 - unused
 
       ORG $F000
 
@@ -92,39 +90,39 @@ JP3          EQU  $10     ; IP4 - unused
 ;; *************************************************************
 
 UART_INIT MACRO
-      LDA  #%00010011    ; NO PARITY, 8 BITS/CHAR - MR1A,B
-      STA  UART_MRA
-      LDA  #%00010111    ; CTS ENABLE TX, 1.000 STOP BITS - MR2A,B
-      STA  UART_MRA
-      LDA  #%00000101    ; ENABLE TX AND RX
-      STA  UART_CRA
-      LDA  #%10000000    ; Set Channel A Rx Extend Bit
-      STA  UART_CRA
-      LDA  #%10100000    ; Set Channel A Tx Extend Bit
-      STA  UART_CRA
-      LDA  #%10001000    ; Internal 115,200 baus
-      STA  UART_CSRA
-      LDA  #%01110000    ; Timer Mode, Clock = XTAL/16 = 3686400 / 16 = 230400 Hz
-      STA  UART_ACR
-      LDA  #%00000001    ; assert RTS
-      STA  UART_OPRSET
+      LDA   #%00010011     ; NO PARITY, 8 BITS/CHAR - MR1A,B
+      STA   UART_MRA
+      LDA   #%00010111     ; CTS ENABLE TX, 1.000 STOP BITS - MR2A,B
+      STA   UART_MRA
+      LDA   #%00000101     ; ENABLE TX AND RX
+      STA   UART_CRA
+      LDA   #%10000000     ; Set Channel A Rx Extend Bit
+      STA   UART_CRA
+      LDA   #%10100000     ; Set Channel A Tx Extend Bit
+      STA   UART_CRA
+      LDA   #%10001000     ; Internal 115,200 baus
+      STA   UART_CSRA
+      LDA   #%01110000     ; Timer Mode, Clock = XTAL/16 = 3686400 / 16 = 230400 Hz
+      STA   UART_ACR
+      LDA   #%00000001     ; assert RTS
+      STA   UART_OPRSET
 
-      LDA  UART_IPR      ; Read jumpers
-      BITA #JP3          ; Test jumper JP3 (Boot FUZIX)
-      LBEQ FUZIX         ; JP3 fitted, so boot FUZIX
+      LDA   UART_IPR       ; Read jumpers
+      BITA  #JP3           ; Test jumper JP3 (Boot FUZIX)
+      LBEQ  FUZIX          ; JP3 fitted, so boot FUZIX
 
-      LDD  #(2304/2-1)   ; 16-bit write to counter to get a 100Hz tick
-      STD  UART_CTU
-      LDA  #$0A          ; Timer Int, Rx Int enabled; Rx Int disabled
-      STA  UART_IMR
-      LDA  UART_STARTCT  ; Start the counter-timer
-;;    LDA  #%00000100
-;;    STA  UART_OPCR     ; Ouput timer squarewave on OP3 for debugging only
-      LDA  UART_IPR      ; Read jumpers
-      BITA #JP1          ; Test jumper JP1 (Enable MMU)
-      BNE  DONE          ; JP1 not fitted, so don't initialiaze MMU
-      BITA #JP2          ; Test jumper JP2 (8K Mode)
-      BEQ  MMU_8K        ; JP2 fitted, so use 8K Mode
+      LDD   #(2304/2-1)    ; 16-bit write to counter to get a 100Hz tick
+      STD   UART_CTU
+      LDA   #$0A           ; Timer Int, Rx Int enabled; Rx Int disabled
+      STA   UART_IMR
+      LDA   UART_STARTCT   ; Start the counter-timer
+;;    LDA   #%00000100
+;;    STA   UART_OPCR      ; Ouput timer squarewave on OP3 for debugging only
+      LDA   UART_IPR       ; Read jumpers
+      BITA  #JP1           ; Test jumper JP1 (Enable MMU)
+      BNE   DONE           ; JP1 not fitted, so don't initialiaze MMU
+      BITA  #JP2           ; Test jumper JP2 (8K Mode)
+      BEQ   MMU_8K         ; JP2 fitted, so use 8K Mode
 
 ;; MMU 7 is write protect (16K mode) or Block LSB (8K Mode)
 ;; MMU 6:5 is device (00=ROM0, 01=ROM1, 10=RAM, 11=External)
@@ -132,43 +130,44 @@ UART_INIT MACRO
 
       ;; On reset the MMU is disabled, with block size set to 16K
 
+
 MMU_16K
-      LDA #%10000000     ; 0000-3FFF -> RAM block 0
-      STA MMU0 + 0
-      LDA #%10000001     ; 4000-7FFF -> RAM block 1
-      STA MMU0 + 1
-      LDA #%00000000     ; 8000-BFFF -> ROM0 block 0
-      STA MMU0 + 2
-      LDA #%00000001     ; C000-FFFF -> ROM0 block 1
-      STA MMU0 + 3
+      LDA   #%10000000     ; 0000-3FFF -> RAM block 0
+      STA   MMU0 + 0
+      LDA   #%10000001     ; 4000-7FFF -> RAM block 1
+      STA   MMU0 + 1
+      LDA   #%00000000     ; 8000-BFFF -> ROM0 block 0
+      STA   MMU0 + 2
+      LDA   #%00000001     ; C000-FFFF -> ROM0 block 1
+      STA   MMU0 + 3
 
       ;; Enable the MMU with 16K block size
-      LDA #%00010000     ; OP4 = low (MMU Enabled, output is inverted)
-      STA UART_OPRSET
+      LDA   #%00010000     ; OP4 = low (MMU Enabled, output is inverted)
+      STA   UART_OPRSET
 
-      BRA DONE
+      BRA   DONE
 
 MMU_8K
-      LDA #%10000000     ; 0000-1FFF -> RAM block 0
-      STA MMU0 + 0
-      LDA #%10000001     ; 2000-3FFF -> RAM block 1
-      STA MMU1 + 0
-      LDA #%10000010     ; 4000-5FFF -> RAM block 2
-      STA MMU0 + 1
-      LDA #%10000011     ; 6000-7FFF -> RAM block 3
-      STA MMU1 + 1
-      LDA #%00000000     ; 8000-9FFF -> ROM0 block 0
-      STA MMU0 + 2
-      LDA #%00100000     ; A000-BFFF -> ROM0 block 1
-      STA MMU1 + 2
-      LDA #%00000001     ; C000-DFFF -> ROM0 block 2
-      STA MMU0 + 3
-      LDA #%00100001     ; E000-FFFF -> ROM0 block 3
-      STA MMU1 + 3
+      LDA   #%10000000     ; 0000-1FFF -> RAM block 0
+      STA   MMU0 + 0
+      LDA   #%10000001     ; 2000-3FFF -> RAM block 1
+      STA   MMU1 + 0
+      LDA   #%10000010     ; 4000-5FFF -> RAM block 2
+      STA   MMU0 + 1
+      LDA   #%10000011     ; 6000-7FFF -> RAM block 3
+      STA   MMU1 + 1
+      LDA   #%00000000     ; 8000-9FFF -> ROM0 block 0
+      STA   MMU0 + 2
+      LDA   #%00100000     ; A000-BFFF -> ROM0 block 1
+      STA   MMU1 + 2
+      LDA   #%00000001     ; C000-DFFF -> ROM0 block 2
+      STA   MMU0 + 3
+      LDA   #%00100001     ; E000-FFFF -> ROM0 block 3
+      STA   MMU1 + 3
 
       ;; Enable the MMU with 8K block size
-      LDA #%00011000     ; OP4 = low (MMU Enabled, output is inverted)
-      STA UART_OPRSET    ; OP3 = low (8K block size, output is inverted)
+      LDA   #%00011000     ; OP4 = low (MMU Enabled, output is inverted)
+      STA   UART_OPRSET    ; OP3 = low (8K block size, output is inverted)
 
 DONE
       ENDM
@@ -178,38 +177,38 @@ DONE
 ;; *************************************************************
 
 IRQ_RX
-      LDA  UART_RHRA       ; Read UART Rx Data (and clear interrupt)
-      CMPA #$1B            ; Test for escape
-      BNE  IRQ_NOESC
-      LDB  #$80            ; Set the escape flag
-      STB  <ZP_ESCFLAG
+      LDA   UART_RHRA      ; Read UART Rx Data (and clear interrupt)
+      CMPA  #$1B           ; Test for escape
+      BNE   IRQ_NOESC
+      LDB   #$80           ; Set the escape flag
+      STB   <ZP_ESCFLAG
 
 IRQ_NOESC
-      LDB  <ZP_RX_TAIL     ; B = keyboard buffer tail index
-      LDX  #RX_BUFFER      ; X = keyboard buffer base address
-      STA  B,X             ; store the character in the buffer
+      LDB   <ZP_RX_TAIL    ; B = keyboard buffer tail index
+      LDX   #RX_BUFFER     ; X = keyboard buffer base address
+      STA   B,X            ; store the character in the buffer
       INCB                 ; increment the tail pointer
-      CMPB <ZP_RX_HEAD     ; has it hit the head (buffer full?)
-      BEQ  IRQ_HANDLER     ; yes, then drop characters
-      STB  <ZP_RX_TAIL     ; no, then save the incremented tail pointer
+      CMPB  <ZP_RX_HEAD    ; has it hit the head (buffer full?)
+      BEQ   IRQ_HANDLER    ; yes, then drop characters
+      STB   <ZP_RX_TAIL    ; no, then save the incremented tail pointer
 
    ;; Simple implementation of RTS/CTS to prevent receive buffer overflow
    IF FLOW_CONTROL == FC_RTS_CTS
-      SUBB <ZP_RX_HEAD     ; Tail - Head gives the receive buffer occupancy
-      CMPB #FC_HI_THRESH   ; Compare with upper threshold
-      BNE  IRQ_HANDLER
-      LDB  #$01
-      STB  UART_OPRCLR     ; de-assert RTS
+      SUBB  <ZP_RX_HEAD    ; Tail - Head gives the receive buffer occupancy
+      CMPB  #FC_HI_THRESH  ; Compare with upper threshold
+      BNE   IRQ_HANDLER
+      LDB   #$01
+      STB   UART_OPRCLR    ; de-assert RTS
    ENDIF
 
 IRQ_HANDLER
 
-      LDA  UART_SRA        ; Read UART status register
-      BITA #UART_RXINT     ; Test bit 0 (RxRdy)
-      BNE  IRQ_RX          ; Ready, branch back handle the character
+      LDA   UART_SRA       ; Read UART status register
+      BITA  #UART_RXINT    ; Test bit 0 (RxRdy)
+      BNE   IRQ_RX         ; Ready, branch back handle the character
 
-      BITA #UART_TXINT     ; Test bit 2 (TxRdy)
-      BEQ  IRQ_TIMER       ; Not ready, branch forward to the timer check
+      BITA  #UART_TXINT    ; Test bit 2 (TxRdy)
+      BEQ   IRQ_TIMER      ; Not ready, branch forward to the timer check
 
    ;; Simple implementation of XON/XOFF to prevent receive buffer overflow
    IF FLOW_CONTROL == FC_XON_XOFF
@@ -226,37 +225,37 @@ IRQ_HANDLER
    ENDIF
 
 IRQ_TX_CHAR
-      LDB  <ZP_TX_HEAD     ; Is the Tx buffer empty?
-      CMPB <ZP_TX_TAIL
-      BEQ  IRQ_TX_EMPTY    ; Yes, then disable Tx interrupts and exit
-      LDX  #TX_BUFFER      ; No, then write the next character
+      LDB   <ZP_TX_HEAD    ; Is the Tx buffer empty?
+      CMPB  <ZP_TX_TAIL
+      BEQ   IRQ_TX_EMPTY   ; Yes, then disable Tx interrupts and exit
+      LDX   #TX_BUFFER     ; No, then write the next character
       INCB
-      STB  <ZP_TX_HEAD
-      LDA  B,X
+      STB   <ZP_TX_HEAD
+      LDA   B,X
 SEND_A
-      STA  UART_THRA
+      STA   UART_THRA
 
 IRQ_TIMER
-      LDA  UART_ISR        ; Read UART Interrupt Status Register
-      ANDA #$08            ; Check the timer bit
-      BEQ  IRQ_EXIT
+      LDA   UART_ISR       ; Read UART Interrupt Status Register
+      ANDA  #$08           ; Check the timer bit
+      BEQ   IRQ_EXIT
 
-      LDA  UART_STOPCT     ; Clear the interrupt
-      INC  <ZP_TIME        ; Update the system clock
-      BNE  IRQ_EXIT
-      INC  <ZP_TIME+1
-      BNE  IRQ_EXIT
-      INC  <ZP_TIME+2
-      BNE  IRQ_EXIT
-      INC  <ZP_TIME+3
+      LDA   UART_STOPCT    ; Clear the interrupt
+      INC   <ZP_TIME       ; Update the system clock
+      BNE   IRQ_EXIT
+      INC   <ZP_TIME+1
+      BNE   IRQ_EXIT
+      INC   <ZP_TIME+2
+      BNE   IRQ_EXIT
+      INC   <ZP_TIME+3
 
 IRQ_EXIT
       RTI
 
 IRQ_TX_EMPTY
-      LDA  #$0A          ; Disable TX interrupts
-      STA  UART_IMR
-      BRA  IRQ_TIMER
+      LDA   #$0A           ; Disable TX interrupts
+      STA   UART_IMR
+      BRA   IRQ_TIMER
 
 ILL_HANDLER
 SWI_HANDLER
@@ -279,7 +278,7 @@ NVRDCH
       CMPB  #FC_LO_THRESH
       BNE   1F
       LDB   #$01
-      STB   UART_OPRSET     ; assert RTS
+      STB   UART_OPRSET    ; assert RTS
 1
    ENDIF
       LDB   <ZP_ESCFLAG
@@ -349,25 +348,25 @@ CEXIT_ERR
       RTS
 
 OSWORD_READSYSCLK
-      LDA  <ZP_TIME
-      STA  ,X+
-      LDA  <ZP_TIME+1
-      STA  ,X+
-      LDA  <ZP_TIME+2
-      STA  ,X+
-      LDA  <ZP_TIME+3
-      STA  ,X+
+      LDA   <ZP_TIME
+      STA   ,X+
+      LDA   <ZP_TIME+1
+      STA   ,X+
+      LDA   <ZP_TIME+2
+      STA   ,X+
+      LDA   <ZP_TIME+3
+      STA   ,X+
       RTS
 
 OSWORD_WRITESYSCLK
-      LDA  ,X+
-      STA  <ZP_TIME
-      LDA  ,X+
-      STA  <ZP_TIME+1
-      LDA  ,X+
-      STA  <ZP_TIME+2
-      LDA  ,X+
-      STA  <ZP_TIME+3
+      LDA   ,X+
+      STA   <ZP_TIME
+      LDA   ,X+
+      STA   <ZP_TIME+1
+      LDA   ,X+
+      STA   <ZP_TIME+2
+      LDA   ,X+
+      STA   <ZP_TIME+3
 
 OSWORD_ENVELOPE
 OSWORD_SOUND
@@ -413,15 +412,15 @@ NVBYTE
 NVWRCH
       PSHS  B,X
 1
-      LDB   <ZP_TX_TAIL ; Is there space in the Tx buffer for one more character?
+      LDB   <ZP_TX_TAIL    ; Is there space in the Tx buffer for one more character?
       INCB
       CMPB  <ZP_TX_HEAD
-      BEQ   1B          ; No, then loop back and wait for characters to drain
+      BEQ   1B             ; No, then loop back and wait for characters to drain
 
-      LDX   #TX_BUFFER  ; Write the character to the tail of the Tx buffer
+      LDX   #TX_BUFFER     ; Write the character to the tail of the Tx buffer
       STA   B,X
-      STB   <ZP_TX_TAIL ; Save the updated tail pointer
-      LDB   #$0B        ; Enable Tx interrupts to make sure buffer is serviced
+      STB   <ZP_TX_TAIL    ; Save the updated tail pointer
+      LDB   #$0B           ; Enable Tx interrupts to make sure buffer is serviced
       STB   UART_IMR
       PULS  B,X
       RTS
@@ -438,10 +437,10 @@ SWI3_HANDLER
    IF NATIVE
       ldx   12,S
    ELSE
-      ldx   10,S              ; points at byte after SWI instruction
+      ldx   10,S           ; points at byte after SWI instruction
    ENDIF
       stx   <ZP_ERRPTR
-      jmp   [BRKV]            ; and JUMP via BRKV (normally into current language)
+      jmp   [BRKV]         ; and JUMP via BRKV (normally into current language)
 
 
 DEFAULT_BRK_HANDLER
@@ -453,11 +452,11 @@ RESET_HANDLER
       TFR   A,DP
 
       ;; Initialize Zero Page
-      LDX  #ZP_START
+      LDX   #ZP_START
 1
-      STA  ,X+
-      CMPX #ZP_END+1
-      BNE  1B
+      STA   ,X+
+      CMPX  #ZP_END+1
+      BNE   1B
       ;; Initialize the SWI Handler
       LDD   #DEFAULT_BRK_HANDLER
       STD   BRKV
@@ -466,7 +465,7 @@ RESET_HANDLER
       UART_INIT
       ;; Enter 6309 native mode
    IF NATIVE
-      LDMD #$01
+      LDMD  #$01
    ENDIF
       ;; Enable interrupts
       CLI
@@ -488,31 +487,31 @@ MMU_MSG
       JMP   $8000
 
 RESET_MSG
-      FCB  $0D
+      FCB   $0D
    IF CPU_6309
       IF NATIVE
-         FCC "SBC6309N "
+         FCC   "SBC6309N "
       ELSE
-         FCC "SBC6309E "
+         FCC   "SBC6309E "
       ENDIF
    ELSE
-      FCC "SBC6809 "
+      FCC   "SBC6809 "
    ENDIF
-      FCC  SBC09VERSION
-      FCB  $0A, $0D
+      FCC   SBC09VERSION
+      FCB   $0A, $0D
    IF FLOW_CONTROL == FC_XON_XOFF
-      FCB  $11                ; XON
+      FCB   $11             ; XON
    ENDIF
-      FCB  $00
+      FCB   $00
 
 MMU_DISABLED_MSG
-   FCB "MMU Disabled",10,13,0
+      FCB   "MMU Disabled",10,13,0
 
 MMU_8K_MSG
-   FCB "MMU Enabled, 8KB block size",10,13,0
+      FCB   "MMU Enabled, 8KB block size",10,13,0
 
 MMU_16K_MSG
-   FCB "MMU Enabled, 16KB block size",10,13,0
+      FCB   "MMU Enabled, 16KB block size",10,13,0
 
 ;; *************************************************************
 ;; Start of FUXIX Boot Loader
@@ -521,7 +520,7 @@ MMU_16K_MSG
 FUZIX
       LDS   #$100
 
-      LDA   #%10111011    ; INTERNAL 9,600 BAUD
+      LDA   #%10111011     ; INTERNAL 9,600 BAUD
       STA   UART_CSRA
 
       LDA   #%10000100     ; 0000-3FFF -> RAM block 4
@@ -630,13 +629,13 @@ SER_SEND_A
       PULS  B,PC
 
 FUZIX_INIT_MSG
-      FCB     "FUZIX BOOT ROM FOR SBC09",13,10,13,10,0
+      FCB   "FUZIX BOOT ROM FOR SBC09",13,10,13,10,0
 
 FUZIX_COPY_MSG
-      FCB     "Copying Kernel Image from ROM to RAM",13,10,13,10,0
+      FCB   "Copying Kernel Image from ROM to RAM",13,10,13,10,0
 
 FUZIX_BOOT_MSG
-      FCB     "Starting image at 00 0200",13,10,13,10,0
+      FCB   "Starting image at 00 0200",13,10,13,10,0
 
 ;; *************************************************************
 ;; End of FUZIX Boot Loader
@@ -644,7 +643,7 @@ FUZIX_BOOT_MSG
 
 
 __CODE_END
-__FREESPACE     EQU $F7F0-__CODE_END
+__FREESPACE EQU $F7F0-__CODE_END
 
 ;; *************************************************************
 ;; Vectors
@@ -665,7 +664,7 @@ __FREESPACE     EQU $F7F0-__CODE_END
 ;; MOS API
 ;; *************************************************************
 
-      ORG $FF00
+      ORG   $FF00
 
 OSINIT
       CLRA
@@ -673,7 +672,7 @@ OSINIT
       LDY   #ZP_ESCFLAG
       RTS
 
-      ORG $FFCE
+      ORG   $FFCE
 
 OSFIND
       RTS
@@ -708,7 +707,7 @@ OSFILE_SAVE
       NOP
 
 OSRDCH
-      JMP NVRDCH
+      JMP   NVRDCH
 
 OSASCI
       CMPA  #$0D
@@ -720,13 +719,13 @@ OSNEWL
       LDA   #$0D
 
 OSWRCH
-      JMP NVWRCH
+      JMP   NVWRCH
 
 OSWORD
-      JMP NVWORD
+      JMP   NVWORD
 
 OSBYTE
-      JMP NVBYTE
+      JMP   NVBYTE
 
 OSCLI
       RTS
