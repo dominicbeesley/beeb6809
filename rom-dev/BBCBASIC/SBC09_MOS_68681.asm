@@ -5,7 +5,7 @@
 ;
 ; Minimal SBC09 FUZIX Boot ROM, based on Dominic Beesley's Blitter-sbc09 boot rom
 ;
-FUZIX_IMG_BLK     EQU   $02   ; the starting MMU page for the kernel image (binary format)
+FUZIX_IMG_OFFSET  EQU   $01  ; the starting MMU page for the kernel image (binary format), relative to the Mini MOS
 FUZIX_RUN_BLK     EQU   $80   ; the starting MMU page for the base of the kernel at run-time
 
    include "SBC09VERSION.inc"
@@ -118,9 +118,18 @@ UART_INIT MACRO
       LDA   UART_STARTCT   ; Start the counter-timer
 ;;    LDA   #%00000100
 ;;    STA   UART_OPCR      ; Ouput timer squarewave on OP3 for debugging only
+
+      LDX   #MMU_DISABLED_MSG
+      TFR   U, A           ; It's only possible to disable the MMU if we are currently
+      CMPA  #1             ; running from ROM block 1. Any other block, then
+      BNE   SKIP_JP1_TEST  ; then we must have entered via the boot loader/MMU Enabled
+
       LDA   UART_IPR       ; Read jumpers
       BITA  #JP1           ; Test jumper JP1 (Enable MMU)
       BNE   DONE           ; JP1 not fitted, so don't initialiaze MMU
+
+SKIP_JP1_TEST
+      LDA   UART_IPR       ; Read jumpers
       BITA  #JP2           ; Test jumper JP2 (8K Mode)
       BEQ   MMU_8K         ; JP2 fitted, so use 8K Mode
 
@@ -136,15 +145,16 @@ MMU_16K
       STA   MMU0 + 0
       LDA   #%10000001     ; 4000-7FFF -> RAM block 1
       STA   MMU0 + 1
-      LDA   #%00000000     ; 8000-BFFF -> ROM0 block 0
+      TFR   U,A            ; 8000-BFFF -> ROM0 block 0
+      DECA
       STA   MMU0 + 2
-      LDA   #%00000001     ; C000-FFFF -> ROM0 block 1
+      TFR   U,A            ; C000-FFFF -> ROM0 block 1
       STA   MMU0 + 3
 
       ;; Enable the MMU with 16K block size
       LDA   #%00010000     ; OP4 = low (MMU Enabled, output is inverted)
       STA   UART_OPRSET
-
+      LDX   #MMU_16K_MSG
       BRA   DONE
 
 MMU_8K
@@ -156,18 +166,20 @@ MMU_8K
       STA   MMU0 + 1
       LDA   #%10000011     ; 6000-7FFF -> RAM block 3
       STA   MMU1 + 1
-      LDA   #%00000000     ; 8000-9FFF -> ROM0 block 0
+      TFR   U, A           ; 8000-9FFF -> ROM0 block 0
+      DECA
       STA   MMU0 + 2
-      LDA   #%00100000     ; A000-BFFF -> ROM0 block 1
+      ORA   #%00100000     ; A000-BFFF -> ROM0 block 1
       STA   MMU1 + 2
-      LDA   #%00000001     ; C000-DFFF -> ROM0 block 2
+      TFR   U, A           ; C000-DFFF -> ROM0 block 2
       STA   MMU0 + 3
-      LDA   #%00100001     ; E000-FFFF -> ROM0 block 3
+      ORA   #%00100000     ; E000-FFFF -> ROM0 block 3
       STA   MMU1 + 3
 
       ;; Enable the MMU with 8K block size
       LDA   #%00011000     ; OP4 = low (MMU Enabled, output is inverted)
       STA   UART_OPRSET    ; OP3 = low (8K block size, output is inverted)
+      LDX   #MMU_8K_MSG
 
 DONE
       ENDM
@@ -442,10 +454,13 @@ SWI3_HANDLER
       stx   <ZP_ERRPTR
       jmp   [BRKV]         ; and JUMP via BRKV (normally into current language)
 
+RESET_HANDLER              ; Entry point if there is no boot menu
+      LDB   #1             ; Mini MOS assumed to be in ROM Block 1
 
-DEFAULT_BRK_HANDLER
+BOOT_MENU_HANDLER          ; Entry point if there is a boot menu
+      TFR   B, U           ; Boot menu passes ROM Block numver of Mini MOS in B register
 
-RESET_HANDLER
+DEFAULT_BRK_HANDLER        ; Entry point from a BRK error
       ;; Initialize the stack and direct page
       LDS   #$0200
       CLRA
@@ -463,6 +478,7 @@ RESET_HANDLER
       ;; Initialize the UART
       ;; RX INT ENABLED, RTS LOW, TX INT DISABLED, 8N1, CLK/16
       UART_INIT
+      PSHS  X              ; Save the MMU message
       ;; Enter 6309 native mode
    IF NATIVE
       LDMD  #$01
@@ -473,15 +489,7 @@ RESET_HANDLER
       LDX   #RESET_MSG
       JSR   PRSTRING
       ;; Print the MMU configuration
-      LDA   UART_IPR
-      LDX   #MMU_DISABLED_MSG
-      BITA  #JP1
-      BNE   MMU_MSG
-      LDX   #MMU_8K_MSG
-      BITA  #JP2
-      BEQ   MMU_MSG
-      LDX   #MMU_16K_MSG
-MMU_MSG
+      PULS  X              ; Restore the MMU message
       JSR   PRSTRING
       ;; Enter Basic
       JMP   $8000
@@ -525,7 +533,7 @@ FUZIX
 
       LDA   #%10000100     ; 0000-3FFF -> RAM block 4
       STA   MMU0 + 0
-      LDA   #%00000001     ; C000-FFFF -> ROM0 block 1
+      TFR   U, A           ; C000-FFFF -> ROM0 block 1
       STA   MMU0 + 3
 
 ;; Enable the MMU with 16K block size
@@ -542,24 +550,24 @@ FUZIX
       LDX   #FUZIX_COPY_MSG
       JSR   SER_SEND_STRX
 
-      LDA   #FUZIX_IMG_BLK
+      TFR   U, A
+      ADDA  #FUZIX_IMG_OFFSET
       LDB   #FUZIX_RUN_BLK
 FLOOP1
       STA   MMU0 + 1
       STB   MMU0 + 2
-      PSHS  a
-      LDX   #$4000         ; length
-      LDU   #$4000         ; source block (ROM)
+      PSHS  A
+      LDX   #$4000         ; source block (ROM)
       LDY   #$8000         ; destination block (RAM)
 FLOOP2
-      LDA   ,U+
+      LDA   ,X+
       STA   ,Y+
-      LEAX  -1,X
+      CMPX  #$8000
       BNE   FLOOP2
       PULS  A
       INCA
       INCB
-      CMPA  #FUZIX_IMG_BLK+4
+      CMPB  #FUZIX_RUN_BLK+4
       BNE   FLOOP1
 
       ;; copy "bounce" code at chipram 100 onwards (we expect 0..200 to be free)
@@ -659,6 +667,18 @@ __FREESPACE EQU $F7F0-__CODE_END
       FDB   SWI_HANDLER
       FDB   NMI_HANDLER
       FDB   RESET_HANDLER
+
+;; *************************************************************
+;; SBC09 Boot Menu Entry
+;; *************************************************************
+
+      ORG   $F800
+
+      FDB   BOOT_MENU_HANDLER
+      FCB   "SBC09MOS"
+      FCC   "Mini-MOS "
+      FCC   SBC09VERSION
+      FCB   0
 
 ;; *************************************************************
 ;; MOS API
