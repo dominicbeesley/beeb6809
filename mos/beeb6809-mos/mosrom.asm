@@ -362,7 +362,14 @@ mos_default_illegalop
 mos_handle_res
 	IF MACH_SBC09
 		ldb	#1				; default to the MOS being mapped in slot #1 if reset vector called
+
+		; we're being booted as the primary OS at 00 4000 - how to detect a cold boot
+		; for now clra to mark cold boot
+		clra
 mos_handle_boot_menu
+		; if we entered through the special F800 vector then B should contain our 16K block
+		; index and A should contain 0 for cold-boot, <>0 for warm-boot		
+		sta	,-S
 	ENDIF
 		lda	#$3B				; rti instruction ( was $40 for 6502)
 ; Store RTI in 1st byte of NMI space
@@ -392,10 +399,8 @@ mos_handle_boot_menu
 
 		SBC09_INIT				; initialize UART and MMU
 
-		; TODO: SBC09: what to do about CTRL/BREAK - look at 68C681, is there a way to detect power up vs reset?
-		clr	A
-		pshs	A
-		jmp	mos_handle_res_skip_clear_mem1
+		tst	,S
+		beq	mos_handle_res_skip_clear_mem1
 	ENDIF
 		lda	sysvar_BREAK_EFFECT		;else if BREAK pressed read BREAK Action flags (set by
 							;*FX200,n) 
