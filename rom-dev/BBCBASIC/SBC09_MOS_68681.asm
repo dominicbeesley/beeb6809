@@ -528,8 +528,9 @@ MMU_16K_MSG
 FUZIX
       LDS   #$100
 
-      LDA   #%10111011     ; INTERNAL 9,600 BAUD
-      STA   UART_CSRA
+;;    We now build FUZIX to run at 115,200 baud
+;;    LDA   #%10111011     ; INTERNAL 9,600 BAUD
+;;    STA   UART_CSRA
 
       LDA   #%10000100     ; 0000-3FFF -> RAM block 4
       STA   MMU0 + 0
