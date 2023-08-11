@@ -13,10 +13,10 @@ utils_ver
 		FCB	")"
 Copyright
 		FCB	0
-	IF MACH_CHIPKIT
-		FCB	"(C)2022 Dossytronics",0
+	IF MACH_CHIPKIT | MACH_SBC09
+		FCB	"(C)2023 Dossytronics",0
 	ELSE
-		FCB	"(C)2022 Dossytronics+Rob Coleman",0
+		FCB	"(C)2023 Dossytronics+Rob Coleman",0
 	ENDIF
 
 str_Dossy	FCB	"Dossytronics",0
@@ -28,13 +28,17 @@ str_Dossy	FCB	"Dossytronics",0
 Serv_jump_table
 		SJTE	$01, svc1_ClaimAbs
 		SJTE	$04, svc4_COMMAND
+	IF MACH_BEEB
 		SJTE	$05, svc5_UKIRQ
 		SJTE	$08, svc8_OSWORD
+	ENDIF
 		SJTE	$09, svc9_HELP
 		FCB	0
 
 Service
+	IF MACH_BEEB
 		CLAIMDEV
+	ENDIF
 
 		leay	Serv_jump_table,PCR
 1		tst	,Y
@@ -64,16 +68,17 @@ svc1_ClaimAbs
 		sta	sysvar_CUR_LANG
 1
 
-
+	IF MACH_BEEB
 		jsr	CheckBlitterPresent
 		bcs	2F
-
+	ENDIF
 ;; DB: removed to not trample workspace!
 ;;		; belt and braces write $f0 to flash to clear soft id mode
 ;;		;TODO: this will corrupt main memory!
 ;;		jsr	romWriteInit
 ;;		jsr	FlashReset
 
+	IF MACH_BEEB | MACH_CHIPKIT
 		; detect NoICE and check we're in ROM#F
 		lda	zp_mos_curROM
 		cmpa	#$0F
@@ -86,6 +91,7 @@ svc1_ClaimAbs
 
 		jsr	NoIceUtils_Init
 
+	ENDIF
 
 1		lda	#$79
 		ldy	#0
@@ -103,10 +109,9 @@ svc1_ClaimAbs
 		bcs	1F
 		jsr	OSNEWL
 
+	IF MACH_BEEB
 		jsr	heap_init
 		jsr	sound_boot
-
-	IF MACH_BEEB
 		jsr 	vnula_reset			; TODO on "master" do different for shadowed fonts?
 	ENDIF
 
@@ -215,6 +220,7 @@ svc4_CMD_exec	jsr	[2,U]				; execute command
 svc4_CMD_exit	puls	D,X,Y,U,PC		
 
 
+	IF MACH_BEEB
 * --------------------
 * SERVICE 5 - UkIRQ
 * --------------------
@@ -259,7 +265,7 @@ svc8_OSWORD	lda	zp_mos_OSBW_A
 		cmpa	#OSWORD_SOUND
 		lbeq	sound_OSWORD_SOUND
 		
-
+	ENDIF
 
 ;------------------------------------------------------------------------------
 ; Strings and tables
@@ -276,8 +282,13 @@ tbl_commands	FDB	strCmdRoms, cmdRoms, helpRoms
 		FDB	strCmdVNRESET, cmdVNRESET, 0
 	ENDIF
 		FDB	strCmdXMDUMP, cmdXMdump, strHelpXMdump
+	IF MACH_BEEB
 		FDB	strCmdBLTurbo, cmdBLTurbo, strHelpBLTurbo
+	ENDIF
+	IF MACH_BEEB | MACH_CHIPKIT
 		FDB	strCmdNOICE, cmdNOICE, strHelpNOICE
+	ENDIF
+	IF MACH_BEEB
 		FDB	strCmdSound, cmdSound, strHelpSound	
 		FDB	strCmdSoundSamLoad, cmdSoundSamLoad, strHelpSoundSamLoad
 		FDB	strCmdSoundSamClear, cmdSoundSamClear, strHelpSoundSamClear	
@@ -285,7 +296,7 @@ tbl_commands	FDB	strCmdRoms, cmdRoms, helpRoms
 		FDB	strCmdSoundSamMap, cmdSoundSamMap, strHelpSoundSamMap
 
 		FDB	strCmdBLInfo, cmdInfo, 0
-
+	ENDIF
 		FDB	0
 
 str_HELP_KEY	EQU 	utils_name
@@ -306,8 +317,11 @@ strCmdVNRESET		FCB	"VNRESET",0
 	ENDIF
 strCmdXMDUMP		FCB	"XMDUMP",0
 strHelpXMdump		FCB	"[-8|-16] [#dev] <start> [<end>|+<length>]",0
+	IF MACH_BEEB|MACH_CHIPKIT
 strCmdNOICE		FCB	"NOICE",0
 strHelpNOICE		FCB	"[ON|OFF|BRK]",0
+	ENDIF
+	IF MACH_BEEB
 strCmdBLTurbo		FCB	"BLTURBO",0
 strHelpBLTurbo		FCB	"[M[-]] [L<pagemask>] [?]",0
 strCmdSound		FCB	"BLSOUND", 0
@@ -320,5 +334,5 @@ strCmdSoundSamMap		FCB	"BLSAMMAP",0
 strHelpSoundSamMap	FCB	"<CH> <SN>",0
 strCmdSoundSamClear	FCB	"BLSAMCLR",0
 strHelpSoundSamClear	FCB	"[SN|*]",0
-
 strCmdBLInfo		FCB	"BLINFO",0
+	ENDIF

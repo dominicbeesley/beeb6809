@@ -1,6 +1,6 @@
 .PHONY:		all
 
-all: all_beeb all_chipkit all_flex
+all: all_beeb all_chipkit all_flex all_sbc09
 
 all_beeb:
 	$(MAKE) -C tools all_beeb
@@ -22,6 +22,7 @@ all_flex:
 all_sbc09:
 	$(MAKE) -C BBCBASIC all_sbc09
 	$(MAKE) -C HOSTFS all_sbc09
+	$(MAKE) -C UTILS all_sbc09
 
 all_matchbox:
 	$(MAKE) -C BBCBASIC all_matchbox

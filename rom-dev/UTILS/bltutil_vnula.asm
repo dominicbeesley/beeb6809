@@ -56,10 +56,6 @@ vnula_resetflags
 		clr	vnula_flags
 		rts
 
-brkInvalidArgument
-		M_ERROR
-		fcb	$7F, "Invalid Argument", 0
-
 ;==============================================================================
 cmdVNRESET
 ;==============================================================================
@@ -75,21 +71,21 @@ cmdVNVDU	* Enable\disable extended VDU drivers
 		; TODO - use GSREAD!
 		jsr	SkipSpacesX
 		cmpa	#$D
-		beq	brkInvalidArgument
+		lbeq	brkInvalidArgument
 		lda	,X+
 		anda	#$DF
 		cmpa	#'O'
-		bne	brkInvalidArgument
+		lbne	brkInvalidArgument
 		lda	,X+
 		anda	#$DF
 		cmpa	#'N'
 		beq	vnula_vduon
 		cmpa	#'F'
-		bne	brkInvalidArgument
+		lbne	brkInvalidArgument
 		lda	,X+
 		anda	#$DF
 		cmpa	#'F'
-		bne	brkInvalidArgument
+		lbne	brkInvalidArgument
 
 
 vnula_vduoff

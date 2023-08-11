@@ -1,6 +1,4 @@
 ;----- TODO 
-;	V option on ROMS
-;	make relocatable
 ;	make commands that can destroy this rom run from a copy in main RAM then reboot i.e. NUKE,ERASE,COPY,LOAD etc
 ;	MDUMP - make more robust access to chip RAM? sort out addressing?
 
@@ -29,9 +27,14 @@
 		include "../../includes/mosrom.inc"
 
 		include	"bltutil.inc"
-		include "bltutil_jimstuff.inc"
 
-		include "VERSION-date.gen.asm"
+	IF MACH_BEEB
+		include "bltutil_jimstuff.inc"
+		include "VERSION-date.gen.beeb.asm"
+	ENDIF
+	IF MACH_SBC09
+		include "VERSION-date.gen.sbc09.asm"
+	ENDIF
 
 		ORG	$8000
 
@@ -111,7 +114,11 @@ brkNotImplemented
 		M_ERROR
 		FCB	$FF, "Not implemented",0 
 
-cmdSRLOAD	jsr	CheckBlitterPresentBrk
+cmdSRLOAD	
+
+	IF MACH_BEEB
+		jsr	CheckBlitterPresentBrk
+	ENDIF
 
 		lda	#22
 		jsr	OSWRCH
@@ -172,6 +179,7 @@ cmdSRLOAD	jsr	CheckBlitterPresentBrk
 
 		puls	CC,PC
 
+	IF MACH_BEEB
 
 cmdBLTurboQry
 		pshs	X				; preserve command ptr
@@ -438,7 +446,7 @@ _snext		lda	fred_JIM_PAGE_LO
 
 		jmp	cmdBLTurbo_Next
 
-
+	ENDIF
 
 ; these flags match those into OSWORD 99
 CMDROMS_FLAGS_CURRENT		EQU	$80			; when set show current/alternate set, when clear bit 0 indicates which map
@@ -1308,10 +1316,16 @@ mdump_prspace	pshs	A
 
 		include "bltutil_utils.asm"
 		include "bltutil_cfg.asm"
-		include	"bltutil_jimstuff.asm"
-		include "bltutil_heap.asm"
 		include "bltutil_flashutils.asm"
+	IF MACH_BEEB
+		include "bltutil_jimstuff.asm"
+		include "bltutil_heap.asm"	
 		include "bltutil_sound.asm"
+	ENDIF
+
+brkInvalidArgument
+		M_ERROR
+		fcb	$7F, "Invalid Argument", 0
 
 
 ;------------------------------------------------------------------------------
@@ -1350,18 +1364,24 @@ strNo		FCB	"No", $D, 0
 strYes		FCB	"Yes", $D, 0
 str_NukeFl	FCB	"Erasing flash...", $D, 0
 str_NukeRa	FCB	"Erasing SRAM $E00000 to $0FFFFF, please wait...", $D, 0
+	IF MACH_BEEB
 str_BLTURBOMOS_ALREADY
 		FCB	"Map 1, MOS is already turbo",13,10,0
+	ENDIF
 
+	IF MACH_BEEB|MACH_CHIPKIT
 
 str_NoiceDeb	FCB	"NoIce debugging ",0
 str_on		FCB	"on",0
 str_off		FCB	"off",0
 str_NoiceEnter	FCB	"NoIce enter...",13,0
+	ENDIF
 
 	IF MACH_BEEB
 		include	"bltutil_vnula.asm"
 	ENDIF
 
+	IF MACH_BEEB|MACH_CHIPKIT
 		include "bltutil_noice.asm"
+	ENDIF
 
