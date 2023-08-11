@@ -60,6 +60,9 @@ other-tests/test-6309-lic/testrom.bin
 other-tests/test-6309-lic/testrom.lst
 rom-dev/BBCBASIC/testing/fpshow/fpshow.exe
 
+*.sublime-workspace
+*.sublime-project
+
 # generated files that we don't want
 */*/gen-version.inc
 VERSION-date.gen.asm
