@@ -5428,10 +5428,8 @@ debug_print_hex_digit
 	IF MACH_CHIPKIT
 debug_print_ch	; TODO - do debug on serial port
 		RTS
-	ELSE
-
+	ELSIF MACH_BEEB
 debug_print_ch	pshs	A,X
-	IF MACH_BEEB | MACH_CHIPKIT
 		ldx	#400
 		lda	#ACIA_TDRE
 2		bita	sheila_ACIA_CTL
@@ -5441,7 +5439,9 @@ debug_print_ch	pshs	A,X
 1		lda	,S
 		anda	#$7F
 		sta	sheila_ACIA_DATA	
-	ENDIF
+		puls	A,X,PC
+	ELSIF MACH_SBC09
+debug_print_ch
 		jsr	mos_VDU_WRCH
 		;TODO: SBC09: debug over 2nd channel
 		puls	A,X,PC
