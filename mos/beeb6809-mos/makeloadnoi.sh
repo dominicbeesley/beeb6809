@@ -1,5 +1,5 @@
-here=`../../scripts/winpath.sh "$1"`
-there=`../../scripts/winpath.sh "$1/../beebMOSloader-noice"`
+here=$(../../scripts/winpath.sh "$1")
+there=$(../../scripts/winpath.sh "$1/../beebMOSloader-noice")
 cat <<EOF
 LASTFILELOADED
 L $there\\mosloader.hex

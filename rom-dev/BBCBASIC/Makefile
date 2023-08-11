@@ -12,13 +12,17 @@ TARGETS_BEEB=		TESTASM.ssd \
 
 TARGETS_FLEX= 		FLEXBAS.BIN
 
-TARGETS_SBC09=			SBC6809BAS_68681.BIN \
-			SBC6309EBAS_68681.BIN \
-			SBC6309NBAS_68681.BIN \
-			SBC6809BAS.BIN \
-			SBC6309EBAS.BIN \
-			SBC6309NBAS.BIN
-
+TARGETS_SBC09=			\
+			MINIMOS-6809BAS_68681.BIN \
+			MINIMOS-6309EBAS_68681.BIN \
+			MINIMOS-6309NBAS_68681.BIN \
+			MINIMOS-6809BAS.BIN \
+			MINIMOS-6309EBAS.BIN \
+			MINIMOS-6309NBAS.BIN \
+			6809BAS.srec \
+			6809BAS-6502ass.srec \
+			6309BAS.srec \
+			6368BAS.srec
 TARGETS_MATCHBOX=	6809BAS.bin \
 			6809BAS-6502ass.bin \
 
@@ -261,7 +265,7 @@ $(FLEXOUT)/FLEXBAS.BIN:	6809BAS.asm $(DEPS)
 
 		./freespace.pl <$(basename $@).sym >> fl_$(notdir $(basename $@))_free.txt
 
-$(SBC09OUT)/SBC6809BAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
+$(SBC09OUT)/MINIMOS-6809BAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
 		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
 		$(AS) $(ASFLAGS) --define SBC09=1 --define BASEADDR=0xC000 --define ASSEMBLER_6809 --define CPU_6809 -o $@ -l $(basename $@).lst $<
 		rm -f SBC09VERSION.inc
@@ -269,7 +273,7 @@ $(SBC09OUT)/SBC6809BAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
-$(SBC09OUT)/SBC6309EBAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
+$(SBC09OUT)/MINIMOS-6309EBAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
 		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
 		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define BASEADDR=0xC000 --define ASSEMBLER_6809 --define CPU_6309 -o $@ -l $(basename $@).lst $<
 		rm -f SBC09VERSION.inc
@@ -277,7 +281,7 @@ $(SBC09OUT)/SBC6309EBAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
-$(SBC09OUT)/SBC6309NBAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
+$(SBC09OUT)/MINIMOS-6309NBAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
 		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
 		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define BASEADDR=0xC000 --define ASSEMBLER_6809 --define CPU_6309 --define NATIVE -o $@ -l $(basename $@).lst $<
 		rm -f SBC09VERSION.inc
@@ -285,29 +289,69 @@ $(SBC09OUT)/SBC6309NBAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
-$(SBC09OUT)/SBC6809BAS_68681.BIN:	6809BAS.asm SBC09_MOS_68681.asm $(DEPS)
+$(SBC09OUT)/MINIMOS-6809BAS_68681.BIN:	6809BAS.asm SBC09_MOS_68681.asm $(DEPS)
 		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
 		$(AS) $(ASFLAGS) --define SBC09=1 --define UART68681=1 --define ASSEMBLER_6809 --define CPU_6809 -o $@ -l $(basename $@).lst $<
+		if [ -f ../../../FUZIX/Kernel/fuzix.bin ]; then cat ../../../FUZIX/Kernel/fuzix.bin >> $@; else echo "Skipping FUZIX"; fi
 		rm -f SBC09VERSION.inc
 		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
-$(SBC09OUT)/SBC6309EBAS_68681.BIN:	6809BAS.asm SBC09_MOS_68681.asm $(DEPS)
+$(SBC09OUT)/MINIMOS-6309EBAS_68681.BIN:	6809BAS.asm SBC09_MOS_68681.asm $(DEPS)
 		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
 		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define UART68681=1 --define ASSEMBLER_6309 --define CPU_6309 -o $@ -l $(basename $@).lst $<
+		if [ -f ../../../FUZIX/Kernel/fuzix.bin ]; then cat ../../../FUZIX/Kernel/fuzix.bin >> $@; else echo "Skipping FUZIX"; fi
 		rm -f SBC09VERSION.inc
 		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
-$(SBC09OUT)/SBC6309NBAS_68681.BIN:	6809BAS.asm SBC09_MOS_68681.asm $(DEPS)
+$(SBC09OUT)/MINIMOS-6309NBAS_68681.BIN:	6809BAS.asm SBC09_MOS_68681.asm $(DEPS)
 		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
 		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define UART68681=1 --define ASSEMBLER_6309 --define CPU_6309 --define NATIVE -o $@ -l $(basename $@).lst $<
+		if [ -f ../../../FUZIX/Kernel/fuzix.bin ]; then cat ../../../FUZIX/Kernel/fuzix.bin >> $@; else echo "Skipping FUZIX"; fi
 		rm -f SBC09VERSION.inc
 		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
+
+$(SBC09OUT)/6809BAS.srec: 6809BAS.asm $(DEPS)
+		$(AS) $(ASFLAGS) --define ASSEMBLER_6809 --define CPU_6809 --define MACH_BEEB=1 -S -o $@ -l $(basename $@).lst $<
+
+		srec_cat $@ -fill 0xFF 0x8000 0xC000 -offset -0x8000 -o $(basename $@).bin -binary
+
+		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+
+		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
+
+$(SBC09OUT)/6309BAS.srec: 6809BAS.asm $(DEPS)
+		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6309 --define CPU_6309 --define MACH_BEEB=1 -S -o $@ -l $(basename $@).lst $<
+
+		srec_cat $@ -fill 0xFF 0x8000 0xC000 -offset -0x8000 -o $(basename $@).bin -binary
+
+		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+
+		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
+
+$(SBC09OUT)/6368BAS.srec: 6809BAS.asm $(DEPS)
+		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6809 --define CPU_6309 --define MACH_BEEB=1 -S -o $@ -l $(basename $@).lst $<
+
+		srec_cat $@ -fill 0xFF 0x8000 0xC000 -offset -0x8000 -o $(basename $@).bin -binary
+
+		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+
+		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
+
+$(SBC09OUT)/6809BAS-6502ass.srec: 6809BAS-6502ass.asm $(DEPS)
+		$(AS) $(ASFLAGS) --define ASSEMBLER_6809 --define CPU_6809 --define MACH_BEEB=1 -S -o $@ -l $(basename $@).lst $<
+
+		srec_cat $@ -fill 0xFF 0x8000 0xC000 -offset -0x8000 -o $(basename $@).bin -binary
+
+		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+
+		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
+
 
 $(BEEBOUT)/6809BAS.bin: $(DEPS)
 $(BEEBOUT)/6809BAS-6309ass.bin: $(DEPS)

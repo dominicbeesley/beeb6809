@@ -1,3 +1,5 @@
+	;TODO: SBC09 - machine type?
+	;TODO: CHIPKIT - machine type?
 mos_MACHINE_TYPE_BYTE			EQU $63
 
 * Address of MOS ROM base
@@ -128,6 +130,9 @@ sysvar_SCREENLINES_SINCE_PAGE		EQU $0269	; fx217	  &D9	Screen lines since last p
 sysvar_VDU_Q_LEN			EQU $026A	; fx218	  &DA	256-number of items in VDU queue
 sysvar_KEYB_TAB_CHAR			EQU $026B	; fx219	  &DB	BBC, Master: TAB key character
 sysvar_KEYB_ESC_CHAR			EQU $026C	; fx220	  &DC	ESCAPE character
+	IF MACH_SBC09
+sysvar_KEYB_FLOWCTL			EQU $026D	; fx221	- when non-zero 
+	ELSE	
 sysvar_KEYB_C0CF_INSERT_INT		EQU $026D	; fx221	  &DD	Char &C0-&CF buffer insert interpretation
 sysvar_KEYB_D0DF_INSERT_INT		EQU $026E	; fx222	  &DE	Char &D0-&DF buffer insert interpretation
 sysvar_KEYB_E0EF_INSERT_INT		EQU $026F	; fx223	  &DF	Char &E0-&EF buffer insert interpretation
@@ -136,6 +141,7 @@ sysvar_KEYB_808F_INSERT_INT		EQU $0271	; fx225	  &E1	Char &80-&8F buffer insert 
 sysvar_KEYB_909F_INSERT_INT		EQU $0272	; fx226	  &E2	Char &90-&9F buffer insert interpretation (Sh+FKey)
 sysvar_KEYB_A0AF_INSERT_INT		EQU $0273	; fx227	  &E3	Char &A0-&AF buffer insert interpretation (Ct+FKey)
 sysvar_KEYB_B0BF_INSERT_INT		EQU $0274	; fx228	  &E4	Char &B0-&BF buffer insert interpretation (Ct+Sh+FKey)
+	ENDIF
 sysvar_KEYB_ESC_ACTION			EQU $0275	; fx229	  &E5	ESCAPE key action
 sysvar_KEYB_ESC_EFFECT			EQU $0276	; fx230	  &E6	ESCAPE effects
 sysvar_USERVIA_IRQ_MASK_CPY		EQU $0277	; fx231	  &E7	User 6522 VIA IRQ mask

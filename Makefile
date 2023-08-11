@@ -55,6 +55,7 @@ all_flex:
 
 all_sbc09:
 	$(MAKE) -C rom-dev all_sbc09
+	$(MAKE) -C mos all_sbc09
 
 clean:
 	$(MAKE) -C rom-dev clean

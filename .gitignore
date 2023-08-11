@@ -67,4 +67,5 @@ rom-dev/BBCBASIC/testing/fpshow/fpshow.exe
 */*/gen-version.inc
 VERSION-date.gen.asm
 VERSION-date.gen.*.asm
-
+*.sublime-workspace
+*.sublime-project

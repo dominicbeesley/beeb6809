@@ -1,288 +1,291 @@
 ; beeb6809 hardware locations and constants
 
-rti_opcode		EQU	$3B
+rti_opcode              EQU     $3B
 
-JIM			EQU	$FD00
+        IF MACH_CHIPKIT | MACH_BEEB
+JIM                     EQU     $FD00
 
 * mos ROM memory map location
-sheila_ROMCTL_SWR	EQU	$FE30
-sheila_ROMCTL_MOS	EQU	$FE31
-sheila_MEM_DEBUG_SAVE	EQU	$FE32
+sheila_ROMCTL_SWR       EQU     $FE30
+sheila_ROMCTL_MOS       EQU     $FE31
+sheila_MEM_DEBUG_SAVE   EQU     $FE32
 
 
-ROMCTL_BITS_FLEX	EQU	$10
+ROMCTL_BITS_FLEX        EQU     $10
 
-	IF MACH_BEEB
+        ENDIF
+        IF MACH_BEEB
 ;TODO: naming - harmonize with 6502
-sheila_MEM_CTL			EQU $FE31
+sheila_MEM_CTL                  EQU $FE31
 
-BITS_MEM_CTL_SWMOS		EQU $01
-BITS_MEM_CTL_SWMOS_DEBUG	EQU $04
-BITS_MEM_CTL_SWMOS_DEBUG_EN	EQU $08
-BITS_MEM_CTL_FLEX		EQU $10
-BITS_MEM_CTL_SWMOS_DEBUG_5C	EQU $40
-BITS_MEM_CTL_SWMOS_DEBUG_ACT	EQU $80
-
-
-sheila_MEM_TURBO2		EQU $FE36
-BITS_MEM_TURBO2_THROTTLE	EQU $80
-
-sheila_MEM_LOMEMTURBO		EQU $FE37
+BITS_MEM_CTL_SWMOS              EQU $01
+BITS_MEM_CTL_SWMOS_DEBUG        EQU $04
+BITS_MEM_CTL_SWMOS_DEBUG_EN     EQU $08
+BITS_MEM_CTL_FLEX               EQU $10
+BITS_MEM_CTL_SWMOS_DEBUG_5C     EQU $40
+BITS_MEM_CTL_SWMOS_DEBUG_ACT    EQU $80
 
 
-fred_JIM_DEVNO		EQU	$FCFF
-fred_JIM_PAGE_HI	EQU	$FCFD
-fred_JIM_PAGE_LO	EQU	$FCFE
-	
-sheila_NULA_CTLAUX	EQU	$FE22
-sheila_NULA_PALAUX	EQU	$FE23
+sheila_MEM_TURBO2               EQU $FE36
+BITS_MEM_TURBO2_THROTTLE        EQU $80
 
-sheila_DEBUG		EQU	$FEFF
+sheila_MEM_LOMEMTURBO           EQU $FE37
 
 
+fred_JIM_DEVNO          EQU     $FCFF
+fred_JIM_PAGE_HI        EQU     $FCFD
+fred_JIM_PAGE_LO        EQU     $FCFE
+        
+sheila_NULA_CTLAUX      EQU     $FE22
+sheila_NULA_PALAUX      EQU     $FE23
+
+sheila_DEBUG            EQU     $FEFF
 
 
-sheila_BLTCFG0		EQU	$FE3E
-sheila_BLTCFG1		EQU	$FE3F
-BLTCFG0_T65		EQU	$01
-BLTCFG0_CPU_6502A_2M	EQU	$00
-BLTCFG0_CPU_65C02_4M	EQU	$02
-BLTCFG0_CPU_65C02_8M	EQU	$04
-BLTCFG0_CPU_6x09_2M	EQU	$08
-BLTCFG0_CPU_6309_4M	EQU	$0A
-BLTCFG0_CPU_Z80_8M	EQU	$0C
-BLTCFG0_CPU_68008	EQU	$0E
-BLTCFG0_SWROMX		EQU	$10
-BLTCFG0_BUGBTN		EQU	$80
-
-BLTCFG1_MEMI		EQU	$01
-BLTCFG1_BUGOUT		EQU	$02
 
 
-	ENDIF
+sheila_BLTCFG0          EQU     $FE3E
+sheila_BLTCFG1          EQU     $FE3F
+BLTCFG0_T65             EQU     $01
+BLTCFG0_CPU_6502A_2M    EQU     $00
+BLTCFG0_CPU_65C02_4M    EQU     $02
+BLTCFG0_CPU_65C02_8M    EQU     $04
+BLTCFG0_CPU_6x09_2M     EQU     $08
+BLTCFG0_CPU_6309_4M     EQU     $0A
+BLTCFG0_CPU_Z80_8M      EQU     $0C
+BLTCFG0_CPU_68008       EQU     $0E
+BLTCFG0_SWROMX          EQU     $10
+BLTCFG0_BUGBTN          EQU     $80
 
-	IF MACH_CHIPKIT
-sheila_ROMCTL_RAM	EQU	$FE32
-sheila_MEMC_SCROFF	EQU	$FE33
-	ENDIF
+BLTCFG1_MEMI            EQU     $01
+BLTCFG1_BUGOUT          EQU     $02
 
+
+        ENDIF
+
+        IF MACH_CHIPKIT
+sheila_ROMCTL_RAM       EQU     $FE32
+sheila_MEMC_SCROFF      EQU     $FE33
+        ENDIF
 
 
 * HARDWARELOC - area of RAM used for memory mapped hardware
-HARDWARELOC				EQU $FC00
-HARDWARELOC_END				EQU $FEFF
+HARDWARELOC                             EQU $FC00
+HARDWARELOC_END                         EQU $FEFF
 
 * Where the remapped 6809 vectors live, the hardware remaps
 * the 6809 hardware vectors to avoid the OS calls in the original 6502 memory map
-REMAPPED_HW_VECTORS			EQU $F7F0
+REMAPPED_HW_VECTORS                     EQU $F7F0
 
-OFF_SWI_VEC	EQU	$A
-OFF_NMI_VEC	EQU	$C
-OFF_RES_VEC	EQU	$E
-HW_VECTOR_COUNT	EQU	8
+OFF_SWI_VEC     EQU     $A
+OFF_NMI_VEC     EQU     $C
+OFF_RES_VEC     EQU     $E
+HW_VECTOR_COUNT EQU     8
 
+        IF MACH_BEEB | MACH_CHIPKIT
 ***********************************************************************
 * CRTC                                                                *
 ***********************************************************************
-sheila_CRTC_reg				EQU $FE00
-sheila_CRTC_rw				EQU $FE01
+sheila_CRTC_reg                         EQU $FE00
+sheila_CRTC_rw                          EQU $FE01
 
 
-CRTCR0_HorizontalTotal        		EQU  	 0	; 8b WO m0-3:127 m4-7:63
-CRTCR1_HorizontalDisplayed    		EQU	 1	; 8b WO m0-3:80  m4-7:40
-CRTCR2_HorizontalSyncPosition 		EQU	 2	; 8b WO m0-3:98  m4-6:49 m7:51
-CRTCR3_SyncPulseWidths        		EQU	 3	; Horizontal sync pulse width b0-3 WO m0-3:8 m4-7:4, Vertical sync pulse width b4-7 WO Always 2
-CRTCR4_VerticalTotal          		EQU	 4	; 7b WO m0-2,4-5:38 m3,6-7:30
-CRTCR5_VerticalTotalAdjust    		EQU	 5	; 5b WO m0-7:0
-CRTCR6_VerticalDisplayed      		EQU	 6	; 7b WO m0-2,4-5:32 m3,6-7:25
-CRTCR7_VerticalSyncPosition   		EQU	 7	; 7b WO m0-2,4-5:34 m3,6-7:27
-CRTCR8_InterlaceAndControl    		EQU	 8	; Interlace modes        b0-1 00,10 non-interlaced, m0-6 01 Interlace sync, m7 11 Interlace sync and video
-CRTCR9_CharacterScanLines     		EQU	 9	; 5b WO m0-2,4-5:7 m3,6:9 m7:18
-CRTCR10_CursorControlStart    		EQU	10	; 7b WO b7 unused b6 blink enable b5 blink fast b0-4 crsr start line
-CRTCR11_CursorEnd             		EQU	11	; 5b WO crsr end line
-CRTCR12_Screen1stCharHi       		EQU	12	; 6b WO hi byte of (start of screen address)/8
-CRTCR13_Screen1stCharLo       		EQU	13	; 8b WO lo byte of (start of screen address)/8
+CRTCR0_HorizontalTotal                  EQU      0      ; 8b WO m0-3:127 m4-7:63
+CRTCR1_HorizontalDisplayed              EQU      1      ; 8b WO m0-3:80  m4-7:40
+CRTCR2_HorizontalSyncPosition           EQU      2      ; 8b WO m0-3:98  m4-6:49 m7:51
+CRTCR3_SyncPulseWidths                  EQU      3      ; Horizontal sync pulse width b0-3 WO m0-3:8 m4-7:4, Vertical sync pulse width b4-7 WO Always 2
+CRTCR4_VerticalTotal                    EQU      4      ; 7b WO m0-2,4-5:38 m3,6-7:30
+CRTCR5_VerticalTotalAdjust              EQU      5      ; 5b WO m0-7:0
+CRTCR6_VerticalDisplayed                EQU      6      ; 7b WO m0-2,4-5:32 m3,6-7:25
+CRTCR7_VerticalSyncPosition             EQU      7      ; 7b WO m0-2,4-5:34 m3,6-7:27
+CRTCR8_InterlaceAndControl              EQU      8      ; Interlace modes        b0-1 00,10 non-interlaced, m0-6 01 Interlace sync, m7 11 Interlace sync and video
+CRTCR9_CharacterScanLines               EQU      9      ; 5b WO m0-2,4-5:7 m3,6:9 m7:18
+CRTCR10_CursorControlStart              EQU     10      ; 7b WO b7 unused b6 blink enable b5 blink fast b0-4 crsr start line
+CRTCR11_CursorEnd                       EQU     11      ; 5b WO crsr end line
+CRTCR12_Screen1stCharHi                 EQU     12      ; 6b WO hi byte of (start of screen address)/8
+CRTCR13_Screen1stCharLo                 EQU     13      ; 8b WO lo byte of (start of screen address)/8
 
 ***********************************************************************
 * Simple Video ULA                                                    *
 ***********************************************************************
-sheila_VIDULA_ctl			EQU $FE20
-sheila_VIDULA_pal			EQU $FE21
-	IF MACH_CHIPKIT
-sheila_VIDULA_pixand			EQU $FE22
-sheila_VIDULA_pixeor			EQU $FE23
-sheila_VIDULA_ttx			EQU $FE24
+sheila_VIDULA_ctl                       EQU $FE20
+sheila_VIDULA_pal                       EQU $FE21
+        IF MACH_CHIPKIT
+sheila_VIDULA_pixand                    EQU $FE22
+sheila_VIDULA_pixeor                    EQU $FE23
+sheila_VIDULA_ttx                       EQU $FE24
 
-sheila_RAMDAC_ADDR_WR			EQU $FE28
-sheila_RAMDAC_VAL			EQU $FE29
-sheila_RAMDAC_PIXMASK			EQU $FE2A
-sheila_RAMDAC_ADDR_RD			EQU $FE2B
-	ENDIF
+sheila_RAMDAC_ADDR_WR                   EQU $FE28
+sheila_RAMDAC_VAL                       EQU $FE29
+sheila_RAMDAC_PIXMASK                   EQU $FE2A
+sheila_RAMDAC_ADDR_RD                   EQU $FE2B
+        ENDIF
 
 ***********************************************************************
 * VIA constants                                                       *
 ***********************************************************************
 
-VIA_MASK_INT_CA2			EQU	$01
-VIA_MASK_INT_CA1			EQU	$02
-VIA_MASK_INT_SR				EQU	$04
-VIA_MASK_INT_CB2			EQU	$08
-VIA_MASK_INT_CB1			EQU	$10
-VIA_MASK_INT_T2				EQU	$20
-VIA_MASK_INT_T1				EQU	$40
-VIA_MASK_INT_IRQ			EQU	$80
+VIA_MASK_INT_CA2                        EQU     $01
+VIA_MASK_INT_CA1                        EQU     $02
+VIA_MASK_INT_SR                         EQU     $04
+VIA_MASK_INT_CB2                        EQU     $08
+VIA_MASK_INT_CB1                        EQU     $10
+VIA_MASK_INT_T2                         EQU     $20
+VIA_MASK_INT_T1                         EQU     $40
+VIA_MASK_INT_IRQ                        EQU     $80
 
-SYSVIA_MASK_INT_VSYNC			EQU	VIA_MASK_INT_CA1
+SYSVIA_MASK_INT_VSYNC                   EQU     VIA_MASK_INT_CA1
 
 ***********************************************************************
 * System VIA                                                          *
 ***********************************************************************
-sheila_SYSVIA_orb			EQU $FE40
-sheila_SYSVIA_ora			EQU $FE41
-sheila_SYSVIA_ddrb			EQU $FE42
-sheila_SYSVIA_ddra			EQU $FE43
-sheila_SYSVIA_t1cl			EQU $FE44
-sheila_SYSVIA_t1ch			EQU $FE45
-sheila_SYSVIA_t1ll			EQU $FE46
-sheila_SYSVIA_t1lh			EQU $FE47
-sheila_SYSVIA_t2cl			EQU $FE48
-sheila_SYSVIA_t2ch			EQU $FE49
-sheila_SYSVIA_sr			EQU $FE4A
-sheila_SYSVIA_acr			EQU $FE4B
-sheila_SYSVIA_pcr			EQU $FE4C
-sheila_SYSVIA_ifr			EQU $FE4D
-sheila_SYSVIA_ier			EQU $FE4E
-sheila_SYSVIA_ora_nh			EQU $FE4F
+sheila_SYSVIA_orb                       EQU $FE40
+sheila_SYSVIA_ora                       EQU $FE41
+sheila_SYSVIA_ddrb                      EQU $FE42
+sheila_SYSVIA_ddra                      EQU $FE43
+sheila_SYSVIA_t1cl                      EQU $FE44
+sheila_SYSVIA_t1ch                      EQU $FE45
+sheila_SYSVIA_t1ll                      EQU $FE46
+sheila_SYSVIA_t1lh                      EQU $FE47
+sheila_SYSVIA_t2cl                      EQU $FE48
+sheila_SYSVIA_t2ch                      EQU $FE49
+sheila_SYSVIA_sr                        EQU $FE4A
+sheila_SYSVIA_acr                       EQU $FE4B
+sheila_SYSVIA_pcr                       EQU $FE4C
+sheila_SYSVIA_ifr                       EQU $FE4D
+sheila_SYSVIA_ier                       EQU $FE4E
+sheila_SYSVIA_ora_nh                    EQU $FE4F
 
 ***********************************************************************
 * SYS VIA - slow data bus RTC                                         *
 ***********************************************************************
 
-	IF MACH_CHIPKIT
-BITS_RTC_AS_ON	equ		$88			; PB7
-BITS_RTC_AS_OFF equ		$08			;
-BITS_RTC_CS	equ		$04			; latch
-BITS_RTC_DS	equ		$02			; latch
-BITS_RTC_RnW	equ		$01			; latch
-BITS_LAT_ON	equ		$08			; latch
+        IF MACH_CHIPKIT
+BITS_RTC_AS_ON  equ             $88                     ; PB7
+BITS_RTC_AS_OFF equ             $08                     ;
+BITS_RTC_CS     equ             $04                     ; latch
+BITS_RTC_DS     equ             $02                     ; latch
+BITS_RTC_RnW    equ             $01                     ; latch
+BITS_LAT_ON     equ             $08                     ; latch
 
-RTC_REG_SECONDS	equ		$0
-RTC_REG_MINUTES	equ		$2
-RTC_REG_HOURS	equ		$4
-RTC_REG_DOW	equ		$6
-RTC_REG_DAY	equ		$7
-RTC_REG_MONTH	equ		$8
-RTC_REG_YEAR	equ		$9
-	ENDIF
+RTC_REG_SECONDS equ             $0
+RTC_REG_MINUTES equ             $2
+RTC_REG_HOURS   equ             $4
+RTC_REG_DOW     equ             $6
+RTC_REG_DAY     equ             $7
+RTC_REG_MONTH   equ             $8
+RTC_REG_YEAR    equ             $9
+        ENDIF
 
 
 ***********************************************************************
 * User VIA                                                            *
 ***********************************************************************
-sheila_USRVIA_orb			EQU $FE60
-sheila_USRVIA_ora			EQU $FE61
-sheila_USRVIA_ddrb			EQU $FE62
-sheila_USRVIA_ddra			EQU $FE63
-sheila_USRVIA_t1cl			EQU $FE64
-sheila_USRVIA_t1ch			EQU $FE65
-sheila_USRVIA_t1ll			EQU $FE66
-sheila_USRVIA_t1lh			EQU $FE67
-sheila_USRVIA_t2cl			EQU $FE68
-sheila_USRVIA_t2ch			EQU $FE69
-sheila_USRVIA_sr			EQU $FE6A
-sheila_USRVIA_acr			EQU $FE6B
-sheila_USRVIA_pcr			EQU $FE6C
-sheila_USRVIA_ifr			EQU $FE6D
-sheila_USRVIA_ier			EQU $FE6E
-sheila_USRVIA_ora_nh			EQU $FE6F
+sheila_USRVIA_orb                       EQU $FE60
+sheila_USRVIA_ora                       EQU $FE61
+sheila_USRVIA_ddrb                      EQU $FE62
+sheila_USRVIA_ddra                      EQU $FE63
+sheila_USRVIA_t1cl                      EQU $FE64
+sheila_USRVIA_t1ch                      EQU $FE65
+sheila_USRVIA_t1ll                      EQU $FE66
+sheila_USRVIA_t1lh                      EQU $FE67
+sheila_USRVIA_t2cl                      EQU $FE68
+sheila_USRVIA_t2ch                      EQU $FE69
+sheila_USRVIA_sr                        EQU $FE6A
+sheila_USRVIA_acr                       EQU $FE6B
+sheila_USRVIA_pcr                       EQU $FE6C
+sheila_USRVIA_ifr                       EQU $FE6D
+sheila_USRVIA_ier                       EQU $FE6E
+sheila_USRVIA_ora_nh                    EQU $FE6F
 
 
 ***********************************************************************
 *  VIA constants                                                      *
 ***********************************************************************
 
-VIA_IFR_BIT_ANY				EQU $80
-VIA_IFR_BIT_T1				EQU $40
-VIA_IFR_BIT_T2				EQU $20
-VIA_IFR_BIT_CB1				EQU $10
-VIA_IFR_BIT_CB2				EQU $08
-VIA_IFR_BIT_SR				EQU $04
-VIA_IFR_BIT_CA1				EQU $02
-VIA_IFR_BIT_CA2				EQU $01
+VIA_IFR_BIT_ANY                         EQU $80
+VIA_IFR_BIT_T1                          EQU $40
+VIA_IFR_BIT_T2                          EQU $20
+VIA_IFR_BIT_CB1                         EQU $10
+VIA_IFR_BIT_CB2                         EQU $08
+VIA_IFR_BIT_SR                          EQU $04
+VIA_IFR_BIT_CA1                         EQU $02
+VIA_IFR_BIT_CA2                         EQU $01
 
 
 ***********************************************************************
 * BBC B/B+ WD177x                                                     *
 ***********************************************************************
 
-sheila_1770_dcontrol	equ	$FE80
-sheila_1770_wdc_cmd	equ	$FE84
-sheila_1770_wdc_trk	equ	$FE85
-sheila_1770_wdc_sec	equ	$FE86
-sheila_1770_wdc_dat	equ	$FE87
+sheila_1770_dcontrol    equ     $FE80
+sheila_1770_wdc_cmd     equ     $FE84
+sheila_1770_wdc_trk     equ     $FE85
+sheila_1770_wdc_sec     equ     $FE86
+sheila_1770_wdc_dat     equ     $FE87
 
+        ENDIF
 ***********************************************************************
 * TUBE                                                                *
 ***********************************************************************
 
-sheila_TUBE_R1_STATUS			EQU $FEE0
-sheila_TUBE_R1_DATA			EQU $FEE1
-sheila_TUBE_R2_STATUS			EQU $FEE2
-sheila_TUBE_R2_DATA			EQU $FEE3
-sheila_TUBE_R3_STATUS			EQU $FEE4
-sheila_TUBE_R3_DATA			EQU $FEE5
-sheila_TUBE_R4_STATUS			EQU $FEE6
-sheila_TUBE_R4_DATA			EQU $FEE7
+sheila_TUBE_R1_STATUS                   EQU $FEE0
+sheila_TUBE_R1_DATA                     EQU $FEE1
+sheila_TUBE_R2_STATUS                   EQU $FEE2
+sheila_TUBE_R2_DATA                     EQU $FEE3
+sheila_TUBE_R3_STATUS                   EQU $FEE4
+sheila_TUBE_R3_DATA                     EQU $FEE5
+sheila_TUBE_R4_STATUS                   EQU $FEE6
+sheila_TUBE_R4_DATA                     EQU $FEE7
 
 
-	IF MACH_CHIPKIT
+        IF MACH_CHIPKIT
 *============================================================================
 *  Equates for memory mapped 16450 serial port 
 *============================================================================
-S16550			equ	$FE78			; base of 16450 UART
-S16550_RXR		equ	S16550+0		; Receiver buffer register
-S16550_TXR		equ	S16550+0		; Transmitter buffer register
-S16550_IER		equ	S16550+1		; Interrupt enable register
-S16550_FCR		equ	S16550+2		; 16550 FIFO control register
-S16550_LCR		equ	S16550+3		; Line control register
-S16550_MCR		equ	S16550+4		; Modem control register
-S16550_DTR		equ	S16550+1		; Bit equate used to control status LED
-S16550_LSR		equ	S16550+5		; Line status register
+S16550                  equ     $FE78                   ; base of 16450 UART
+S16550_RXR              equ     S16550+0                ; Receiver buffer register
+S16550_TXR              equ     S16550+0                ; Transmitter buffer register
+S16550_IER              equ     S16550+1                ; Interrupt enable register
+S16550_FCR              equ     S16550+2                ; 16550 FIFO control register
+S16550_LCR              equ     S16550+3                ; Line control register
+S16550_MCR              equ     S16550+4                ; Modem control register
+S16550_DTR              equ     S16550+1                ; Bit equate used to control status LED
+S16550_LSR              equ     S16550+5                ; Line status register
 
-LSR_BIT_RXRDY		EQU	$01            ; BIT MASK FOR RX BUFFER FULL
-LSR_BIT_TXRDY		EQU	$20            ; BIT MASK FOR TX BUFFER EMPTY
+LSR_BIT_RXRDY           EQU     $01            ; BIT MASK FOR RX BUFFER FULL
+LSR_BIT_TXRDY           EQU     $20            ; BIT MASK FOR TX BUFFER EMPTY
 
-MCR_BIT_DTR		EQU	$01
-MCR_BIT_RTS		EQU	$02
-MCR_BIT_OUT1		EQU	$04
-MCR_BIT_OUT2		EQU	$08
-MCR_BIT_LOOP		EQU	$10
-
-
-SER_BAUD_CLOCK_IN	EQU	7372800			; frequency of on board serial crystal
+MCR_BIT_DTR             EQU     $01
+MCR_BIT_RTS             EQU     $02
+MCR_BIT_OUT1            EQU     $04
+MCR_BIT_OUT2            EQU     $08
+MCR_BIT_LOOP            EQU     $10
 
 
+SER_BAUD_CLOCK_IN       EQU     7372800                 ; frequency of on board serial crystal
 
 
-sheila_VINC_data	EQU	$FE50
-sheila_VINC_status	EQU	$FE52
-VINC_status_TXE		EQU	$01
-VINC_status_RXF		EQU	$02
-	ENDIF
 
-	IF MACH_BEEB
+
+sheila_VINC_data        EQU     $FE50
+sheila_VINC_status      EQU     $FE52
+VINC_status_TXE         EQU     $01
+VINC_status_RXF         EQU     $02
+        ENDIF
+
+        IF MACH_BEEB
 
 * note: this are for Retroclinic DC
-sheila_VINC_data	EQU	$FCF8
-sheila_VINC_status	EQU	$FCF9
-VINC_status_TXE		EQU	$40
-VINC_status_RXF		EQU	$80
+sheila_VINC_data        EQU     $FCF8
+sheila_VINC_status      EQU     $FCF9
+VINC_status_TXE         EQU     $40
+VINC_status_RXF         EQU     $80
 
-sheila_ACIA_CTL		EQU	$FE08
-sheila_ACIA_DATA	EQU	$FE09
-sheila_SERIAL_ULA	EQU	$FE10
-ACIA_RDRF		EQU	$01
-ACIA_TDRE		EQU	$02
+sheila_ACIA_CTL         EQU     $FE08
+sheila_ACIA_DATA        EQU     $FE09
+sheila_SERIAL_ULA       EQU     $FE10
+ACIA_RDRF               EQU     $01
+ACIA_TDRE               EQU     $02
 
 
 ; BLTCON is written in two passes with top bit clear i.e. not BLTCON_ACT_ACT
@@ -290,171 +293,330 @@ ACIA_TDRE		EQU	$02
 ; then with top bit set the active flag, bit mode and cell flags are set
 ; BLTCON/ACT byte flags
 
-BLITCON_ACT_ACT			EQU	$80		; always set when setting act constants/execing
-BLITCON_ACT_CELL		EQU	$40		; cell addressing used i.e. move one byte left adds 8 to address
-							; moving one line down either adds 1 byte or STRIDE depending on whether 
-							; line crosses an 8 line boundary
-BLITCON_ACT_MODE_1BBP		EQU	$00		; 1 bit per pixel mapping 2 colours
-BLITCON_ACT_MODE_2BBP		EQU	$10		; 2 bit per pixel mapping 4 colours
-BLITCON_ACT_MODE_4BBP		EQU	$20		; 4 bit per pixel mapping 16 colours
-BLITCON_ACT_MODE_8BBP		EQU	$30		; 8 bit per pixel mapping 256 colours
-BLITCON_ACT_LINE		EQU	$08		; draw a line
-BLITCON_ACT_COLLISION		EQU	$04		; gets reset for any non-zero D data (even in EXEC_D is clear) 
+BLITCON_ACT_ACT                 EQU     $80             ; always set when setting act constants/execing
+BLITCON_ACT_CELL                EQU     $40             ; cell addressing used i.e. move one byte left adds 8 to address
+                                                        ; moving one line down either adds 1 byte or STRIDE depending on whether 
+                                                        ; line crosses an 8 line boundary
+BLITCON_ACT_MODE_1BBP           EQU     $00             ; 1 bit per pixel mapping 2 colours
+BLITCON_ACT_MODE_2BBP           EQU     $10             ; 2 bit per pixel mapping 4 colours
+BLITCON_ACT_MODE_4BBP           EQU     $20             ; 4 bit per pixel mapping 16 colours
+BLITCON_ACT_MODE_8BBP           EQU     $30             ; 8 bit per pixel mapping 256 colours
+BLITCON_ACT_LINE                EQU     $08             ; draw a line
+BLITCON_ACT_COLLISION           EQU     $04             ; gets reset for any non-zero D data (even in EXEC_D is clear) 
 
 
-BLITCON_LINE_MAJOR_UPnRIGHT	EQU	$10		; line draw major axis is up
-BLITCON_LINE_MINOR_CCW		EQU	$20		; minor axis is CCW to MAJOR i.e. left when maj up, up when maj right
-							; otherwise 			  right when maj up, down when maj right
+BLITCON_LINE_MAJOR_UPnRIGHT     EQU     $10             ; line draw major axis is up
+BLITCON_LINE_MINOR_CCW          EQU     $20             ; minor axis is CCW to MAJOR i.e. left when maj up, up when maj right
+                                                        ; otherwise                       right when maj up, down when maj right
 
 
-BLITCON_EXEC_A			EQU	$01
-BLITCON_EXEC_B			EQU	$02
-BLITCON_EXEC_C			EQU	$04
-BLITCON_EXEC_D			EQU	$08
-BLITCON_EXEC_E			EQU	$10
+BLITCON_EXEC_A                  EQU     $01
+BLITCON_EXEC_B                  EQU     $02
+BLITCON_EXEC_C                  EQU     $04
+BLITCON_EXEC_D                  EQU     $08
+BLITCON_EXEC_E                  EQU     $10
 
 ; DMA controller control flags
-DMACTL_ACT			EQU	$80		; always set to initiate a transfer
-DMACTL_EXTEND			EQU	$20		; use extended functions from control2
-DMACTL_HALT			EQU	$10		; halt cpu during transfer
-DMACTL_STEP_DEST_NONE		EQU	$00		; do not step destination address
-DMACTL_STEP_DEST_UP		EQU	$04		; step destination up after transfer
-DMACTL_STEP_DEST_DOWN		EQU	$08		; step destination down after transfer
-DMACTL_STEP_DEST_RESV		EQU	$0C		; reserved do not use
-DMACTL_STEP_SRC_NONE		EQU	$00		; do not step destination address
-DMACTL_STEP_SRC_UP		EQU	$01		; step destination up after transfer
-DMACTL_STEP_SRC_DOWN		EQU	$02		; step destination down after transfer
-DMACTL_STEP_SRC_RESV		EQU	$03		; reserved do not use
+DMACTL_ACT                      EQU     $80             ; always set to initiate a transfer
+DMACTL_EXTEND                   EQU     $20             ; use extended functions from control2
+DMACTL_HALT                     EQU     $10             ; halt cpu during transfer
+DMACTL_STEP_DEST_NONE           EQU     $00             ; do not step destination address
+DMACTL_STEP_DEST_UP             EQU     $04             ; step destination up after transfer
+DMACTL_STEP_DEST_DOWN           EQU     $08             ; step destination down after transfer
+DMACTL_STEP_DEST_RESV           EQU     $0C             ; reserved do not use
+DMACTL_STEP_SRC_NONE            EQU     $00             ; do not step destination address
+DMACTL_STEP_SRC_UP              EQU     $01             ; step destination up after transfer
+DMACTL_STEP_SRC_DOWN            EQU     $02             ; step destination down after transfer
+DMACTL_STEP_SRC_RESV            EQU     $03             ; reserved do not use
 
-DMACTL2_IF			EQU	$80		; interrupt occurred
-DMACTL2_IE			EQU	$02		; interrupt enable, interrupt after transfer
-DMACTL2_SZ_BYTE			EQU	$00
-DMACTL2_SZ_WORD			EQU	$04
-DMACTL2_SZ_WORDSWAPDEST		EQU	$08
-DMACTL2_SZ_WORDSWAPSRC		EQU	$0C
-DMACTL2_PAUSE			EQU	$01
+DMACTL2_IF                      EQU     $80             ; interrupt occurred
+DMACTL2_IE                      EQU     $02             ; interrupt enable, interrupt after transfer
+DMACTL2_SZ_BYTE                 EQU     $00
+DMACTL2_SZ_WORD                 EQU     $04
+DMACTL2_SZ_WORDSWAPDEST         EQU     $08
+DMACTL2_SZ_WORDSWAPSRC          EQU     $0C
+DMACTL2_PAUSE                   EQU     $01
 
 ; Sound Status / control bits
-SND_CTL_ACT			EQU	$80
-SND_CTL_REPEAT			EQU	$01
+SND_CTL_ACT                     EQU     $80
+SND_CTL_REPEAT                  EQU     $01
 
 
-DMAC_BLITCON_offs		EQU	0
-DMAC_FUNCGEN_offs		EQU	$1
-DMAC_WIDTH_offs			EQU	$2
-DMAC_HEIGHT_offs		EQU	$3
-DMAC_SHIFT_offs			EQU	$4
-DMAC_MASK_FIRST_offs		EQU	$5
-DMAC_MASK_LAST_offs		EQU	$6
-DMAC_DATA_A_offs		EQU	$7
-DMAC_ADDR_A_offs		EQU	$8
-DMAC_DATA_B_offs		EQU	$B
-DMAC_ADDR_B_offs		EQU	$C
-DMAC_ADDR_C_offs		EQU	$F
-DMAC_ADDR_D_offs		EQU	$12
-DMAC_ADDR_E_offs		EQU	$15
-DMAC_STRIDE_A_offs		EQU	$18
-DMAC_STRIDE_B_offs		EQU	$1A
-DMAC_STRIDE_C_offs		EQU	$1C
-DMAC_STRIDE_D_offs		EQU	$1E
+DMAC_BLITCON_offs               EQU     0
+DMAC_FUNCGEN_offs               EQU     $1
+DMAC_WIDTH_offs                 EQU     $2
+DMAC_HEIGHT_offs                EQU     $3
+DMAC_SHIFT_offs                 EQU     $4
+DMAC_MASK_FIRST_offs            EQU     $5
+DMAC_MASK_LAST_offs             EQU     $6
+DMAC_DATA_A_offs                EQU     $7
+DMAC_ADDR_A_offs                EQU     $8
+DMAC_DATA_B_offs                EQU     $B
+DMAC_ADDR_B_offs                EQU     $C
+DMAC_ADDR_C_offs                EQU     $F
+DMAC_ADDR_D_offs                EQU     $12
+DMAC_ADDR_E_offs                EQU     $15
+DMAC_STRIDE_A_offs              EQU     $18
+DMAC_STRIDE_B_offs              EQU     $1A
+DMAC_STRIDE_C_offs              EQU     $1C
+DMAC_STRIDE_D_offs              EQU     $1E
 
-DMAC_SND_DATA_offs		EQU	$20
-DMAC_SND_ADDR_offs		EQU	$21
-DMAC_SND_PERIOD_offs		EQU	$24
-DMAC_SND_LEN_offs		EQU	$26
-DMAC_SND_STATUS_offs		EQU	$28
-DMAC_SND_VOL_offs		EQU	$29
-DMAC_SND_REPOFF_offs		EQU	$2A
-DMAC_SND_PEAK_offs		EQU	$2C
+DMAC_SND_DATA_offs              EQU     $20
+DMAC_SND_ADDR_offs              EQU     $21
+DMAC_SND_PERIOD_offs            EQU     $24
+DMAC_SND_LEN_offs               EQU     $26
+DMAC_SND_STATUS_offs            EQU     $28
+DMAC_SND_VOL_offs               EQU     $29
+DMAC_SND_REPOFF_offs            EQU     $2A
+DMAC_SND_PEAK_offs              EQU     $2C
 
-DMAC_SND_MA_VOL_offs		EQU	$2E
-DMAC_SND_SEL_offs		EQU	$2F
+DMAC_SND_MA_VOL_offs            EQU     $2E
+DMAC_SND_SEL_offs               EQU     $2F
 
-DMAC_DMA_CTL_offs		EQU	$30
-DMAC_DMA_SRC_ADDR_offs		EQU	$31
-DMAC_DMA_DEST_ADDR_offs		EQU	$34
-DMAC_DMA_COUNT_offs		EQU	$37
-DMAC_DMA_DATA_offs		EQU	$39
-DMAC_DMA_CTL2_offs		EQU	$3A
-DMAC_DMA_PAUSE_offs		EQU	$3B
-DMAC_DMA_SEL_offs		EQU	$3F
+DMAC_DMA_CTL_offs               EQU     $30
+DMAC_DMA_SRC_ADDR_offs          EQU     $31
+DMAC_DMA_DEST_ADDR_offs         EQU     $34
+DMAC_DMA_COUNT_offs             EQU     $37
+DMAC_DMA_DATA_offs              EQU     $39
+DMAC_DMA_CTL2_offs              EQU     $3A
+DMAC_DMA_PAUSE_offs             EQU     $3B
+DMAC_DMA_SEL_offs               EQU     $3F
 
-jim_page_DMAC			EQU	$FEFC		; hardware jim page
-jim_DMAC			EQU	$FD60		; jim location in SYS map
+jim_page_DMAC                   EQU     $FEFC           ; hardware jim page
+jim_DMAC                        EQU     $FD60           ; jim location in SYS map
 
-jim_page_VERSION		EQU	$FC00
+jim_page_VERSION                EQU     $FC00
 
-jim_offs_VERSION_API_level	EQU	$80
-jim_offs_VERSION_Board_level	EQU	$81
-jim_offs_VERSION_API_sublevel	EQU	$82
-jim_offs_VERSION_cfg_bits	EQU	$84
-jim_offs_VERSION_cap_bits	EQU	$88
+jim_offs_VERSION_API_level      EQU     $80
+jim_offs_VERSION_Board_level    EQU     $81
+jim_offs_VERSION_API_sublevel   EQU     $82
+jim_offs_VERSION_cfg_bits       EQU     $84
+jim_offs_VERSION_cap_bits       EQU     $88
 
 ; Mk.2/1 option switches - note in API level >1 the sense of these is reversed!
-BLT_MK2_CFG0_T65		EQU	$01
-BLT_MK2_CFG0_CPU_6502A_2M	EQU	$00
-BLT_MK2_CFG0_CPU_65C02_4M	EQU	$02
-BLT_MK2_CFG0_CPU_65C02_8M	EQU	$04
-BLT_MK2_CFG0_CPU_6x09_2M	EQU	$08
-BLT_MK2_CFG0_CPU_6309_4M	EQU	$0A
-BLT_MK2_CFG0_CPU_Z80_8M		EQU	$0C
-BLT_MK2_CFG0_CPU_68008		EQU	$0E
-BLT_MK2_CFG0_SWROMX		EQU	$10
-BLT_MK2_CFG0_BUGBTN		EQU	$80
+BLT_MK2_CFG0_T65                EQU     $01
+BLT_MK2_CFG0_CPU_6502A_2M       EQU     $00
+BLT_MK2_CFG0_CPU_65C02_4M       EQU     $02
+BLT_MK2_CFG0_CPU_65C02_8M       EQU     $04
+BLT_MK2_CFG0_CPU_6x09_2M        EQU     $08
+BLT_MK2_CFG0_CPU_6309_4M        EQU     $0A
+BLT_MK2_CFG0_CPU_Z80_8M         EQU     $0C
+BLT_MK2_CFG0_CPU_68008          EQU     $0E
+BLT_MK2_CFG0_SWROMX             EQU     $10
+BLT_MK2_CFG0_BUGBTN             EQU     $80
 
-BLT_MK2_CFG1_MEMI		EQU	$01
-BLT_MK2_CFG1_BUGOUT		EQU	$02
+BLT_MK2_CFG1_MEMI               EQU     $01
+BLT_MK2_CFG1_BUGOUT             EQU     $02
 
 ; Mk.3 switches from PORTF/G
-BLT_MK3_CFG0_T65		EQU	$08
-BLT_MK3_CFG0_SWROMX		EQU	$10
-BLT_MK3_CFG0_MEMI		EQU	$40
+BLT_MK3_CFG0_T65                EQU     $08
+BLT_MK3_CFG0_SWROMX             EQU     $10
+BLT_MK3_CFG0_MEMI               EQU     $40
 
 
 
-jim_DMAC_BLITCON		EQU	jim_DMAC + DMAC_BLITCON_offs
-jim_DMAC_FUNCGEN		EQU	jim_DMAC + DMAC_FUNCGEN_offs
-jim_DMAC_WIDTH			EQU	jim_DMAC + DMAC_WIDTH_offs
-jim_DMAC_HEIGHT			EQU	jim_DMAC + DMAC_HEIGHT_offs
-jim_DMAC_SHIFT			EQU	jim_DMAC + DMAC_SHIFT_offs
-jim_DMAC_MASK_FIRST		EQU	jim_DMAC + DMAC_MASK_FIRST_offs
-jim_DMAC_MASK_LAST		EQU	jim_DMAC + DMAC_MASK_LAST_offs
-jim_DMAC_DATA_A			EQU	jim_DMAC + DMAC_DATA_A_offs
-jim_DMAC_ADDR_A			EQU	jim_DMAC + DMAC_ADDR_A_offs
-jim_DMAC_DATA_B			EQU	jim_DMAC + DMAC_DATA_B_offs
-jim_DMAC_ADDR_B			EQU	jim_DMAC + DMAC_ADDR_B_offs
-jim_DMAC_ADDR_C			EQU	jim_DMAC + DMAC_ADDR_C_offs
-jim_DMAC_ADDR_D			EQU	jim_DMAC + DMAC_ADDR_D_offs
-jim_DMAC_ADDR_E			EQU	jim_DMAC + DMAC_ADDR_E_offs
-jim_DMAC_STRIDE_A		EQU	jim_DMAC + DMAC_STRIDE_A_offs
-jim_DMAC_STRIDE_B		EQU	jim_DMAC + DMAC_STRIDE_B_offs
-jim_DMAC_STRIDE_C		EQU	jim_DMAC + DMAC_STRIDE_C_offs
-jim_DMAC_STRIDE_D		EQU	jim_DMAC + DMAC_STRIDE_D_offs
+jim_DMAC_BLITCON                EQU     jim_DMAC + DMAC_BLITCON_offs
+jim_DMAC_FUNCGEN                EQU     jim_DMAC + DMAC_FUNCGEN_offs
+jim_DMAC_WIDTH                  EQU     jim_DMAC + DMAC_WIDTH_offs
+jim_DMAC_HEIGHT                 EQU     jim_DMAC + DMAC_HEIGHT_offs
+jim_DMAC_SHIFT                  EQU     jim_DMAC + DMAC_SHIFT_offs
+jim_DMAC_MASK_FIRST             EQU     jim_DMAC + DMAC_MASK_FIRST_offs
+jim_DMAC_MASK_LAST              EQU     jim_DMAC + DMAC_MASK_LAST_offs
+jim_DMAC_DATA_A                 EQU     jim_DMAC + DMAC_DATA_A_offs
+jim_DMAC_ADDR_A                 EQU     jim_DMAC + DMAC_ADDR_A_offs
+jim_DMAC_DATA_B                 EQU     jim_DMAC + DMAC_DATA_B_offs
+jim_DMAC_ADDR_B                 EQU     jim_DMAC + DMAC_ADDR_B_offs
+jim_DMAC_ADDR_C                 EQU     jim_DMAC + DMAC_ADDR_C_offs
+jim_DMAC_ADDR_D                 EQU     jim_DMAC + DMAC_ADDR_D_offs
+jim_DMAC_ADDR_E                 EQU     jim_DMAC + DMAC_ADDR_E_offs
+jim_DMAC_STRIDE_A               EQU     jim_DMAC + DMAC_STRIDE_A_offs
+jim_DMAC_STRIDE_B               EQU     jim_DMAC + DMAC_STRIDE_B_offs
+jim_DMAC_STRIDE_C               EQU     jim_DMAC + DMAC_STRIDE_C_offs
+jim_DMAC_STRIDE_D               EQU     jim_DMAC + DMAC_STRIDE_D_offs
 
-jim_DMAC_SND_DATA		EQU	jim_DMAC + DMAC_SND_DATA_offs
-jim_DMAC_SND_ADDR		EQU	jim_DMAC + DMAC_SND_ADDR_offs
-jim_DMAC_SND_PERIOD		EQU	jim_DMAC + DMAC_SND_PERIOD_offs
-jim_DMAC_SND_LEN		EQU	jim_DMAC + DMAC_SND_LEN_offs
-jim_DMAC_SND_STATUS		EQU	jim_DMAC + DMAC_SND_STATUS_offs
-jim_DMAC_SND_VOL		EQU	jim_DMAC + DMAC_SND_VOL_offs
-jim_DMAC_SND_REPOFF		EQU	jim_DMAC + DMAC_SND_REPOFF_offs
-jim_DMAC_SND_PEAK		EQU 	jim_DMAC + DMAC_SND_PEAK_offs
-
-
-jim_DMAC_SND_SEL		EQU	jim_DMAC + DMAC_SND_SEL_offs
-jim_DMAC_SND_MA_VOL		EQU	jim_DMAC + DMAC_SND_MA_VOL_offs
-
-jim_DMAC_DMA_CTL		EQU	jim_DMAC + DMAC_DMA_CTL_offs
-jim_DMAC_DMA_SRC_ADDR		EQU	jim_DMAC + DMAC_DMA_SRC_ADDR_offs
-jim_DMAC_DMA_DEST_ADDR		EQU	jim_DMAC + DMAC_DMA_DEST_ADDR_offs
-jim_DMAC_DMA_COUNT		EQU	jim_DMAC + DMAC_DMA_COUNT_offs
-jim_DMAC_DMA_DATA		EQU	jim_DMAC + DMAC_DMA_DATA_offs
-jim_DMAC_DMA_CTL2		EQU	jim_DMAC + DMAC_DMA_CTL2_offs
-jim_DMAC_DMA_PAUSE		EQU	jim_DMAC + DMAC_DMA_PAUSE_offs
-jim_DMAC_DMA_SEL		EQU	jim_DMAC + DMAC_DMA_SEL_offs
-
-JIM_DEVNO_HOG1MPAULA		EQU	$D0
-JIM_DEVNO_BLITTER		EQU	$D1
+jim_DMAC_SND_DATA               EQU     jim_DMAC + DMAC_SND_DATA_offs
+jim_DMAC_SND_ADDR               EQU     jim_DMAC + DMAC_SND_ADDR_offs
+jim_DMAC_SND_PERIOD             EQU     jim_DMAC + DMAC_SND_PERIOD_offs
+jim_DMAC_SND_LEN                EQU     jim_DMAC + DMAC_SND_LEN_offs
+jim_DMAC_SND_STATUS             EQU     jim_DMAC + DMAC_SND_STATUS_offs
+jim_DMAC_SND_VOL                EQU     jim_DMAC + DMAC_SND_VOL_offs
+jim_DMAC_SND_REPOFF             EQU     jim_DMAC + DMAC_SND_REPOFF_offs
+jim_DMAC_SND_PEAK               EQU     jim_DMAC + DMAC_SND_PEAK_offs
 
 
-	ENDIF
+jim_DMAC_SND_SEL                EQU     jim_DMAC + DMAC_SND_SEL_offs
+jim_DMAC_SND_MA_VOL             EQU     jim_DMAC + DMAC_SND_MA_VOL_offs
+
+jim_DMAC_DMA_CTL                EQU     jim_DMAC + DMAC_DMA_CTL_offs
+jim_DMAC_DMA_SRC_ADDR           EQU     jim_DMAC + DMAC_DMA_SRC_ADDR_offs
+jim_DMAC_DMA_DEST_ADDR          EQU     jim_DMAC + DMAC_DMA_DEST_ADDR_offs
+jim_DMAC_DMA_COUNT              EQU     jim_DMAC + DMAC_DMA_COUNT_offs
+jim_DMAC_DMA_DATA               EQU     jim_DMAC + DMAC_DMA_DATA_offs
+jim_DMAC_DMA_CTL2               EQU     jim_DMAC + DMAC_DMA_CTL2_offs
+jim_DMAC_DMA_PAUSE              EQU     jim_DMAC + DMAC_DMA_PAUSE_offs
+jim_DMAC_DMA_SEL                EQU     jim_DMAC + DMAC_DMA_SEL_offs
+
+JIM_DEVNO_HOG1MPAULA            EQU     $D0
+JIM_DEVNO_BLITTER               EQU     $D1
+
+
+        ENDIF
+
+        IF MACH_SBC09
+
+SBC09_UART                      EQU     $FE00
+SBC09_MMU0                      EQU     $FE10
+SBC09_MMU1                      EQU     $FE20
+
+SBC09_UART_MRA                  EQU     SBC09_UART+0x0
+SBC09_UART_SRA                  EQU     SBC09_UART+0x1
+SBC09_UART_CSRA                 EQU     SBC09_UART+0x1
+SBC09_UART_CRA                  EQU     SBC09_UART+0x2
+SBC09_UART_THRA                 EQU     SBC09_UART+0x3
+SBC09_UART_RHRA                 EQU     SBC09_UART+0x3
+SBC09_UART_ACR                  EQU     SBC09_UART+0x4
+SBC09_UART_ISR                  EQU     SBC09_UART+0x5
+SBC09_UART_IMR                  EQU     SBC09_UART+0x5
+SBC09_UART_CTU                  EQU     SBC09_UART+0x6
+SBC09_UART_CTL                  EQU     SBC09_UART+0x7
+SBC09_UART_MRB                  EQU     SBC09_UART+0x8
+SBC09_UART_SRB                  EQU     SBC09_UART+0x9
+SBC09_UART_CSRB                 EQU     SBC09_UART+0x9
+SBC09_UART_CRB                  EQU     SBC09_UART+0xa
+SBC09_UART_THRB                 EQU     SBC09_UART+0xb
+SBC09_UART_RHRB                 EQU     SBC09_UART+0xb
+SBC09_UART_IVR1                 EQU     SBC09_UART+0xc
+SBC09_UART_IPR                  EQU     SBC09_UART+0xd ; read input port
+SBC09_UART_OPCR                 EQU     SBC09_UART+0xd ; write
+SBC09_UART_OPRSET               EQU     SBC09_UART+0xe ; write
+SBC09_UART_STARTCT              EQU     SBC09_UART+0xe ; read command
+SBC09_UART_OPRCLR               EQU     SBC09_UART+0xf ; write
+SBC09_UART_STOPCT               EQU     SBC09_UART+0xf ; read command
+
+SBC09_UART_RXINT                EQU     $01
+SBC09_UART_TXINT                EQU     $04
+
+
+
+MR1_RxRTS                       EQU     $80
+MR1_RxINT                       EQU     $40
+MR1_ERR_MODE                    EQU     $20
+MR1_PARITY_MODE_ON              EQU     $00
+MR1_PARITY_MODE_FORCE           EQU     $08
+MR1_PARITY_MODE_OFF             EQU     $10
+MR1_PARITY_MODE_MULTI           EQU     $18
+MR1_PARITY_ODD                  EQU     $04
+MR1_PARITY_BITS_5               EQU     $00
+MR1_PARITY_BITS_6               EQU     $01
+MR1_PARITY_BITS_7               EQU     $02
+MR1_PARITY_BITS_8               EQU     $03
+
+MR2_CHA_MODE_NORM               EQU     $00
+MR2_CHA_MODE_ECHO               EQU     $40
+MR2_CHA_MODE_LOCAL_LOOP         EQU     $80
+MR2_CHA_MODE_REMOTE_LOOP        EQU     $C0
+MR2_TxRTS                       EQU     $20
+MR2_TxCTS                       EQU     $10
+MR2_STOP_BITS_1                 EQU     $07
+MR2_STOP_BITS_2                 EQU     $0F
+
+SR_BRK                          EQU     $80
+SR_FE                           EQU     $40
+SR_PE                           EQU     $20
+SR_OE                           EQU     $10
+SR_TxEMT                        EQU     $08
+SR_TxRDY                        EQU     $04
+SR_FFULL                        EQU     $02
+SR_RxRDY                        EQU     $01
+
+CRA_CMD_NOP                     EQU     $00
+CRA_CMD_RES_MR                  EQU     $10
+CRA_CMD_RES_Rx                  EQU     $20
+CRA_CMD_RES_Tx                  EQU     $30
+CRA_CMD_RES_ERR                 EQU     $40
+CRA_CMD_RES_CHA_BRK             EQU     $50
+CRA_CMD_START_BRK               EQU     $60
+CRA_CMD_STOP_BRK                EQU     $70
+CRA_CMD_SET_RxBRG               EQU     $80
+CRA_CMD_RES_RxBRG               EQU     $90
+CRA_CMD_SET_TxBRG               EQU     $A0
+CRA_CMD_RES_TxBRG               EQU     $B0
+CRA_CMD_STDBY                   EQU     $C0
+CRA_CMD_ACT                     EQU     $D0
+
+CRA_TxDIS                       EQU     $08
+CRA_TxEN                        EQU     $04
+CRA_RxDIS                       EQU     $02
+CRA_RxEN                        EQU     $01
+
+ACR_BRG                         EQU     $80
+ACR_CT_MODE_CTR_IP2             EQU     $00
+ACR_CT_MODE_CTR_TxCA            EQU     $10
+ACR_CT_MODE_CTR_TxCB            EQU     $20
+ACR_CT_MODE_CTR_X1_DIV16        EQU     $30
+ACR_CT_MODE_SQ_IP2              EQU     $40
+ACR_CT_MODE_SQ_IP2_DIV16        EQU     $50
+ACR_CT_MODE_SQ_X1               EQU     $60
+ACR_CT_MODE_SQ_X1_DIV16         EQU     $70
+ACR_IP3_INT                     EQU     $08
+ACR_IP2_INT                     EQU     $04
+ACR_IP1_INT                     EQU     $02
+ACR_IP0_INT                     EQU     $01
+
+ISR_IP                          EQU     $80
+ISR_BRK_B                       EQU     $40
+ISR_RxRDY_B                     EQU     $20
+ISR_TxRDY_B                     EQU     $10
+ISR_CTR                         EQU     $08
+ISR_BRK_A                       EQU     $04
+ISR_RxRDY_A                     EQU     $02
+ISR_TxRDY_A                     EQU     $01
+
+IMR_IP                          EQU     $80
+IMR_BRK_B                       EQU     $40
+IMR_RxRDY_B                     EQU     $20
+IMR_TxRDY_B                     EQU     $10
+IMR_CTR                         EQU     $08
+IMR_BRK_A                       EQU     $04
+IMR_RxRDY_A                     EQU     $02
+IMR_TxRDY_A                     EQU     $01
+
+OPCR_O7_TxRDY_B                 EQU     $80
+OPCR_O6_TxRDY_A                 EQU     $40
+OPCR_O5_RxRDY_B                 EQU     $20
+OPCR_O4_RxRDY_A                 EQU     $10
+OPCR_O3_CT_OUT                  EQU     $04
+OPCR_O3_TxCB                    EQU     $08
+OPCR_O3_RxCB                    EQU     $0C
+OPCR_O2_TxCA_MUL16              EQU     $01
+OPCR_O2_TxCA                    EQU     $02
+OPCR_O2_RxCA                    EQU     $03
+
+IPCR_DELTA_IP3                  EQU     $80
+IPCR_DELTA_IP2                  EQU     $40
+IPCR_DELTA_IP1                  EQU     $20
+IPCR_DELTA_IP0                  EQU     $10
+IPCR_IP3                        EQU     $08
+IPCR_IP2                        EQU     $04
+IPCR_IP1                        EQU     $02
+IPCR_IP0                        EQU     $01
+
+; board specific OP pins from UART
+OP_BIT_RTS_A    EQU     $01
+OP_BIT_RTS_B    EQU     $02
+OP_BIT_LED      EQU     $04
+OP_BIT_MMU_16K  EQU     $08
+OP_BIT_nENMMU   EQU     $10
+OP_BIT_SDCLK    EQU     $20
+OP_BIT_SDMOSI   EQU     $40
+OP_BIT_SDCS     EQU     $80
+
+; board specific IP pins to UART
+IP_BIT_CTS_A    EQU     $01
+IP_BIT_CTS_B    EQU     $02
+IP_BIT_JP1      EQU     $04
+IP_BIT_JP2      EQU     $08
+IP_BIT_JP3      EQU     $10
+
+
+        ENDIF
