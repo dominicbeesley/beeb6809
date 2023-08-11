@@ -63,6 +63,6 @@ rom-dev/BBCBASIC/testing/fpshow/fpshow.exe
 # generated files that we don't want
 */*/gen-version.inc
 VERSION-date.gen.asm
-sbc09-midimos.sublime-workspace
-sbc09-midimos.sublime-workspace
+VERSION-date.gen.*.asm
 *.sublime-workspace
+*.sublime-project
