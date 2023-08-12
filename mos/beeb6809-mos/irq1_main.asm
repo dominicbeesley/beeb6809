@@ -36,7 +36,7 @@
 ;	lda	#$E7				;set timeout counter to stored value
 ;	sta	zp_mos_rs423timeout		;
 LDCDDrti
-		rti					;and exit (to DE82)
+		rts					;and exit (to DE82)
 ;; ----------------------------------------------------------------------------
 						;A contains ACIA status
 ;LDCDE:	and	sysvar_ACIA_IRQ_MASK_CPY	;AND with ACIA bit mask (normally FF)
@@ -57,7 +57,8 @@ issue_unknown_interrupt					; LDCF3
 		ldb	#SERVICE_5_UKINT		;X=5
 		jsr	mos_OSBYTE_143_b_cmd_x_param	;issue rom call 5 'unrecognised interrupt'
 		beq	LDCDDrti			;if a rom recognises it then RTI
-		jmp	[IRQ2V]				;else offer to the user via IRQ2V
+		ldu	#EXT_IRQ2V		
+		jmp	OSCHAINVEC
 ;; ----------------------------------------------------------------------------
 ;; VIA INTERUPTS ROUTINES
 mos_VIA_INTERUPTS_ROUTINES
@@ -184,7 +185,7 @@ mos_SYSTEM_INTERRUPT_6_10mS_Clock
 	M_100MSTICK
 
 
-		rti					;else return 
+		rts					;else return 
 ;; ----------------------------------------------------------------------------
 ;; SYSTEM INTERRUPT 4 ADC end of conversion
 irq_adc_EOC
@@ -209,7 +210,7 @@ irq_adc_EOC
 LDE6C		lda	#$10				;rest interrupt 4
 irq_set_sysvia_ifr_rti				; LDE6E
 		sta	sheila_SYSVIA_ifr		; reset SYS VIA IFR
-		rti					; finished interrupts
+		rts					; finished interrupts
 ;; ----------------------------------------------------------------------------
 ;; SYSTEM INTERRUPT 0 Keyboard;	
 irq_keyboard					; LDE72

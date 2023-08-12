@@ -944,8 +944,7 @@ x_VDU_EXTENSION
 		lda	vduvar_VDU_Q_END - 5		;	C938
 		CLC					;	C93B
 
-jmp_VDUV					; LC93C
-		jmp	[VDUV]				;	C93C
+jmp_VDUV		JMPVEC	"VDUV"				; LC93C
 ;; ----------------------------------------------------------------------------
 ;; set CRT controller
 x_set_CRT_controller

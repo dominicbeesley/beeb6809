@@ -97,6 +97,10 @@ ROM_LANGST	RESET_MACH_STACK
 		STY	ZP_ESCPTR
 		LEAU	HandleBRK, PCR
 		STU	,X					; Claim BRKV
+	IF NOT MACH_MATCHBOX
+		LDB	zp_mos_currom				; new EXT vector APU for
+		STB	2,X	
+	ENDIF
 
 		LEAU	HeaderCopyright, PCR
 		STU	ZP_MOS_ERROR_PTR_QRY

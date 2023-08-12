@@ -1,6 +1,6 @@
 .PHONY:		all
 
-all: all_chipkit all_beeb
+all: all_chipkit all_beeb all_sbc09
 
 all_chipkit:
 	$(MAKE) -C noice/noice all_chipkit

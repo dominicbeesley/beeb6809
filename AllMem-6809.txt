@@ -2,6 +2,34 @@
 ; TODO: 2023-07-08 make all vectors extended
 ; TODO: 2023-07-08 reuse original vector area for per-rom workspace?
 
+Breaking Changes 11/8/2023
+=========================
+
+## All vectors extended
+
+To free up some page 2 memory and to simplify the API all vectors are now
+extended vectors.
+
+To support the case where the current ROM should stay in place when the 
+vector is called the rom number in the vector table may be set to $FF (255)
+
+To call a vector instead of calling an indirect address the entry points
+based at FFxx in the MOS rom should be used with JSR i.e.
+
+    jsr EXTVEC_ENTER_USERV
+
+To jump to a vector use 
+    jmp EXTVEC_ENTER_USERV
+
+To chain a vector within a claimed vector a new API call has been added FFFD
+OSCHAINVEC a 3 byte vector address, rom # sequence is passed at the address
+pointed to by U which is used to call the next vector in a chain.
+
+The vector entry routines at FFxx all leave a 3 byte return on the stack
+which MUST be RTS'd to - not RTI  - interrupt vectors must all return with rts
+which will then be RTI'd in the MOS.
+
+
 Breaking Changes 9/7/2023
 =========================
 

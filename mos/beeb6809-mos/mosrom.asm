@@ -88,6 +88,13 @@ DEBUG_INFO	MACRO
 		DEBUGPR \1
 		ENDM
 
+CALLVEC		MACRO
+		jsr	EXTVEC_ENTER_\1
+		ENDM
+
+JMPVEC		MACRO
+		jmp	EXTVEC_ENTER_\1
+		ENDM
 
 		; NOTE: MOS only runs on a 6309 and uses 6309 extra registers
 
@@ -304,6 +311,7 @@ mostbl_SYSVAR_DEFAULT_SETTINGS				; LD976
 		FCB	$00					; EC char dest status
 		FCB	$00					; ED cursor edit status
 		
+settings_end_7E	; settings up to here on warm boot
 		FCB	$00					; EE location 27E (keypad numeric base Master)
 		FCB	$00					; EF location 27F (?)
 		FCB	$00					; F0 location 280 (Country code)
@@ -320,13 +328,14 @@ mostbl_SYSVAR_DEFAULT_SETTINGS				; LD976
 		FCB	$01					; F5 Printer dest
 
 		FCB	$0A					; Printer ignore
+settings_end_87	; settings up to here on CTRL-BREAK
 		FCB	$00					; break vector jmp
 		FCB	$00					; break vector hi
 		FCB	$00					; break vectro lo
 		FCB	$00
 		FCB	$00
 		FCB	$FF					;	D9C6
-
+settings_end_8D ; settings up to here on Cold boot
 
 	IF CPU_6309
  **************************************************************************
@@ -338,7 +347,7 @@ mos_handle_div0
 
 		DO_BRK	$FF, "Divide by 0", 0
 mos_handle_illegalop
-		jmp	[ILOPV]
+		JMPVEC	"ILOPV"
 mos_default_illegalop		
 		DO_BRK	$FF, "Illegal instruction", 0		
 	ENDIF
@@ -382,6 +391,23 @@ mos_handle_boot_menu
 	IF NATIVE
 		; ENTER NATIVE MODE
 		LDMD	#1
+	ENDIF
+
+	IF MACH_BEEB
+		; setup acia for debugging at 9600
+		lda	#3
+		sta	sheila_ACIA_CTL
+		nop
+		nop
+		nop
+		nop
+		nop
+		lda	#$16
+		sta	sheila_ACIA_CTL
+		lda	#%01100100
+		sta	sheila_SERIAL_ULA
+		lda	#$41
+		sta	sheila_ACIA_DATA
 	ENDIF
 
 	IF MACH_CHIPKIT
@@ -498,7 +524,7 @@ LDA11		tfr	b,a					;A=B
 	ENDIF ; MACH_BEEB|MACH_CHIPKIT
 x_set_up_page_2
 		ldx	#$9C					;
-		ldy	#$8D					;
+		ldy	#settings_end_8D-vec_table					;
 ;;	puls	A					;get back A from &D9DB
 ;;	tsta
 ;;	beq	LDA36					;if A=0 power up reset so DA36 with X=&9C Y=&8D
@@ -509,9 +535,9 @@ x_set_up_page_2
 	IF MACH_BEEB
 		beq	1F
 	ENDIF
-		ldy	#$7E					;else Y=&7E
+		ldy	#settings_end_7E-vec_table		;else Y=&7E
 		bcc	x_set_up_page_2_2			;and if not CTRL-BREAK DA42 WARM RESET
-		ldy	#$87					;else Y=&87 COLD RESET
+		ldy	#settings_end_87-vec_table		;else Y=&87 COLD RESET
 		inc	sysvar_BREAK_LAST_TYPE			;&28D=1
 1		inc	sysvar_BREAK_LAST_TYPE			;&28D=&28D+1
 		lda	zp_mos_INT_A				;get keyboard links set
@@ -521,13 +547,11 @@ x_set_up_page_2
 		
 ;; : set up page 2; on entry	   &28D=0 Warm reset, X=&9C, Y=&7E ; &28D=1 Power up  , X=&90, Y=&8D ; &28D=2 Cold reset, X=&9C, Y=&87 
 x_set_up_page_2_2
+		DEBUG_INFO	"Clear page 2"		
 		tfr	X,D
-		tfr	B,A
-		jsr	debug_print_hex
-		tfr	Y,D
-		tfr	B,A
-		jsr	debug_print_hex
-		DEBUG_INFO	"Setup page 2"		
+		jsr	debug_print_hex2
+		jsr	debug_print_newl
+
 		clra
 x_setup_pg2_lp0	
 		cmpx	#$CE					;zero &200+X to &2CD
@@ -548,14 +572,30 @@ LDA56		clr	,x+					;zero zeropage &E2 to &FF
 		cmpx	#$100
 		bne	LDA56				;	DA59
 
+		DEBUG_INFO	"Setup P2 settings"
+		tfr	Y,D
+		jsr	debug_print_hex2
+		jsr	debug_print_newl
+
+		; TODO: improve this
+1		lda	vec_table - 1,y			;	DA5B
+		sta	$200 - 1,y			;	DA5E
+		leay	-1,y				;	DA61
+		cmpy	#vec_table_end-vec_table
+		bne	1B				;	DA62
+		
 		DEBUG_INFO	"Setup vectors"
 
-		
-
-LDA5B		lda	vec_table - 1,y			;	DA5B
-		sta	USERV - 1,y			;	DA5E
-		leay	-1,y				;	DA61
+		ldb	#(vec_table_end-vec_table)/2
+		ldx	#vec_table
+		ldy	#EXT_USERV
+		lda	#$FF
+LDA5B		ldu	,X++				;	DA5B
+		stu	,Y++
+		sta	,Y+
+		decb
 		bne	LDA5B				;	DA62
+
 		lda	#$62				;	DA64
 		sta	zp_mos_keynumfirst		;	DA66
 		
@@ -865,10 +905,15 @@ mos_OSRDRM
 		ldb	,S+
 		jsr	mos_select_SWROM_B
 		puls	B,PC
+
+	; new API OSROMSEL: B contains rom to select, returns original in B
+	; if B < 0 on entry then just return old ROM
 ;mos_select_SWROM_X:
 mos_select_SWROM_B
 		pshs	A
 		lda	zp_mos_curROM
+		tstb
+		bmi	1F
 		stb	zp_mos_curROM			;RAM copy of rom latch 
 	IF MACH_SBC09
 		; TODO: make this more coherent odd/even like Blitter?
@@ -877,16 +922,18 @@ mos_select_SWROM_B
 	ELSE
 		stb	sheila_ROMCTL_SWR		;write to rom latch
 	ENDIF
-		tfr	A,B
+1		tfr	A,B
 		puls	A,PC				;and return
 ;; ----------------------------------------------------------------------------
 mos_handle_irq
-		jmp	[IRQ1V]				;	DC24
-
+		CALLVEC "IRQ1V"
+		rti
 mos_handle_nmi	
-		jmp	[NMI9V]
+		CALLVEC "NMI9V"
+		rti
 mos_handle_swi
-		jmp	[SWI9V]
+		CALLVEC "SWI9V"
+		; fall through to dummy RTI
 mos_handle_swi2
 		rti
 ;; ----------------------------------------------------------------------------
@@ -913,13 +960,15 @@ mos_handle_swi3
 		jsr	mos_select_SWROM_B			; and activate it
 		puls	CC,D,X					; restore A,X,CC
 		CLI						; allow interrupts
-		jmp	[BRKV]					; and JUMP via BRKV (normally into current language)
+		CALLVEC "BRKV"					; and JUMP via BRKV (normally into current language)
 ;; ----------------------------------------------------------------------------
 ;; DEFAULT BRK HANDLER
 mos_DEFAULT_BRK_HANDLER
 
 		DEBUG_INFO "mos_DEFAULT_BRK_HANDLER"
 
+		lds	#STACKTOP			; this is different to 6502, setup system stack at PAGE 1
+		lda	#MOSROMSYS_DP			; and DP at PAGE 0
 		ldy	zp_mos_error_ptr
 		leay	1,Y
 		jsr	printAtY				;print message - including error number - TODO - is this right?
@@ -1229,7 +1278,7 @@ cli_uk_command						; LE021
 		ldx	zp_mos_X			; else get back pointer
 		lda	#FSCV_CODE_OSCLI_UK		; and issue to current FS
 mos_jmp_FSCV						; LE031	
-		jmp	[FSCV]				;	E031
+		JMPVEC	"FSCV"				;	E031
 ;; ----------------------------------------------------------------------------
 LE034		
 		asla					;	E034
@@ -1469,8 +1518,8 @@ LE19A	rts					;	E19A
 LE1A2		ldx	#$03				;X=3
 LPT_NETV_then_UPTV				; LE1A4
 		LDY_B	sysvar_PRINT_DEST		;Y=printer destination
-		jsr	[NETV]				;to JMP (NETV)
-		jmp	[UPTV]				;jump to PRINT VECTOR for special routines
+		CALLVEC	"NETV"				;to JMP (NETV)
+		JMPVEC	"UPTV"				;jump to PRINT VECTOR for special routines
 
  *************** Buffer handling *****************************************
 		;X=buffer number
@@ -1556,7 +1605,7 @@ LE1F3
 ;; enter byte in buffer, wait and flash lights if full
 x_INSV_flashiffull
 		SEI					; prevent interrupts
-		jsr	[INSV]				; entera byte in buffer X
+		CALLVEC "INSV"				; entera byte in buffer X
 		bcc	LE20D				; if successful exit
 		jsr	x_keyb_leds_test_esc		; else switch on both keyboard lights
 	IF INCLUDE_KEYBOARD
@@ -1939,7 +1988,7 @@ mos_OSBYTE_152					; LE45B
 mos_OSBYTE_145
 		CLV
 jmpREMV
-		jmp	[REMV]
+		JMPVEC	"REMV"
 *************************************************************************
 *                                                                       *
 *       REMV buffer remove vector default entry point                   *
@@ -2027,7 +2076,7 @@ x_CAUSE_AN_EVENT					;LE494
 		clra
 		exg	Y,D
 		exg	B,A				;else A=Y, Y=A	 - TODO - this is a bit rubbish
-		jsr	[EVNTV]				;vector through &220
+		CALLVEC	"EVNTV"				;vector through &220
 		puls	D,CC,PC				; carry already cleared for success
 
 x_return_with_carry_set_pop_D_CC
@@ -2044,7 +2093,7 @@ x_return_with_carry_set_pop_D_CC
 ;on entry X is buffer number, Y is character to be written 
 mos_OSBYTE_138						; LE4AF
 		lda	zp_mos_OSBW_Y
-jmpINSV		jmp	[INSV]
+jmpINSV		JMPVEC	"INSV"
 
 get_buffer_ptr
 		m_txb
@@ -2260,7 +2309,7 @@ mos_check_eco_get_byte_from_kbd			; LE577
 	bpl	x_get_byte_from_key_string	;if not set goto E581
 	lda	#$06				;else Econet function 6 
 jmpNETV						; LE57E
-	jmp	[NETV]				;to the Econet vector
+	JMPVEC	"NETV"				;to the Econet vector
 
 ********* get byte from key string **************************************
 ;on entry 0268 contains key length
@@ -2509,7 +2558,7 @@ mos_OSBYTE_136					; LE657
 ;; ----------------------------------------------------------------------------
 ;; *LINE	  entry
 mos_jmp_USERV
-		jmp	[USERV]				;	E659
+		JMPVEC	"USERV"				;	E659
 ;; ----------------------------------------------------------------------------
 ;; OSBYTE  126  Acknowledge detection of ESCAPE condition
 mos_OSBYTE_126
@@ -2727,7 +2776,7 @@ LE738		CLV				;	E738
 x_mos_SEV_and_CNPV					; LE73B
 		orcc	#CC_V+CC_C+CC_N
 x_mos_CNPV						; LE73E
-		jmp	[CNPV]				;	E73E
+		JMPVEC	"CNPV"				;	E73E
 ;; ----------------------------------------------------------------------------
 ;; check RS423 input buffer
 	; old API return Cy = 1 when buffer > minimum in BUF_EXT
@@ -2998,7 +3047,7 @@ mos_VDU_7					; LE86F
 		clra					;X=A = bell channel number +4=buffer number
 		tfr	D,X
 		lda	sysvar_BELL_ENV			;get bell amplitude/envelope number
-		jsr	[INSV]				;store it in buffer pointed to by X
+		CALLVEC	"INSV"				;store it in buffer pointed to by X
 		lda	sysvar_BELL_DUR			;get bell duration
 		sta	,-S
 		lda	sysvar_BELL_FREQ		;get bell frequency
@@ -3213,7 +3262,7 @@ OSWORD_0_read_line_skip_not_ctrl_u			; LE953
 		bra	OSWORD_0_read_line_loop_echo	;if less than ignore and don't increment
 OSWORD_0_read_line_skip_return				; LE96C		
 		jsr	OSNEWL				;output CR/LF   
-		jsr	[NETV]				;call Econet vector
+		CALLVEC	"NETV"				;call Econet vector
 OSWORD_0_read_line_skip_err				; LE972
 		m_tby
 		lda	zp_mos_ESC_flag			;A=ESCAPE FLAG
@@ -3401,7 +3450,7 @@ mos_OSBYTE_118					; LE9D9
 		bmi	LE9E7				;if ESCAPE exists (M set) E9E7
 		ANDCC	#~(CC_C + CC_V)			;else clear V and C
 						;before calling main keyboard routine to
-		jsr	[KEYV]				;switch on lights as required
+		CALLVEC	"KEYV"				;switch on lights as required
 LE9E7		puls	CC				;get back flags
 		rola					;and rotate carry into bit 0
 		rts					;Return to calling routine
@@ -4125,7 +4174,7 @@ F09B	FCB	$1B,$81,$82,$83,$85,$86,$88,$89,$5C,$8D
 mos_enter_keyboard_routines
 		orcc	#CC_V+CC_N			;set V and M
 jmpKEYV	
-		jmp	[KEYV]
+		JMPVEC	"KEYV"
 ;; ----------------------------------------------------------------------------
 ;	ora	(zp_lang+97,x)			;	F06B
 ;	sei					;	F06D
@@ -5395,6 +5444,12 @@ debug_print_newl
 		jsr	debug_print_ch
 		puls	A,PC
 
+debug_print_hex2
+		sta	,-S
+		jsr	debug_print_hex
+		tfr	B,A
+		jsr	debug_print_hex
+		puls	A,PC
 debug_print_hex
 		sta	,-S
 		lsra
@@ -6498,13 +6553,13 @@ mos_hexstr_Y	sta	,-S
 jgh_USERINT	rti
 jgh_ERRJMP	ldx	,S++
 		CLI
-		jmp	[BRKV]
+		JMPVEC	"BRKV"
 jgh_CLICOM	TODO "jgh_CLICOM"
 jgh_OSINIT	tsta
 		bne	OSINIT_read
 		clra
 		tfr	A,DP			; set DP=0
-OSINIT_read	ldx	#BRKV
+OSINIT_read	ldx	#EXT_BRKV
 		ldy	#zp_mos_ESC_flag
 		clra				; indicate BE OS calls
 		rts
@@ -6526,17 +6581,26 @@ mos_OSBYTE_150
 	bra	1B
 
 * Bounce table to cope with fact that indirect jump is 4 bytes on 6809
-OSFIND_bounce	jmp	[FINDV]
-OSGBPB_bounce	jmp	[GBPBV]
-OSBPUT_bounce	jmp	[BPUTV]
-OSBGET_bounce	jmp	[BGETV]
-OSARGS_bounce	jmp	[ARGSV]
-OSFILE_bounce	jmp	[FILEV]
-OSRDCH_bounce	jmp	[RDCHV]
-OSWRCH_bounce	jmp	[WRCHV]
-OSWORD_bounce	jmp	[WORDV]
-OSBYTE_bounce	jmp	[BYTEV]
-OSCLI_bounce	jmp	[CLIV]
+OSFIND_bounce	JMPVEC	"FINDV"
+OSGBPB_bounce	JMPVEC	"GBPBV"
+OSBPUT_bounce	JMPVEC	"BPUTV"
+OSBGET_bounce	JMPVEC	"BGETV"
+OSARGS_bounce	JMPVEC	"ARGSV"
+OSFILE_bounce	JMPVEC	"FILEV"
+OSRDCH_bounce	JMPVEC	"RDCHV"
+OSWRCH_bounce	JMPVEC	"WRCHV"
+OSWORD_bounce	JMPVEC	"WORDV"
+OSBYTE_bounce	JMPVEC	"BYTEV"
+OSCLI_bounce	JMPVEC	"CLIV"
+
+mos_vector_rts
+		stb	,-S
+		ldb	1,S
+		jsr	mos_select_SWROM_B
+		ldb	,S
+		leas	2,S
+dummy_vector_RTS
+		rts
 
 
 FILL5
@@ -6748,123 +6812,72 @@ FILL5LEN	EQU	HARDWARELOC-FILL5
 		jsr	x_enter_extended_vector			;Extended IND1V
 		jsr	x_enter_extended_vector			;Extended IND2V
 		jsr	x_enter_extended_vector			;Extended IND3V
-x_enter_extended_vector	
-		;at this point the stack will hold 4 bytes (at least)
-		;S 0,1 extended vector address
-		;S 2,3 address of calling routine
-		;A,X,Y,P will be as at entry
 
-		leas	-5,S				; reserve 7 bytes on the stack
-		pshs	CC,B,X				; save 
+		; new vector API handling
 
-		; stack now has
-		;	12	Caller addr (lo)
-		;	11	Caller addr (hi)
-		;	10	Extended vector addr (lo)
-		;	9	Extended vector addr (hi)
-		;	8	?
-		;	7	?
-		;	6	?
-		;	5	?
-		;	4	?
-		;	3	X (lo)
-		;	2	X (hi)
-		;	1	B
-		;	0	CC
+	; This is a new API for the 6x09
+	; All OS vectors should be invoked through the extended entry points
+	; at FF00 onwards. which will call us with the stack containing
+	; an address FF00 onwards below the original caller return address	
+x_enter_extended_vector
+		leas	-3,S
+		pshs	D,U
+	; stack contains
+	;	+9	original caller return address
+	;	+7	trampoline address FF00-FFxx
+	;	+4	- - -
+	;	+2	preserved U
+	;	+0	preserved D
 
-		ldx	#x_return_addess_from_ROM_indirection
-		stx	6,S
-
-		; stack now has
-		;	12	Caller addr (lo)
-		;	11	Caller addr (hi)
-		;	10	Extended vector addr (lo)
-		;	9	Extended vector addr (hi)
-		;	8	?
-		;	7	x_return_addess_from_ROM_indirection (lo)
-		;	6	x_return_addess_from_ROM_indirection (hi)
-		;	5	?
-		;	4	?
-		;	3	X (lo)
-		;	2	X (hi)
-		;	1	B
-		;	0	CC
-
-		ldb	zp_mos_curROM
-		stb	8,S				; store current ROM on stack
-
-		ldb	10,S				; get low byte of ext vector addr + 3
-		ldx	#EXT_USERV - 3
-		abx					; X now points at extended vector
-		ldb	2,X				; get new rom #
-		ldx	,X				; get routine address
-
-		stx	4,S				; store as return address from this routine on stack
-
-		; stack now has
-		;	12	Caller addr (lo)
-		;	11	Caller addr (hi)
-		;	10	Extended vector addr (lo)
-		;	9	Extended vector addr (hi)
-		;	8	cur SWR#
-		;	7	x_return_addess_from_ROM_indirection (lo)
-		;	6	x_return_addess_from_ROM_indirection (hi)
-		;	5	rom vector handler (lo)
-		;	4	rom vector handler (hi)
-		;	3	X (lo)
-		;	2	X (hi)
-		;	1	B
-		;	0	CC
+		ldb	8,S
+		clra
+		addd	#EXT_USERV-3
+		tfr	D,U			; U now contains a pointer to the correct EXT vector
 
 
+		ldb	2,U
 		jsr	mos_select_SWROM_B
+1		stb	8,S			; store original rom #
+	
+	; stack contains
+	;	+9	original caller return address	
+	;	+8	original rom #
+	;	+4	- - - -
+	;	+2	preserved U
+	;	+0	preserved D
 
-		puls	CC,B,X,PC			; jump to ROM routine
-
-		; routine is entered with:
-		;	6	Caller addr (lo)
-		;	5	Caller addr (hi)
-		;	4	Extended vector addr (lo)
-		;	3	Extended vector addr (hi)
-		;	2	cur SWR#
-		;	1	x_return_addess_from_ROM_indirection (lo)
-		;	0	x_return_addess_from_ROM_indirection (hi)
-		; NOTE: the debugger uses this stack signature and switches ROMS back itsel
-		; so if any changes are made here they must be reflected in the ROM		
-
-
-;; ----------------------------------------------------------------------------
-;; returnFDBess from ROM indirection; at this point stack comprises original ROM number,return from JSR &FF51, ; return from original call the return from FF51 is garbage so; 
-x_return_addess_from_ROM_indirection
-
-		; stack now has
-		;	4	Caller addr (lo)
-		;	3	Caller addr (hi)
-		;	2	Extended vector addr (lo)
-		;	1	Extended vector addr (hi)
-		;	0	cur SWR#
-
-		pshs	CC,B
+		ldu	0,U
+		stu	4,S
+		ldu	#mos_vector_rts
+		stu	6,S
+	; stack contains
+	;	+9	original caller return address	
+	;	+8	original rom #
+	;	+6	mos_vector_rts exit routine
+	;	+4	vector address
+	;	+2	preserved U
+	;	+0	preserved D
+		puls	D,U,PC
+	; vector is entered with all register preserved
+	;	+3	original caller return address	
+	;	+2	original rom #
+	;	+0	mos_vector_rts exit routine
 
 
-		; stack now has
-		;	6	Caller addr (lo)
-		;	5	Caller addr (hi)
-		;	4	Extended vector addr (lo)
-		;	3	Extended vector addr (hi)
-		;	2	cur SWR#
-		;	1	B
-		;	0	CC
 
-		ldb	2,S				; get back saved SWR #
+; This is a new API for the 6x09 and is used to pass on a call
+	; to a previous vector owner that has been stashed as a three
+	; byte pointer and rom number
+	; This call expects the stack to already contain three bytes
+	; as set up by the originator of the vector chain in mos_call_vector
+	; the U register should point at the next claimant's 3 byte entry
+mos_chain_vector
+		stb	,-S
+		ldb	2,U
 		jsr	mos_select_SWROM_B
-		puls	B,CC				; restore flags and B
-		leas	3,S				; skip unwanted
+		ldb	,S+
+		jmp	[,U]
 
-;; TODO: Make this RTI or RTS depending on vector?
-
-dummy_vector_RTS				; LFFA6
-		rts					;	FFA6
 ; ----------------------------------------------------------------------------
 ; OSBYTE &9D	FAST BPUT
 mos_OSBYTE_157
@@ -6928,7 +6941,7 @@ _OSWORD		jmp	OSWORD_bounce			;	FFF1
 _OSBYTE		jmp	OSBYTE_bounce			;	FFF4
 _OSCLI		jmp	OSCLI_bounce			;	FFF7
 _OSROMSEL	jmp	mos_select_SWROM_B		;       FFFA		; NEW: select rom in B, return old in B
-		jmp	dummy_vector_RTS		;	FFFD
+_OSCHAINVEC	jmp	mos_chain_vector		;	FFFD
 
 		SECTION	"tables_and_strings"
 MOSSTRINGSEND

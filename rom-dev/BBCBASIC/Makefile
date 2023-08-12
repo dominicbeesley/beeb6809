@@ -48,7 +48,7 @@ DEPS=			$(BASEDIR)/includes/hardware.inc \
 			6809BAS.asm
 
 ROMNO=A
-HOSTFSDIR=~/hostfs/beebroms/
+HOSTFSDIR=~/hostfs/roms69/
 GETSYMSFLAGS=-rom A
 
 include		../../Makefile.defs

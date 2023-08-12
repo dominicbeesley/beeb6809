@@ -19,6 +19,7 @@ OSWORD					EQU	$FFF1
 OSBYTE					EQU	$FFF4
 OSCLI					EQU	$FFF7
 OSROMSEL				EQU	$FFFA
+OSCHAINVEC				EQU	$FFFD
 
 PRSTRING				EQU	$FF9B
 CLICOM					EQU	$FFB9
@@ -100,6 +101,8 @@ SERVICE_25_FSINFO			EQU	$25
 
 FSCV_6_NewFS				EQU	$06
 
+	IF NOT MACH_MATCHBOX
+; All vectors are now extended, except MB
 ; OS Vectors
 
 USERV					EQU	$0200	; User vector, called by *LINE, *CODE, OSWORD >=&E0
@@ -131,6 +134,7 @@ SWI9V					EQU	$0230	; SWI instruction vector - do not use except for debugging
 ILOPV					EQU	$0232	; Illegal operation vector
 NMI9V					EQU	$0234	; NMI vector - do not use except for debugging
 
+	ENDIF
 ; OS Extended Vectors Marker addresses
 
 EXTVEC_ENTER_USERV			EQU	$FF00	; User vector, called by *LINE, *CODE, OSWORD >=&E0
