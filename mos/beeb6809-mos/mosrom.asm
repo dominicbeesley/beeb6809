@@ -6593,12 +6593,11 @@ OSWORD_bounce	JMPVEC	"WORDV"
 OSBYTE_bounce	JMPVEC	"BYTEV"
 OSCLI_bounce	JMPVEC	"CLIV"
 
-mos_vector_rts
-		stb	,-S
-		ldb	1,S
+mos_vector_rts	pshs	CC,B
+		ldb	2,S
 		jsr	mos_select_SWROM_B
-		ldb	,S
-		leas	2,S
+		puls	CC,B
+		leas	1,S
 dummy_vector_RTS
 		rts
 
@@ -6821,15 +6820,16 @@ FILL5LEN	EQU	HARDWARELOC-FILL5
 	; an address FF00 onwards below the original caller return address	
 x_enter_extended_vector
 		leas	-3,S
-		pshs	D,U
+		pshs	CC,D,U
 	; stack contains
-	;	+9	original caller return address
-	;	+7	trampoline address FF00-FFxx
-	;	+4	- - -
-	;	+2	preserved U
-	;	+0	preserved D
+	;	+10	original caller return address
+	;	+8	trampoline address FF00-FFxx
+	;	+5	- - -
+	;	+3	preserved U
+	;	+1	preserved D
+	;	+0	preserved CC
 
-		ldb	8,S
+		ldb	9,S
 		clra
 		addd	#EXT_USERV-3
 		tfr	D,U			; U now contains a pointer to the correct EXT vector
@@ -6837,27 +6837,29 @@ x_enter_extended_vector
 
 		ldb	2,U
 		jsr	mos_select_SWROM_B
-1		stb	8,S			; store original rom #
+1		stb	9,S			; store original rom #
 	
 	; stack contains
-	;	+9	original caller return address	
-	;	+8	original rom #
-	;	+4	- - - -
-	;	+2	preserved U
-	;	+0	preserved D
+	;	+10	original caller return address	
+	;	+9	original rom #
+	;	+5	- - - -
+	;	+3	preserved U
+	;	+1	preserved D
+	;	+1	preserved CC
 
 		ldu	0,U
-		stu	4,S
+		stu	5,S
 		ldu	#mos_vector_rts
-		stu	6,S
+		stu	7,S
 	; stack contains
-	;	+9	original caller return address	
-	;	+8	original rom #
-	;	+6	mos_vector_rts exit routine
-	;	+4	vector address
-	;	+2	preserved U
-	;	+0	preserved D
-		puls	D,U,PC
+	;	+10	original caller return address	
+	;	+9	original rom #
+	;	+7	mos_vector_rts exit routine
+	;	+5	vector address
+	;	+3	preserved U
+	;	+1	preserved D
+	;	+0	preserved CC
+		puls	CC,D,U,PC
 	; vector is entered with all register preserved
 	;	+3	original caller return address	
 	;	+2	original rom #
@@ -6872,10 +6874,10 @@ x_enter_extended_vector
 	; as set up by the originator of the vector chain in mos_call_vector
 	; the U register should point at the next claimant's 3 byte entry
 mos_chain_vector
-		stb	,-S
+		pshs	CC,B
 		ldb	2,U
 		jsr	mos_select_SWROM_B
-		ldb	,S+
+		puls	CC,B
 		jmp	[,U]
 
 ; ----------------------------------------------------------------------------
