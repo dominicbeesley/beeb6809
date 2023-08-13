@@ -395,7 +395,7 @@ mos_handle_boot_menu
 
 	IF MACH_BEEB
 		; setup acia for debugging at 9600
-		lda	#3
+		lda	#3				; master reset
 		sta	sheila_ACIA_CTL
 		nop
 		nop
@@ -403,11 +403,9 @@ mos_handle_boot_menu
 		nop
 		nop
 		lda	#$16
-		sta	sheila_ACIA_CTL
-		lda	#%01100100
-		sta	sheila_SERIAL_ULA
-		lda	#$41
-		sta	sheila_ACIA_DATA
+		sta	sheila_ACIA_CTL			; div 64, 8n1, RTS off no interrupts
+		lda	#%01000000
+		sta	sheila_SERIAL_ULA		; 19200 baud cassette off
 	ENDIF
 
 	IF MACH_CHIPKIT
@@ -6626,20 +6624,21 @@ mos_exit_vec
 		; the stack is the same as it would be when an interrupt occurred
 
 	; stack contains
-	;	+6	original caller return address	
-	;	+4	preserved U
-	;	+3	preserved B
-	;	+2	original rom #
+	;	+8	original caller return address	
+	;	+6	preserved U
+	;	+5	preserved B
+	;	+4	original rom #
+	;	+2	exit routine address
 	;	+0	caller
 
-		ldb	2,S			; restore rom #
+		ldb	4,S			; restore rom #
 		jsr	mos_select_SWROM_B
-		ldb	3,S			; restore org caller B
-		ldu	4,S
-		stu	2,S
-		ldu	0,S
+		ldb	5,S			; restore org caller B
+		ldu	6,S
 		stu	4,S
-		leas	2,S
+		ldu	0,S
+		stu	6,S
+		leas	4,S
 		puls	U,PC
 
 FILL5
