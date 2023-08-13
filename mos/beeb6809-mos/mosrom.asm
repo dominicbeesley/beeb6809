@@ -189,13 +189,13 @@ vec_table
 		FDB	mos_INSV_default_entry_point	;  LD96A INSV
 		FDB	mos_REMV_default_entry_point	;  LD96C REMV
 		FDB	mos_CNPV_default_entry_point	;  LD96E CNPV
-		FDB	dummy_vector_RTI		;  LD970 SWI9V
+		FDB	dummy_vector_RTS		;  LD970 SWI9V
 	IF CPU_6309
 		FDB	mos_default_illegalop		;  LD972 ILOPV
 	ELSE
-		FDB	dummy_vector_RTI		;  LD972 ILOPV
+		FDB	dummy_vector_RTS		;  LD972 ILOPV
 	ENDIF
-		FDB	dummy_vector_RTI		;  LD974 NMIV
+		FDB	dummy_vector_RTS		;  LD974 NMIV
 vec_table_end
 ;	FDB	brkBadCommand			;  LD940 USERV
 ;	FDB	mos_DEFAULT_BRK_HANDLER			;  LD942 BRKV
@@ -6563,10 +6563,9 @@ OSINIT_read	ldx	#EXT_BRKV
 		ldy	#zp_mos_ESC_flag
 		clra				; indicate BE OS calls
 		rts
-dummy_vector_RTI
-		rti
 mos_txa
 		m_txa
+dummy_vector_RTS
 		rts
 
 ; ----------------------------------------------------------------------------
@@ -6593,14 +6592,55 @@ OSWORD_bounce	JMPVEC	"WORDV"
 OSBYTE_bounce	JMPVEC	"BYTEV"
 OSCLI_bounce	JMPVEC	"CLIV"
 
-mos_vector_rts	pshs	CC,B
-		ldb	2,S
+	; on entry the stack should contain
+	;	+4	original caller return address	
+	;	+2	preserved U
+	;	+1	preserved B
+	;	+0	original rom #
+mos_vector_rts	ldb	,S+
+		jsr	mos_select_SWROM_B
+		puls	B,U,PC
+
+; This is a new API for the 6x09 and is used to pass on a call
+	; to a previous vector owner that has been stashed as a three
+	; byte pointer and rom number
+	; This call expects the stack to already contain three bytes
+	; as set up by the originator of the vector chain in mos_call_vector
+	; the U register should point at the next claimant's 3 byte entry
+mos_chain_vector
+		pshs	CC,B
+		ldb	2,U
 		jsr	mos_select_SWROM_B
 		puls	CC,B
-		leas	1,S
-dummy_vector_RTS
-		rts
+		jmp	[,U]
 
+
+mos_exit_vec
+		; unwind the stack and restore registers to the point at which the vector
+		; was called with the caller address as the last item on the stack
+		; For interrupts this return address will be a point in the mos containing an RTI
+		; which should be discarded.
+		; Note: depending on where you are in the chain the other registers and flags
+		; may have already been changed by claimants ahead of you. This is primarily
+		; supposed to be a mechanism to unwind interrupts (SWI/NMI) to a point where
+		; the stack is the same as it would be when an interrupt occurred
+
+	; stack contains
+	;	+6	original caller return address	
+	;	+4	preserved U
+	;	+3	preserved B
+	;	+2	original rom #
+	;	+0	caller
+
+		ldb	2,S			; restore rom #
+		jsr	mos_select_SWROM_B
+		ldb	3,S			; restore org caller B
+		ldu	4,S
+		stu	2,S
+		ldu	0,S
+		stu	4,S
+		leas	2,S
+		puls	U,PC
 
 FILL5
 FILL5LEN	EQU	HARDWARELOC-FILL5
@@ -6811,74 +6851,83 @@ FILL5LEN	EQU	HARDWARELOC-FILL5
 		jsr	x_enter_extended_vector			;Extended IND1V
 		jsr	x_enter_extended_vector			;Extended IND2V
 		jsr	x_enter_extended_vector			;Extended IND3V
-
 		; new vector API handling
+		jmp	mos_exit_vec
+mos_call_a_vector
+	; Vector pointer is in U
+		pshs	B,U
+		leas	-5,S
+		pshs	CC,A
+	; stack contains
+	;	+10	original caller return address	
+	;	+8	preserved U
+	;	+7	preserved B
+	;	+2	- - - - -
+	;	+1	preserved A
+	;	+0	preserved CC
+		bra	x_ext_vec2
+
 
 	; This is a new API for the 6x09
 	; All OS vectors should be invoked through the extended entry points
 	; at FF00 onwards. which will call us with the stack containing
 	; an address FF00 onwards below the original caller return address	
 x_enter_extended_vector
-		leas	-3,S
-		pshs	CC,D,U
+		pshs	B
+		leas	-5,S
+		pshs	CC,A
 	; stack contains
-	;	+10	original caller return address
-	;	+8	trampoline address FF00-FFxx
-	;	+5	- - -
-	;	+3	preserved U
-	;	+1	preserved D
+	;	+10	original caller return address	
+	;	+8	entry point + 3
+	;	+7	preserved B
+	;	+2	- - - - -
+	;	+1	preserved A
 	;	+0	preserved CC
 
 		ldb	9,S
+		stu	8,S
+
+	; stack contains
+	;	+10	original caller return address	
+	;	+8	preserved U
+	;	+7	preserved B
+	;	+2	- - - - -
+	;	+1	preserved A
+	;	+0	preserved CC
+
 		clra
 		addd	#EXT_USERV-3
 		tfr	D,U			; U now contains a pointer to the correct EXT vector
 
-
+x_ext_vec2
 		ldb	2,U
 		jsr	mos_select_SWROM_B
-1		stb	9,S			; store original rom #
+1		stb	6,S			; store original rom #
 	
 	; stack contains
-	;	+10	original caller return address	
-	;	+9	original rom #
-	;	+5	- - - -
-	;	+3	preserved U
-	;	+1	preserved D
-	;	+1	preserved CC
 
 		ldu	0,U
-		stu	5,S
+		stu	2,S
 		ldu	#mos_vector_rts
-		stu	7,S
+		stu	4,S
 	; stack contains
 	;	+10	original caller return address	
-	;	+9	original rom #
-	;	+7	mos_vector_rts exit routine
-	;	+5	vector address
-	;	+3	preserved U
-	;	+1	preserved D
+	;	+8	preserved U
+	;	+7	preserved B
+	;	+6	original rom #
+	;	+4	mos_vector_rts exit routine
+	;	+2	vector address
+	;	+1	preserved A
 	;	+0	preserved CC
-		puls	CC,D,U,PC
+		puls	CC,A,PC
 	; vector is entered with all register preserved
-	;	+3	original caller return address	
+	;	+6	original caller return address	
+	;	+4	preserved U
+	;	+3	preserved B
 	;	+2	original rom #
 	;	+0	mos_vector_rts exit routine
 
 
-
-; This is a new API for the 6x09 and is used to pass on a call
-	; to a previous vector owner that has been stashed as a three
-	; byte pointer and rom number
-	; This call expects the stack to already contain three bytes
-	; as set up by the originator of the vector chain in mos_call_vector
-	; the U register should point at the next claimant's 3 byte entry
-mos_chain_vector
-		pshs	CC,B
-		ldb	2,U
-		jsr	mos_select_SWROM_B
-		puls	CC,B
-		jmp	[,U]
 
 ; ----------------------------------------------------------------------------
 ; OSBYTE &9D	FAST BPUT

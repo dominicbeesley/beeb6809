@@ -79,14 +79,15 @@ cmdNOICE_on
 		stx	EXT_NMI9V
 		lda	zp_mos_curROM
 		sta	EXT_NMI9V+2
-		ldx	#EXTVEC_ENTER_NMI9V
-		stx	NMI9V
-		ldx	#NoIceSys_Handle_SWI9V
-		stx	EXT_SWI9V
+;Ext only
+;;		ldx	#NoIceSys_Handle_SWI9V
+;;		stx	EXT_SWI9V
+
 		lda	zp_mos_curROM
 		sta	EXT_SWI9V+2
-		ldx	#EXTVEC_ENTER_SWI9V
-		stx	SWI9V
+; Ext only
+;;		ldx	#EXTVEC_ENTER_SWI9V
+;;		stx	SWI9V
 
 		jsr	NoIceSys_Handle_RESET		; call NoIce reset routine
 
@@ -137,6 +138,8 @@ NoIcePrintX	lda	,X+
 
 
 NoIceSys_Handle_NMI9V
+		jsr	OSEXITVEC
+		leas	2,S				; discard vector chaining stuff from stack
 		ldx	#NOICE_NMI_ENTER_EXT		; put address of NoIce entry point on stack
 		pshs	X
 		lda	sheila_ROMCTL_MOS
@@ -146,6 +149,8 @@ NoIceSys_Handle_NMI9V
 		rts					; NOT a real rts but a jump to the address we pushed
 
 NoIceSys_Handle_SWI9V
+		jsr	OSEXITVEC
+		leas	2,S				; discard vector chaining stuff from stack
 		ldx	#NOICE_SWI_ENTER_EXT		; put address of NoIce entry point on stack
 		pshs	X
 		lda	sheila_ROMCTL_MOS

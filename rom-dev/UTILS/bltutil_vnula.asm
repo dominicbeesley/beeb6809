@@ -1,8 +1,8 @@
 vnula_flags		equ	$39F				; unused OS var in CFS workspace, need to be careful here as I'm likely to get rid of CFS!
 vnula_oldwrchv		equ	$3A0				; unused OS var in CFS workspace, need to be careful here as I'm likely to get rid of CFS!
-vnula_oldbytev		equ	$3A5				; unused OS var in CFS workspace, need to be careful here as I'm likely to get rid of CFS!
-vnula_vdu_code_sav 	equ	$3A2				; unused OS var in CFS workspace, need to be careful here as I'm likely to get rid of CFS!
 vnula_chosen_mode	equ	$3A3				; unused OS var in CFS workspace, need to be careful here as I'm likely to get rid of CFS!
+vnula_vdu_code_sav 	equ	$3A4				; unused OS var in CFS workspace, need to be careful here as I'm likely to get rid of CFS! NOTE: on 6502 this is 3A2, here clash with GXR but not ported that yet!
+vnula_oldbytev		equ	$3A5				; unused OS var in CFS workspace, need to be careful here as I'm likely to get rid of CFS! NOTE: this clashes with CFS/RFS byte at 3A7 which is so-far unused
 
 vnula_newmodeflag	equ	$03				; (bits 0 and 1)
 vnula_newvduflag 	equ	$04				; (bit 2)
@@ -52,13 +52,14 @@ vnula_breakreset
  		jsr	vnula_enablexvdu
 1 		rts
  		
-vnula_resetflags
-		clr	vnula_flags
-		rts
 
 brkInvalidArgument
 		M_ERROR
 		fcb	$7F, "Invalid Argument", 0
+
+vnula_resetflags
+		clr	vnula_flags
+		rts
 
 ;==============================================================================
 cmdVNRESET
@@ -101,9 +102,13 @@ vnula_vduoff
 		pshs	CC
 		SEI
 		ldx	vnula_oldwrchv
-		stx	WRCHV
+		stx	EXT_WRCHV
+		ldb 	vnula_oldwrchv+2
+		stb	EXT_WRCHV+2
 		ldx	vnula_oldbytev
-		stx	BYTEV
+		stx	EXT_BYTEV
+		ldb 	vnula_oldbytev+2
+		stb	EXT_BYTEV+2
 		puls	CC				; restore interrupts to how the were
 
 		lda	vnula_flags
@@ -144,24 +149,23 @@ vnula_enablexvdu
 		jsr	OSBYTE				; X now points at start of extended vectors (usually $0D9F)
 		
 		ldd	#vnula_newwrch
+		ldy	ext_wrchv_offs,X
 		std	ext_wrchv_offs,X
+		sty	vnula_oldwrchv
 		lda	zp_mos_curROM
+		ldb	ext_wrchv_offs+2,X
 		sta	ext_wrchv_offs+2,X
+		stb	vnula_oldwrchv+2
 
 		ldd	#vnula_newbytev
+		ldy	ext_bytev_offs,X
 		std	ext_bytev_offs,X
+		sty	vnula_oldbytev
 		lda	zp_mos_curROM
+		ldb	ext_bytev_offs+2,X
 		sta	ext_bytev_offs+2,X
+		stb	vnula_oldbytev+2
 
-		ldd	WRCHV
-		std	vnula_oldwrchv
-		ldd	#$FF00 + ext_wrchv_offs
-		std	WRCHV
-
-		ldd	BYTEV
-		std	vnula_oldbytev
-		ldd	#$FF00 + ext_bytev_offs
-		std	BYTEV
 
 		lda	#vnula_newvduflag
 		sta	vnula_flags
@@ -181,7 +185,8 @@ vnula_newwrch
 		cmpa	#20				; Q is filled (if any)
 		lbeq	vnula_vdu20
 vnula_oldwrchD	puls	D
-		jmp	[vnula_oldwrchv]
+		ldu	#vnula_oldwrchv
+		jmp	OSCHAINVEC
 
 vnula_wrch_checkQ
 		; check VDU settings before doing anything
@@ -444,9 +449,12 @@ vdu22_newmode
 		lda	#0
 		sta	sysvar_VDU_Q_LEN		; reset Q so subsequent mode change works
 		lda	#22
-		jsr	vnula_OSVDU
+		stu	,--S
+		ldu	#vnula_oldwrchv
+		jsr	OSCALLVEC
 		lda	vnula_zp+1
-		jsr	vnula_OSVDU
+		jsr	OSCALLVEC
+		ldu	,S++
 
 		; sort out VDU queue
 		lda	#255
@@ -470,7 +478,6 @@ vdu22_newmode
 		sta	vnula_flags
 		jmp	vdu22_donewpalandfont
 
-vnula_OSVDU	jmp	[vnula_oldwrchv]		; TODO: this is to replace the RobC jump straigh to VDU driver
 
 
 vdu22_xtraattr

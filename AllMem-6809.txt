@@ -23,11 +23,25 @@ To jump to a vector use
 
 To chain a vector within a claimed vector a new API call has been added FFFD
 OSCHAINVEC a 3 byte vector address, rom # sequence is passed at the address
-pointed to by U which is used to call the next vector in a chain.
+pointed to by U which is used to call the next vector in a chain. This routine
+should be tail-jumped to from the claiming vector to pass on a vector. To 
+completely claim the vector just RTS
 
-The vector entry routines at FFxx all leave a 3 byte return on the stack
+To call a vector (or a 3 byte pointer to a vector) use
+    LDU #address of 3 byte vec/rom block
+    JSR OSCALLVEC
+
+The vector entry routines at FFxx all leave a 6 byte return on the stack
 which MUST be RTS'd to - not RTI  - interrupt vectors must all return with rts
 which will then be RTI'd in the MOS.
+
+The U and B registers are preserved across all vector calls and may be used freely
+in vectors. This means that U and B cannot be used as parameters to/from vectors
+
+Another OS routine OSEXITVEC is provided which will unwind the stack to contain
+just a return to the original caller. For an interrupt this will point to an
+RTI instruction in the MOS. That address may be discarded from the stack to leave
+the stack as if an interrupt had just occurred. 
 
 
 Breaking Changes 9/7/2023

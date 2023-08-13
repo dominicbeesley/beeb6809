@@ -24,7 +24,7 @@ DEPS=	../../includes/hardware.inc \
 		Makefile
 
 ROMNO=E
-HOSTFSDIR=~/hostfs/beebroms/
+HOSTFSDIR=~/hostfs/roms69/
 
 include		../../Makefile.defs 
 
