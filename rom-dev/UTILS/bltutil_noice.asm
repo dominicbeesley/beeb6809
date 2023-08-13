@@ -125,21 +125,14 @@ NoIcePrintX	lda	,X+
 1		rts
 
 
-		; the following routines are entered with:
-		;	5+	Caller RTI signature
-		;	4	Extended vector addr (lo)
-		;	3	Extended vector addr (hi)
-		;	2	cur SWR#
-		;	1	x_return_addess_from_ROM_indirection (lo)
-		;	0	x_return_addess_from_ROM_indirection (hi)
-		; this is set up by the MOS during an extended vector redirect
-		; this needs to be unstacked and stack reset to point
-		; this has to be done in the 
-
+		; the following (NMI9V/SWI9V) routines are entered with the OS Vector
+		; chaining data followed by the interrupt stacked registers.
+		; First we must switch to NoIce memory map before calling OSEXITVEC
+		; which would page back in the SWR bank in use at the point the interrupt
+		; occurred
+		
 
 NoIceSys_Handle_NMI9V
-		jsr	OSEXITVEC
-		leas	2,S				; discard vector chaining stuff from stack
 		ldx	#NOICE_NMI_ENTER_EXT		; put address of NoIce entry point on stack
 		pshs	X
 		lda	sheila_ROMCTL_MOS
@@ -149,8 +142,6 @@ NoIceSys_Handle_NMI9V
 		rts					; NOT a real rts but a jump to the address we pushed
 
 NoIceSys_Handle_SWI9V
-		jsr	OSEXITVEC
-		leas	2,S				; discard vector chaining stuff from stack
 		ldx	#NOICE_SWI_ENTER_EXT		; put address of NoIce entry point on stack
 		pshs	X
 		lda	sheila_ROMCTL_MOS
@@ -216,40 +207,76 @@ NOICE_ENTER_RESET_ENT 	EQU NOICE_CODE_BASE+6
 		FDB	NOICE_NMI_ENT	       		; f7fc (NMI)
 		FDB	NOICE_RESET_ENT	       		; f7fe reset
 
+mos_select_SWROM_B
+		pshs	A
+		lda	zp_mos_curROM
+		tstb
+		bmi	1F
+		stb	zp_mos_curROM			;RAM copy of rom latch 
+	IF MACH_SBC09
+		; TODO: make this more coherent odd/even like Blitter?
+		andb	#$F
+		stb	SBC09_MMU0 + 2			; write mmu for 8000-BFFF
+	ELSE
+		stb	sheila_ROMCTL_SWR		;write to rom latch
+	ENDIF
+1		tfr	A,B
+		puls	A,PC				;and return
+
+
+mos_exit_vec
+		; unwind the stack and restore registers to the point at which the vector
+		; was called with the caller address as the last item on the stack
+		; For interrupts this return address will be a point in the mos containing an RTI
+		; which should be discarded.
+		; Note: depending on where you are in the chain the other registers and flags
+		; may have already been changed by claimants ahead of you. This is primarily
+		; supposed to be a mechanism to unwind interrupts (SWI/NMI) to a point where
+		; the stack is the same as it would be when an interrupt occurred
+
+	; stack contains
+	;	+8	original caller return address	
+	;	+6	preserved U
+	;	+5	preserved B
+	;	+4	original rom #
+	;	+2	exit routine address
+	;	+0	caller
+
+		ldb	4,S			; restore rom #
+		jsr	mos_select_SWROM_B
+		ldb	5,S			; restore org caller B
+		ldu	6,S
+		stu	4,S
+		ldu	0,S
+		stu	6,S
+		leas	4,S
+		puls	U,PC
+
+
 ;===============================================================================
 ; Entry from extended vectors
 ;===============================================================================
-; Here the stack is set up as:
 ;
-; the following routines are entered with:
-;	5+	Caller RTI signature
-;	4	Extended vector addr (lo)
-;	3	Extended vector addr (hi)
-;	2	cur SWR#
-;	1	x_return_addess_from_ROM_indirection (lo)
-;	0	x_return_addess_from_ROM_indirection (hi)
-; this is set up by the MOS during an extended vector redirect
-; this needs to be unstacked and stack reset to point
-; this has to be done in the 
-; it needs to be undone to point +5 (for RTI) and the original
-; ROM paged back in
-; we don't need to worry about trashing registers here as the debugger
-; will pick them all up from the stack at 5+
+; The following routines are entered with the OS vector chaining data followed
+; by the interrupt-time registers which we are interested in, first we must
+; discard the chaining data and reload the current ROM by calling OSEXITVEC
+; and discard the two dummy bytes before entering the actual debugger
+;
+; 
+; We need intimate OS knowledge here as the OSEXITVEC function is not available
+; we just paged it out!
+;
+
+
 
 NOICE_NMI_ENTER_EXT
-		lda	2,s				; original SWR
-		sta	zp_mos_curROM
-		sta	sheila_ROMCTL_SWR		; page back in ROM, we're now 
-							; running from DEBUG MOS 
-		leas	5,S				; reset stack
+		jsr	mos_exit_vec
+		leas	2,S
 		jmp	[NOICE_ENTER_NMI_ENT]
 
 NOICE_SWI_ENTER_EXT
-		lda	2,s				; original SWR
-		sta	zp_mos_curROM
-		sta	sheila_ROMCTL_SWR		; page back in ROM, we're now 
-							; running from DEBUG MOS 
-		leas	5,S				; reset stack
+		jsr	mos_exit_vec
+		leas	2,S
 		jmp	[NOICE_ENTER_SWI_ENT]
 
 NOICE_RESET_ENTER_EXT
