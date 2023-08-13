@@ -163,7 +163,11 @@ SelectMyFilesystem
 		bne	Serv3Ok				; No boot
 		ldx	#0
 		lda	#$FF
+	IF MACH_MATCHBOX
 		jsr	[FSCV]				; Pass 'Booting' to host, Y=0
+	ELSE
+		jsr	EXTVEC_ENTER_FSCV
+	ENDIF
 		tfr	X,D
 		andb	#3
 		beq	Serv3Ok				; Y=0, no Boot needed
@@ -176,9 +180,11 @@ Serv3Ok
 		lda	#$FE	\Capabilities
 		ldx	#$01
 		ldy	#0
+	IF MACH_MATCHBOX
 		jsr	[FSCV]
-
-
+	ELSE
+		jsr	EXTVEC_ENTER_FSCV
+	ENDIF
 		lda	#0
 		puls	B,X,Y,PC				; Claim
 
@@ -310,7 +316,11 @@ Serv12
 		puls	B,X,Y,PC
 Serv12Select
 		lda	#6
+	IF MACH_MATCHBOX
 		jsr	[FSCV]				; New filing system taking over
+	ELSE
+		jsr	EXTVEC_ENTER_FSCV
+	ENDIF
 		ldx	#10				; offset in normal vectors from CLIV (FILEV)
 		ldy	#27				; offset in extended vectors (FILEV)
 		ldb	#7				; # to copy (7 = FILEV-FSCV)
@@ -402,14 +412,16 @@ BAUD_WORD	EQU SER_BAUD_CLOCK_IN/(BAUD_RATE*16)
 SetVectors
 SetVectorLp
 		m_tya					; get low byte of Y in A
+	IF MACH_MATCHBOX
 		sta	CLIV+1,X			; Vect->ExVec
 		lda	#$FF
 		sta	CLIV+0,X
+	ENDIF
 		lda	Vectors+0,X
 		sta	EXT_USERV,Y			; ExVec->MyRoutine
 		lda	Vectors+1,X
 		sta	EXT_USERV+1,Y
-		lda	$F4
+		lda	zp_mos_curROM
 		sta	EXT_USERV+2,Y
 		leay	3,Y
 		leax	2,X
@@ -1823,7 +1835,11 @@ WaitEvent
 		lbsr	WaitByte
 		m_tax					; Fetch event X parameter
 		lbsr	WaitByte			; Fetch event A parameter
+	IF MACH_MATCHBOX
 		jmp	[EVNTV]				; Dispatch to event vector
+	ELSE
+		jmp	EXTVEC_ENTER_EVNTV
+	ENDIF
 
 * HOSTFS_ESC,$Ax - Reserved
 * ------------------

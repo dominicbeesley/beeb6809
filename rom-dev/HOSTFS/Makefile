@@ -30,9 +30,8 @@ include		../../Makefile.defs
 
 .PHONY:		VERSION-date.gen.asm hostfs
 
-hostfs:	$(addprefix $(BEEBOUT)/, $(TARGETS_BEEB))
-	cp $(BEEBOUT)/HOSTFS.BIN $(HOSTFSDIR)/R.HOSTFS
-	cp $(BEEBOUT)/HOSTFS-myelin.BIN $(HOSTFSDIR)/R.HOSTFSM
+hostfs:	$(addprefix $(BEEBOUT)/, $(filter %.bin, $(TARGETS_BEEB)))
+	cp $^ $(HOSTFSDIR)
 
 
 VERSION-date.gen.asm: HOSTFS-core.asm HOSTFS.asm
