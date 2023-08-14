@@ -6577,18 +6577,6 @@ mos_OSBYTE_150
 	lda	$FE00,X
 	bra	1B
 
-* Bounce table to cope with fact that indirect jump is 4 bytes on 6809
-OSFIND_bounce	JMPVEC	"FINDV"
-OSGBPB_bounce	JMPVEC	"GBPBV"
-OSBPUT_bounce	JMPVEC	"BPUTV"
-OSBGET_bounce	JMPVEC	"BGETV"
-OSARGS_bounce	JMPVEC	"ARGSV"
-OSFILE_bounce	JMPVEC	"FILEV"
-OSRDCH_bounce	JMPVEC	"RDCHV"
-OSWRCH_bounce	JMPVEC	"WRCHV"
-OSWORD_bounce	JMPVEC	"WORDV"
-OSBYTE_bounce	JMPVEC	"BYTEV"
-OSCLI_bounce	JMPVEC	"CLIV"
 
 	; on entry the stack should contain
 	;	+4	original caller return address	
@@ -6974,22 +6962,22 @@ _GSINIT		jmp	mos_GSINIT			;	FFC2
 _GSREAD		jmp	mos_GSREAD			;	FFC5
 _OSRDCH_NV	jmp	mos_RDCHV_default_entry		;	FFC8
 _OSWRCH_NV	jmp	mos_WRCH_default_entry		;	FFCB
-_OSFIND		jmp	OSFIND_bounce			;	FFCE
-_OSGBPB		jmp	OSGBPB_bounce			;	FFD1
-_OSBPUT		jmp	OSBPUT_bounce			;	FFD4
-_OSBGET		jmp	OSBGET_bounce			;	FFD7
-_OSARGS		jmp	OSARGS_bounce			;	FFDA
-_OSFILE		jmp	OSFILE_bounce			;	FFDD
-_OSRDCH		jmp	OSRDCH_bounce			;	FFE0
+_OSFIND		jmp	JMPVEC	"FINDV"			;	FFCE
+_OSGBPB		jmp	JMPVEC	"GBPBV"			;	FFD1
+_OSBPUT		jmp	JMPVEC	"BPUTV"			;	FFD4
+_OSBGET		jmp	JMPVEC	"BGETV"			;	FFD7
+_OSARGS		jmp	JMPVEC	"ARGSV"			;	FFDA
+_OSFILE		jmp	JMPVEC	"FILEV"			;	FFDD
+_OSRDCH		jmp	JMPVEC	"RDCHV"			;	FFE0
 _OSASCI		cmpa	#$0D				;	FFE3
 		bne	OSWRCH				;	FFE5
 _OSNEWL		lda	#$0A				;	FFE7
-		jsr	OSWRCH_bounce			;	FFE9
+		jsr	JMPVEC	"WRCHV"			;	FFE9
 		lda	#$0D				;	FFEC
-_OSWRCH		jmp	OSWRCH_bounce			;	FFEE
-_OSWORD		jmp	OSWORD_bounce			;	FFF1
-_OSBYTE		jmp	OSBYTE_bounce			;	FFF4
-_OSCLI		jmp	OSCLI_bounce			;	FFF7
+_OSWRCH		jmp	JMPVEC	"WRCHV"			;	FFEE
+_OSWORD		jmp	JMPVEC	"WORDV"			;	FFF1
+_OSBYTE		jmp	JMPVEC	"BYTEV"			;	FFF4
+_OSCLI		jmp	JMPVEC	"CLIV"			;	FFF7
 _OSROMSEL	jmp	mos_select_SWROM_B		;       FFFA		; NEW: select rom in B, return old in B
 _OSCHAINVEC	jmp	mos_chain_vector		;	FFFD
 

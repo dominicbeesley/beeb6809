@@ -58,7 +58,8 @@ issue_unknown_interrupt					; LDCF3
 		jsr	mos_OSBYTE_143_b_cmd_x_param	;issue rom call 5 'unrecognised interrupt'
 		beq	LDCDDrti			;if a rom recognises it then RTI
 		ldu	#EXT_IRQ2V		
-		jmp	OSCHAINVEC
+		jmp	OSCHAINVEC		; we just treat IRQ2V as a chained handler rather than
+						; exit IRQ1V chain and start another.
 ;; ----------------------------------------------------------------------------
 ;; VIA INTERUPTS ROUTINES
 mos_VIA_INTERUPTS_ROUTINES
