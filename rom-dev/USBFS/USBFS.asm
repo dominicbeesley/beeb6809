@@ -2406,17 +2406,19 @@ initMMFS
 ***********************************************************************
 		pshsw
 		pshs	A,U
+		
 		lda	#FSCV_6_NewFS
-		jsr	[FSCV]			; new filing system
-	
-		; setup FILEV to FSCV to point at the extended vector entry points
-		ldy	#FILEV
-		ldx	#EXTVEC_ENTER_FILEV
-		ldb	#tblVectorsSize
-1		stx	,Y++
-		leax	3,X
-		decb
-		bne	1B
+		jsr	EXTVEC_ENTER_FSCV			; new filing system
+
+; Not needed when all vectors are extended	
+;;		; setup FILEV to FSCV to point at the extended vector entry points
+;;		ldy	#FILEV
+;;		ldx	#EXTVEC_ENTER_FILEV
+;;		ldb	#tblVectorsSize
+;;1		stx	,Y++
+;;		leax	3,X
+;;		decb
+;;		bne	1B
 
 		; Get base address for extended vectors into X
 		lda	#$A8				; copy extended vectors
