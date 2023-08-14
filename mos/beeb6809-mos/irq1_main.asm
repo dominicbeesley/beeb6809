@@ -7,7 +7,6 @@
 ;LDCA2:	lda	LFE08				;get value of status register of ACIA
 ;	bvs	LDCA9				;if parity error then DCA9
 ;	bpl	mos_VIA_INTERUPTS_ROUTINES	;else if no interrupt requested DD06
-		bra	mos_VIA_INTERUPTS_ROUTINES
 ;LDCA9:	ldx	zp_mos_rs423timeout		;read RS423 timeout counter
 ;	dex					;decrement it
 ;	bmi	LDCDE				;and if <0 DCDE
@@ -52,25 +51,47 @@ LDCDDrti
 
 ;	bmi	LDCBF				;if original bit 1 is set TDR is empty so DCBF
 ;	bvs	LDCDDrti			;if V is set then exit to DE82
-
-issue_unknown_interrupt					; LDCF3
-		ldb	#SERVICE_5_UKINT		;X=5
-		jsr	mos_OSBYTE_143_b_cmd_x_param	;issue rom call 5 'unrecognised interrupt'
-		beq	LDCDDrti			;if a rom recognises it then RTI
-		ldu	#EXT_IRQ2V		
-		jmp	OSCHAINVEC		; we just treat IRQ2V as a chained handler rather than
-						; exit IRQ1V chain and start another.
+;	bra	issue_uknown_interrupt
 ;; ----------------------------------------------------------------------------
 ;; VIA INTERUPTS ROUTINES
-mos_VIA_INTERUPTS_ROUTINES
+
+;===================================================================
+; VIA INTERRUPTS
+;===================================================================
+; The main entry point enters at the top of the timer 1 point
+; in the hope that that will be fastest but may need moving to the 
+; ACIA when that is ready (needs lowest latency)
+
+;===================================================================
+; Main IRQ entry point
+;===================================================================
+
+;; Main IRQ Handling routines, default IRQIV destination
+mos_IRQ1V_default_entry				; LDC93
 		lda	sheila_SYSVIA_ifr		;read system VIA interrupt flag register
-		bpl	mos_PRINTER_INTERRUPT_USER_VIA_1;if bit 7=0 the VIA has not caused interrupt
+		lbpl	mos_PRINTER_INTERRUPT_USER_VIA_1;if bit 7=0 the VIA has not caused interrupt
 							;goto DD47
 		anda	sysvar_SYSVIA_IRQ_MASK_CPY	;mask with VIA bit mask
 		anda	sheila_SYSVIA_ier		;and interrupt enable register
-		rora					;rotate right twice to check for IRQ 1 (frame sync)
-		rora					;
-		bcc	mos_SYSTEM_INTERRUPT_5_Speech	;if carry clear then no IRQ 1, else
+
+		bita	#VIA_MASK_INT_T1
+		beq	irq1_not_T1
+
+		lda	#VIA_MASK_INT_T1
+		sta	sheila_SYSVIA_ifr
+	
+	;==================== Timer 1 =========================
+
+	M_100MSTICK
+		rts
+
+
+irq1_not_T1
+		bita	#VIA_MASK_INT_CA1
+		beq	irq1_not_vsync
+
+	;==================== CA1 - Vsync ====================
+
 		dec	sysvar_CFSTOCTR			;decrement vertical sync counter
 		lda	zp_mos_rs423timeout		;A=RS423 Timeout counter
 		bpl	LDD1E				;if +ve then DD1E
@@ -94,44 +115,52 @@ LDD34		rola					;restore bit
 
 LDD3D		ldy	#$04				;Y=4 and call E494 to check and implement vertical
 		jsr	x_CAUSE_AN_EVENT		;sync event (4) if necessary
-		lda	#$02				;A=2
-		jmp	irq_set_sysvia_ifr_rti		;clear interrupt 1 and exit
-;; ----------------------------------------------------------------------------
-;; PRINTER INTERRUPT USER VIA 1
-mos_PRINTER_INTERRUPT_USER_VIA_1
-		
-		;TODO printer interrupts
-		bra	issue_unknown_interrupt
+		lda	#VIA_MASK_INT_CA1		;A=2
+irq_set_sysvia_ifr_rti					; LDE6E
+		sta	sheila_SYSVIA_ifr		; reset SYS VIA IFR
+		rts					; finished interrupts
 
 
-;	lda	sheila_USRVIA_ifr		;Check USER VIA interrupt flags register
-;	bpl	issue_unknown_interrupt		;if +ve USER VIA did not call interrupt
-;	and	sysvar_USERVIA_IRQ_MASK_CPY	;else check for USER IRQ 1
-;	and	sheila_USRVIA_ier		;
-;	ror	a				;
-;	ror	a				;
-;	bcc	issue_unknown_interrupt		;if bit 1=0 the no interrupt 1 so DCF3
-;	ldy	sysvar_PRINT_DEST		;else get printer type
-;	dey					;decrement
-;	bne	issue_unknown_interrupt		;if not parallel then DCF3
-;	lda	#$02				;reset interrupt 1 flag
-;	sta	sheila_USRVIA_ifr		;
-;	sta	sheila_USRVIA_ier		;disable interrupt 1
-;	ldx	#$03				;and output data to parallel printer
-;	jmp	LE13A				;
-;; ----------------------------------------------------------------------------
-;; SYSTEM INTERRUPT 5   Speech
-mos_SYSTEM_INTERRUPT_5_Speech
+irq1_not_vsync
+		bita	#VIA_MASK_INT_CB1
+		beq	irq1_not_EOC
+
+	; ================== CB2 - EOC =======================
 
 
-		rola					;get bit 5 into bit 7
-		rola					;
-		rola					;
-		rola					;
+LDE4A		ldb	sysvar_ADC_CUR			;else get current ADC channel
+		beq	LDE6C				;if 0 DE6C
+		stb	adc_CH_LAST			;store in Analogue system flag marking last channel
+		lda	sheila_ADC_DATA_LOW		;read low data byte
+		ldx	#adc_CH1_LOW-1
+		abx
+		sta	,X				;store it in &2B6,7,8 or 9
+		lda	sheila_ADC_DATA_HIGH		;get high data byte 
+		leax	4,x
+		sta	,X				;and store it in hi byte
+		clra
+		tfr	D,X
+		ldy	#$03				;handle event 3 conversion complete
+		jsr	x_CAUSE_AN_EVENT		;
+		tfr	X,D
+		decb
+		bne	LDE69				;if X=0
+		ldb	sysvar_ADC_MAX			;get highest ADC channel preseny
+LDE69		jsr	LDE8F				;and start new conversion
+LDE6C		lda	#$10				;rest interrupt 4
+		bra	irq_set_sysvia_ifr_rti
 
-		;TODO = no speech, do something here with timer 2?
-		bpl	mos_SYSTEM_INTERRUPT_6_10mS_Clock
-		bra	issue_unknown_interrupt
+
+irq1_not_EOC
+		bita	#VIA_MASK_INT_T2
+		beq	irq1_not_T2
+
+	; ==================== T2 - speech =======================
+
+		lda	#VIA_MASK_INT_T2
+		sta	sheila_SYSVIA_ifr
+irq1rts		rts
+
 
 ;		bpl	mos_SYSTEM_INTERRUPT_6_10mS_Clock;if not set the not a speech interrupt so DDCA
 ;		lda	#$20				;	DD6F
@@ -175,52 +204,49 @@ mos_SYSTEM_INTERRUPT_5_Speech
 ;	lsr	zp_mos_OS_wksp2+1		;	DDC5
 ;	bne	LDD7D				;	DDC7
 ;LDDC9:	rts					;	DDC9
-;; ----------------------------------------------------------------------------
-;; SYSTEM INTERRUPT 6 10mS Clock
-mos_SYSTEM_INTERRUPT_6_10mS_Clock
-		bcc	irq_adc_EOC			;bit 6 is in carry so if clear there is no 6 int
-							;so go on to DE47
-		lda	#$40				;Clear interrupt 6
-		sta	sheila_SYSVIA_ifr		;
 
-	M_100MSTICK
+irq1_not_T2
+		bita	#VIA_MASK_INT_CA2
+		beq	irq1_not_keyboard
 
+	; ======================== CA2 - keyboard =====================
 
-		rts					;else return 
-;; ----------------------------------------------------------------------------
-;; SYSTEM INTERRUPT 4 ADC end of conversion
-irq_adc_EOC
-		rola						;put original bit 4 from FE4D into bit 7 of A
-		bpl	irq_keyboard ;if not set DE72
-		;TODO ADC / CB1
-
-;LDE4A:	ldx	sysvar_ADC_CUR			;else get current ADC channel
-;	beq	LDE6C				;if 0 DE6C
-;	lda	LFEC2				;read low data byte
-;	sta	oswksp_OSWORD0_MAX_CH,x		;store it in &2B6,7,8 or 9
-;	lda	LFEC1				;get high data byte 
-;	sta	adc_CH4_LOW,x			;and store it in hi byte
-;	stx	adc_CH_LAST			;store in Analogue system flag marking last channel
-;	ldy	#$03				;handle event 3 conversion complete
-;	jsr	x_CAUSE_AN_EVENT		;
-
-;	dex					;decrement X
-;	bne	LDE69				;if X=0
-;	ldx	sysvar_ADC_MAX			;get highest ADC channel preseny
-;LDE69:	jsr	LDE8F				;and start new conversion
-LDE6C		lda	#$10				;rest interrupt 4
-irq_set_sysvia_ifr_rti				; LDE6E
-		sta	sheila_SYSVIA_ifr		; reset SYS VIA IFR
-		rts					; finished interrupts
-;; ----------------------------------------------------------------------------
-;; SYSTEM INTERRUPT 0 Keyboard;	
-irq_keyboard					; LDE72
-		rola					;get original bit 0 in bit 7 position
-		rola					;
-		rola					;
-		rola					;
-		bpl	LDE7F				;if bit 7 clear not a keyboard interrupt
 		jsr	mos_enter_keyboard_routines	;else scan keyboard
-		lda	#$01				;A=1
-		bne	irq_set_sysvia_ifr_rti		;and off to reset interrupt and exit
-LDE7F		jmp	issue_unknown_interrupt		
+		lda	#VIA_MASK_INT_CA2			;A=1
+		lbra	irq_set_sysvia_ifr_rti		;and off to reset interrupt and exit
+
+irq1_not_keyboard
+issue_unknown_interrupt					; LDCF3
+		ldb	#SERVICE_5_UKINT		;X=5
+		jsr	mos_OSBYTE_143_b_cmd_x_param	;issue rom call 5 'unrecognised interrupt'
+		beq	irq1rts				;if a rom recognises it then RTI
+		ldu	#EXT_IRQ2V		
+		jmp	OSCHAINVEC		; we just treat IRQ2V as a chained handler rather than
+						; exit IRQ1V chain and start another.
+
+
+
+;; ----------------------------------------------------------------------------
+;; PRINTER INTERRUPT USER VIA 1
+mos_PRINTER_INTERRUPT_USER_VIA_1
+		
+		;TODO printer interrupts
+		bra	issue_unknown_interrupt
+
+
+;	lda	sheila_USRVIA_ifr		;Check USER VIA interrupt flags register
+;	bpl	issue_unknown_interrupt		;if +ve USER VIA did not call interrupt
+;	and	sysvar_USERVIA_IRQ_MASK_CPY	;else check for USER IRQ 1
+;	and	sheila_USRVIA_ier		;
+;	ror	a				;
+;	ror	a				;
+;	bcc	issue_unknown_interrupt		;if bit 1=0 the no interrupt 1 so DCF3
+;	ldy	sysvar_PRINT_DEST		;else get printer type
+;	dey					;decrement
+;	bne	issue_unknown_interrupt		;if not parallel then DCF3
+;	lda	#$02				;reset interrupt 1 flag
+;	sta	sheila_USRVIA_ifr		;
+;	sta	sheila_USRVIA_ier		;disable interrupt 1
+;	ldx	#$03				;and output data to parallel printer
+;	jmp	LE13A				;
+

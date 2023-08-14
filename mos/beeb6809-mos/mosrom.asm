@@ -317,12 +317,11 @@ settings_end_7E	; settings up to here on warm boot
 		FCB	$00					; F0 location 280 (Country code)
 		FCB	$00					; F1 location 281 (user flag)
 		;TODO this default changed to 9,600 baud
+	IF MACH_BEEB
+		FCB	$40					; F2 Serial ULA copy - 19200 for noice
+	ELSE
 		FCB	$64					; F2 Serial ULA copy - original
-;;	IF MACH_BEEB && NOICE
-;;		FCB	$40					; F2 Serial ULA copy - 19200 for noice
-;;	ELSE
-;;		FCB	$52					; F2 Serial ULA copy - 4,800 for HOSTFS
-;;	ENDIF
+	ENDIF
 		FCB	$05					; F3 Timer switch state
 		FCB	$FF					; F4 Soft key consistency
 		FCB	$01					; F5 Printer dest
@@ -999,8 +998,6 @@ LDC5D		bcs	LDC5D					;hang up machine!!!!
 ;	bcc	LDC78				;	DC90
 ;LDC92:	rts					;	DC92
 ;; ----------------------------------------------------------------------------
-;; Main IRQ Handling routines, default IRQIV destination
-mos_IRQ1V_default_entry				; LDC93
 	IF MACH_BEEB | MACH_CHIPKIT
 		include "irq1_main.asm"
 	ELSIF MACH_SBC09
@@ -6962,22 +6959,22 @@ _GSINIT		jmp	mos_GSINIT			;	FFC2
 _GSREAD		jmp	mos_GSREAD			;	FFC5
 _OSRDCH_NV	jmp	mos_RDCHV_default_entry		;	FFC8
 _OSWRCH_NV	jmp	mos_WRCH_default_entry		;	FFCB
-_OSFIND		jmp	JMPVEC	"FINDV"			;	FFCE
-_OSGBPB		jmp	JMPVEC	"GBPBV"			;	FFD1
-_OSBPUT		jmp	JMPVEC	"BPUTV"			;	FFD4
-_OSBGET		jmp	JMPVEC	"BGETV"			;	FFD7
-_OSARGS		jmp	JMPVEC	"ARGSV"			;	FFDA
-_OSFILE		jmp	JMPVEC	"FILEV"			;	FFDD
-_OSRDCH		jmp	JMPVEC	"RDCHV"			;	FFE0
+_OSFIND		JMPVEC	"FINDV"				;	FFCE
+_OSGBPB		JMPVEC	"GBPBV"				;	FFD1
+_OSBPUT		JMPVEC	"BPUTV"				;	FFD4
+_OSBGET		JMPVEC	"BGETV"				;	FFD7
+_OSARGS		JMPVEC	"ARGSV"				;	FFDA
+_OSFILE		JMPVEC	"FILEV"				;	FFDD
+_OSRDCH		JMPVEC	"RDCHV"				;	FFE0
 _OSASCI		cmpa	#$0D				;	FFE3
 		bne	OSWRCH				;	FFE5
 _OSNEWL		lda	#$0A				;	FFE7
-		jsr	JMPVEC	"WRCHV"			;	FFE9
+		CALLVEC	"WRCHV"				;	FFE9
 		lda	#$0D				;	FFEC
-_OSWRCH		jmp	JMPVEC	"WRCHV"			;	FFEE
-_OSWORD		jmp	JMPVEC	"WORDV"			;	FFF1
-_OSBYTE		jmp	JMPVEC	"BYTEV"			;	FFF4
-_OSCLI		jmp	JMPVEC	"CLIV"			;	FFF7
+_OSWRCH		JMPVEC	"WRCHV"				;	FFEE
+_OSWORD		JMPVEC	"WORDV"				;	FFF1
+_OSBYTE		JMPVEC	"BYTEV"				;	FFF4
+_OSCLI		JMPVEC	"CLIV"				;	FFF7
 _OSROMSEL	jmp	mos_select_SWROM_B		;       FFFA		; NEW: select rom in B, return old in B
 _OSCHAINVEC	jmp	mos_chain_vector		;	FFFD
 
