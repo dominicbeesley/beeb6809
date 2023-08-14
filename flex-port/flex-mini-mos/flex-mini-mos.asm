@@ -7,6 +7,9 @@
 		include "mini-mos.inc"
 
 
+; BODGY Ext vectors things
+VDUV	EQU	$226
+
 
 ;==============================================================================
 ; A cut down version of the MOS to service Flex VDU and keyboard requests
