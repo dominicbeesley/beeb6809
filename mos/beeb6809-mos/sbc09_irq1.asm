@@ -14,29 +14,35 @@
 
 		
 IRQ_EXIT
-                rti     
+                rts     
 
 
 IRQ_RX
 		; TODO: larger buffer and use Hoglet's thresholds, include XON/XOFF option
-2		lda	#SR_RxRDY
+		lda	#SR_RxRDY
 		bita	SBC09_UART_SRA
-		beq	1F
-		ldb	SBC09_UART_RHRA
+		bne	2F
+IRQ_UK		ldu	#EXT_IRQ2V		
+		jmp	OSCHAINVEC		; we just treat IRQ2V as a chained handler rather than
+						; exit IRQ1V chain and start another.
+
+
+2		ldb	SBC09_UART_RHRA
 		clra
 		tfr	D,Y
 		jsr	x_INSERT_byte_in_Keyboard_buffer
 		
-		bra	2B
-
-1               
+		lda	#SR_RxRDY
+		bita	SBC09_UART_SRA
+		bne	2B
 		tst	sysvar_KEYB_FLOWCTL
 		beq	IRQ_EXIT		; flow control off
 		ldb     #OP_BIT_RTS_A
                 stb     SBC09_UART_OPRCLR     	; de-assert rts
-		bra	IRQ_EXIT
+		rts
 
 IRQ_SET_RTS
                 ldb     #OP_BIT_RTS_A
                 stb     SBC09_UART_OPRSET     	; assert rts
                 rts
+

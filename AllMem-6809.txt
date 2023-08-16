@@ -32,7 +32,7 @@ To call a vector (or a 3 byte pointer to a vector) use
     JSR OSCALLVEC
 
 The vector entry routines at FFxx all leave a 6 byte return on the stack
-which MUST be RTS'd to - not RTI  - interrupt vectors must all return with rts
+which MUST be RTS'd to - not RTI  - interrupt vectors must all return with RTS
 which will then be RTI'd in the MOS.
 
 The U and B registers are preserved across all vector calls and may be used freely
