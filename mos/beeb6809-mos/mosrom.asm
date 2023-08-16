@@ -1009,7 +1009,7 @@ mos_IRQ1V_default_entry				; LDC93
 ;; ----------------------------------------------------------------------------
 ;; IRQ2V default entry
 mos_IRQ2V_default_entry
-		rti					;	DE8B
+		rts					;	DE8B
 
 *************************************************************************
 *                                                                       *
@@ -5495,6 +5495,7 @@ debug_print_ch	pshs	A,X
 		puls	A,X,PC
 	ELSIF MACH_SBC09
 debug_print_ch
+		pshs	A,X
 		jsr	mos_VDU_WRCH
 		;TODO: SBC09: debug over 2nd channel
 		puls	A,X,PC
