@@ -2,7 +2,7 @@
 MLCa:=$(words $(MAKEFILE_LIST))
 MLCb:=$(shell echo "$(MLCa) - 1" | bc)
 CALLER_MAKE=$(realpath $(lastword $(wordlist 1,$(MLCb),$(MAKEFILE_LIST))))
-AS=asm6809 -R
+AS=asm6809 -B
 TOP:=$(realpath $(dir $(lastword $(MAKEFILE_LIST))))
 INC:=$(TOP)/includes
 OSDEPS:=$(INC)/hardware.inc $(INC)/mosrom.inc $(INC)/common.inc $(INC)/noice.inc
