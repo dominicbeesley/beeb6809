@@ -16,7 +16,7 @@ $(BEEBOUT)/DUPDSSD.bin:	$(wildcard ../drivers/wd177x/*.asm) $(wildcard ../driver
 
 
 $(BEEBOUT)/flextools.ssd: ssd/include.lst $(addprefix $(BEEBOUT)/, $(TARGETS_TOOLS))
-	../../scripts/buildssd.sh --dest $(BEEBOUT)/flextools.ssd --hostfs ~/hostfs --name flextools ./ssd
+	../../scripts/buildssd.sh --dest $(BEEBOUT)/flextools.ssd --hostfs $(TOP)/hostfs --name flextools ./ssd
 
 $(BEEBOUT)/%.noi:	$(BEEBOUT)/%.bin
 	# assume all utils in this directory to run from 1900

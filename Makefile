@@ -1,5 +1,7 @@
 .PHONY:		all
 
+DEST = ~/hostfs
+
 all: all_beeb all_chipkit all_flex all_matchbox all_sbc09
 	$(MAKE) -C other-tests all
 
@@ -35,8 +37,6 @@ $(ROM): $(ROMPARTS)
 	mv $(T) $(ROM)
 
 		
-
-
 all_beeb:
 	$(MAKE) -C mos all_beeb
 	$(MAKE) -C rom-dev all_beeb
@@ -55,8 +55,9 @@ all_flex:
 
 all_sbc09:
 	$(MAKE) -C rom-dev all_sbc09
+	$(MAKE) -C mos all_beeb   # we need to build the BEEB folder for dependancies 
 	$(MAKE) -C mos all_sbc09
-
+	
 clean:
 	$(MAKE) -C rom-dev clean
 	$(MAKE) -C mos clean
@@ -65,5 +66,23 @@ clean:
 	$(MAKE) -C demos clean
 	$(MAKE) -C ssds clean
 	$(MAKE) -C other-tests all
+	$(MAKE) -C hostfs clean
 	-rm -f ROMIMAGE.BIN	
+
+#TODO -- add the other targets 
+cleanbin:
+	-rm -rf BEEB
+	-rm -rf SBC09
+	-rm -rf FLEX
+	-rm -rf MATCHBOX
+	-rm -rf CHIPKIT 
+
+# Move files from ./hostfs to ~/hostfs  To keep legacy source projects outside of beeb6809 up to date.
+installbin:  
+	@echo "Installing files from ./hostfs to $(DEST)..."
+	@mkdir -p $(DEST)  # Ensure the destination directory exists
+	@rsync -av --progress hostfs/ $(DEST)  # Sync files while preserving structure
+	@echo "Installation complete!"
+
+	
 	

@@ -1,4 +1,5 @@
-HOSTFSDIR=~/hostfs
+include		../Makefile.defs 
+HOSTFSDIR=$(TOP)/hostfs
 
 
 all: all_beeb

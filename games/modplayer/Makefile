@@ -3,9 +3,11 @@ TARGETS_EXTRA=	hostfs
 DEPS=		modload.asm modplay.inc common.inc helptext.mo7.txt
 ASFLAGS=-3 -v
 
-HOSTFSDIR=	~/hostfs/mods/
+
 
 include		../../Makefile.defs
+
+HOSTFSDIR=	$(TOP)/hostfs/mods/
 
 .PHONY:		hostfs
 
