@@ -1,11 +1,29 @@
-.PHONY:		all
+PHONY: all clean cleanbin installbin check_dirs all_chipkit all_beeb all_matchbox all_flex all_sbc09
+
 
 DEST = ~/hostfs
+REQUIRED_DIRS = hostfs/beebroms hostfs/mods hostfs/roms69
 
-all: all_beeb all_chipkit all_flex all_matchbox all_sbc09
+
+all: check_dirs all_beeb all_chipkit all_flex all_matchbox all_sbc09
 	$(MAKE) -C other-tests all
 
-all_chipkit:
+# Ensure all required directories exist
+check_dirs:
+	@echo "Checking required directories..."
+	@for dir in $(REQUIRED_DIRS); do \
+		if [ ! -d ./$$dir ]; then \
+			echo "Directory $$dir is missing, creating..."; \
+			mkdir -p ./$$dir; \
+		else \
+			echo "Directory $$dir exists."; \
+		fi \
+	done
+	cp Makefile.bins ./hostfs/Makefile
+	@echo "Directory check complete."
+
+
+all_chipkit: check_dirs
 	# NOTE: MOS/UTILS needs noice to be reinstated for chipkit somehow 
 	# taken out to make room in MOS and moved into UTIL for beeb but
 	# utils rom doesn't work yet for CHIPKIT
@@ -22,7 +40,7 @@ ROMPARTS= 	CHIPKIT/mos/beeb6809-mos/mosrom.bin \
 		CHIPKIT/rom-dev/HOSTFS/HOSTFS-ck.bin
 ROM= CHIPKIT/ROMIMAGE.BIN
 
-chipkit_rom: 
+chipkit_rom: check_dirs
 	$(MAKE) -C mos/beeb6809-mos all_chipkit
 	$(MAKE) -C rom-dev/BBCBASIC all_chipkit
 	$(MAKE) -C rom-dev/HOSTFS all_chipkit
@@ -37,7 +55,7 @@ $(ROM): $(ROMPARTS)
 	mv $(T) $(ROM)
 
 		
-all_beeb:
+all_beeb: check_dirs
 	$(MAKE) -C mos all_beeb
 	$(MAKE) -C rom-dev all_beeb
 	$(MAKE) -C games all_beeb
@@ -46,14 +64,14 @@ all_beeb:
 	$(MAKE) -C hardware-testing all_beeb
 	$(MAKE) -C flex-port all_beeb
 	
-all_matchbox:
+all_matchbox: check_dirs
 	$(MAKE) -C rom-dev all_matchbox
 
-all_flex:
+all_flex: check_dirs
 	$(MAKE) -C rom-dev all_flex
 	$(MAKE) -C flex-port all_flex
 
-all_sbc09:
+all_sbc09: check_dirs
 	$(MAKE) -C rom-dev all_sbc09
 	$(MAKE) -C mos all_beeb   # we need to build the BEEB folder for dependancies 
 	$(MAKE) -C mos all_sbc09
@@ -76,6 +94,7 @@ cleanbin:
 	-rm -rf FLEX
 	-rm -rf MATCHBOX
 	-rm -rf CHIPKIT 
+	-rm -rf hostfs
 
 # Move files from ./hostfs to ~/hostfs  To keep legacy source projects outside of beeb6809 up to date.
 installbin:  
