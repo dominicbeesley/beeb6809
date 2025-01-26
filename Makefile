@@ -87,7 +87,6 @@ clean:
 	$(MAKE) -C hostfs clean
 	-rm -f ROMIMAGE.BIN	
 
-#TODO -- add the other targets 
 cleanbin:
 	-rm -rf BEEB
 	-rm -rf SBC09
