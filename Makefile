@@ -1,9 +1,13 @@
-.PHONY:		all
+PHONY: all clean cleanbin installbin check_dirs all_chipkit all_beeb all_matchbox all_flex all_sbc09
 
-all: all_beeb all_chipkit all_flex all_matchbox all_sbc09
+
+
+all: check_dirs all_beeb all_chipkit all_flex all_matchbox all_sbc09
 	$(MAKE) -C other-tests all
 
-all_chipkit:
+
+
+all_chipkit: 
 	# NOTE: MOS/UTILS needs noice to be reinstated for chipkit somehow 
 	# taken out to make room in MOS and moved into UTIL for beeb but
 	# utils rom doesn't work yet for CHIPKIT
@@ -35,28 +39,27 @@ $(ROM): $(ROMPARTS)
 	mv $(T) $(ROM)
 
 		
-
-
-all_beeb:
+all_beeb: 
 	$(MAKE) -C mos all_beeb
 	$(MAKE) -C rom-dev all_beeb
 	$(MAKE) -C games all_beeb
-	$(MAKE) -C demos all_chipkit
+	$(MAKE) -C demos all_beeb
 	$(MAKE) -C ssds_beeb all_beeb
 	$(MAKE) -C hardware-testing all_beeb
 	$(MAKE) -C flex-port all_beeb
 	
-all_matchbox:
+all_matchbox: 
 	$(MAKE) -C rom-dev all_matchbox
 
-all_flex:
+all_flex: 
 	$(MAKE) -C rom-dev all_flex
 	$(MAKE) -C flex-port all_flex
 
-all_sbc09:
+all_sbc09: 
 	$(MAKE) -C rom-dev all_sbc09
+	$(MAKE) -C mos all_beeb   # we need to build the BEEB folder for dependancies 
 	$(MAKE) -C mos all_sbc09
-
+	
 clean:
 	$(MAKE) -C rom-dev clean
 	$(MAKE) -C mos clean
@@ -64,6 +67,25 @@ clean:
 	$(MAKE) -C games clean
 	$(MAKE) -C demos clean
 	$(MAKE) -C ssds clean
-	$(MAKE) -C other-tests all
+	$(MAKE) -C other-tests clean
+	$(MAKE) -C ssds_beeb clean
+	$(MAKE) -C hardware-testing clean
+	$(MAKE) -C flex-port clean
 	-rm -f ROMIMAGE.BIN	
+
+cleanbin:
+	-rm -rf BEEB
+	-rm -rf SBC09
+	-rm -rf FLEX
+	-rm -rf MATCHBOX
+	-rm -rf CHIPKIT 
+
+# Move files from ./hostfs to ~/hostfs  To keep legacy source projects outside of beeb6809 up to date.
+installbin:  
+	@echo "Installing files from ./hostfs to $(DEST)..."
+	@mkdir -p $(DEST)  # Ensure the destination directory exists
+	@rsync -av --progress hostfs/ $(DEST)  # Sync files while preserving structure
+	@echo "Installation complete!"
+
+	
 	

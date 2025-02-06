@@ -22,17 +22,15 @@ DEPS=	../../includes/hardware.inc \
 		VERSION-date.gen.asm \
 		Makefile
 
-HOSTFSDIR=~/hostfs/roms69/
+
 
 ROMNO=C
 
 include		../../Makefile.defs 
 
-.PHONY:		VERSION-date.gen.asm hostfs
+HOSTFSDIR= $(TOP)/hostfs/roms69/
 
-hostfs:	$(addprefix $(BEEBOUT)/, $(TARGETS_BEEB))
-	cp $(BEEBOUT)/HOSTFS.BIN $(HOSTFSDIR)/R.HOSTFS
-	cp $(BEEBOUT)/HOSTFS-myelin.BIN $(HOSTFSDIR)/R.HOSTFSM
+.PHONY:		VERSION-date.gen.asm hostfs
 
 
 VERSION-date.gen.asm: HOSTFS-core.asm HOSTFS.asm
@@ -62,6 +60,6 @@ $(BEEBOUT)/HOSTFS.bin: $(DEPS)
 $(BEEBOUT)/HOSTFS-myelin.bin: $(DEPS)
 
 $(SBC09OUT)/HOSTFS-sbc09.srec: HOSTFS-sbc09.asm $(DEPS)
-		asm6809 -S -9 -d MACH_SBC09=1 -l $(basename $@).lst -o $@ HOSTFS-sbc09.asm
+		$(AS) -S -9 -d MACH_SBC09=1 -l $(basename $@).lst -o $@ HOSTFS-sbc09.asm
 
 		srec_cat $@ -fill 0xFF 0x8000 0xC000 -offset -0x8000 -o $(basename $@).bin -binary
