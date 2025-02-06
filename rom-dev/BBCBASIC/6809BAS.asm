@@ -7410,10 +7410,13 @@ fpCopyFPAtoX
 		STA	,X+
 		RTS
 
-cmdEDIT			
-		CALL	ResetVars
-		LDA	#$80
-		STA	ZP_LISTO
+cmdEDIT
+		DO_BRK_B
+		FCB	$1E,"Not Implemented",0
+
+;		CALL	ResetVars
+;		LDA	#$80
+;		STA	ZP_LISTO
 
 doLIST
 		CLR	ZP_FPB
