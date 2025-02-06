@@ -19,6 +19,9 @@ TARGETS_SBC09=			\
 			MINIMOS-6809BAS.BIN \
 			MINIMOS-6309EBAS.BIN \
 			MINIMOS-6309NBAS.BIN \
+			MINIMOS-6809BAS_HB63C09M.BIN \
+			MINIMOS-6309EBAS_HB63C09M.BIN \
+			MINIMOS-6309NBAS_HB63C09M.BIN \
 			6809BAS.srec \
 			6809BAS-6502ass.srec \
 			6309BAS.srec \
@@ -48,18 +51,10 @@ DEPS=			$(BASEDIR)/includes/hardware.inc \
 			6809BAS.asm
 
 ROMNO=A
-HOSTFSDIR=~/hostfs/beebroms/
+
 GETSYMSFLAGS=-rom A
 
 include		../../Makefile.defs
-
-
-.PHONY:	hostfs
-
-hostfs: $(filter %.bin, $(addprefix $(HOSTFSDIR)/, $(TARGETS)))
-
-$(HOSTFSDIR)/%.bin: $(BEEBOUT)/%.bin
-	cp $< $@
 
 6809-assembler.gen.asm:	 6x09-ass-readdefs.pl 6x09-assembler.defs.txt
 		perl 6x09-ass-readdefs.pl
@@ -126,6 +121,17 @@ BBCASMTEST=$(BEEBOUT)/test-asm-beeb-1.ffb $(BEEBOUT)/test-asm-beeb-2.ffb $(BEEBO
 XROARASMTEST63=$(BEEBOUT)/test-asm-xroar-63-1.bin $(BEEBOUT)/test-asm-xroar-63-2.bin $(BEEBOUT)/test-asm-xroar-63-3.bin $(BEEBOUT)/test-asm-xroar-63-4.bin $(BEEBOUT)/test-asm-xroar-63-5.bin  $(BEEBOUT)/test-asm-xroar-63-6.bin $(BEEBOUT)/test-asm-xroar-63-7.bin $(BEEBOUT)/test-asm-xroar-63-8.bin $(BEEBOUT)/test-asm-xroar-63-9.bin
 BBCASMTEST63=$(BEEBOUT)/test-asm-beeb-63-1.ffb $(BEEBOUT)/test-asm-beeb-63-2.ffb $(BEEBOUT)/test-asm-beeb-63-3.ffb $(BEEBOUT)/test-asm-beeb-63-4.ffb $(BEEBOUT)/test-asm-beeb-63-5.ffb $(BEEBOUT)/test-asm-beeb-63-6.ffb $(BEEBOUT)/test-asm-beeb-63-7.ffb $(BEEBOUT)/test-asm-beeb-63-8.ffb $(BEEBOUT)/test-asm-beeb-63-9.ffb
 
+
+CLEAN_EXTRA+=$(XROARASMTEST) $(patsubst %.bin, %.asm, $(XROARASMTEST)) $(patsubst %.bin, %.lst, $(XROARASMTEST))
+CLEAN_EXTRA+=$(XROARASMTEST63) $(patsubst %.bin, %.asm, $(XROARASMTEST63)) $(patsubst %.bin, %.lst, $(XROARASMTEST63))
+
+CLEAN_EXTRA+=$(BBCASMTEST) $(patsubst %.ffb, %.bbc, $(BBCASMTEST))
+CLEAN_EXTRA+=$(BBCASMTEST63) $(patsubst %.ffb, %.bbc, $(BBCASMTEST63))
+
+CLEAN_EXTRA+=$(BEEBOUT)/loadbasic.noi
+CLEAN_EXTRA+=$(CHIPKITOUT)/loadbasic.noi
+CLEAN_EXTRA+=$(BEEBOUT)/loadbasic.noi
+CLEAN_EXTRA+=$(BEEBOUT)/loadbasic.noi
 
 .PRECIOUS: $(addsuffix .asm, $(basename $(XROARASMTEST63) $(XROARASMTEST)))
 
@@ -289,6 +295,30 @@ $(SBC09OUT)/MINIMOS-6309NBAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
+$(SBC09OUT)/MINIMOS-6809BAS_HB63C09M.BIN:	6809BAS.asm SBC09_MOS_HB63C09M.asm $(DEPS)
+		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
+		$(AS) $(ASFLAGS) --define SBC09=1 --define HB63C09M=1 --define BASEADDR=0xC000 --define ASSEMBLER_6809 --define CPU_6809 -o $@ -l $(basename $@).lst $<
+		rm -f SBC09VERSION.inc
+		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+
+		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
+
+$(SBC09OUT)/MINIMOS-6309EBAS_HB63C09M.BIN:	6809BAS.asm SBC09_MOS_HB63C09M.asm $(DEPS)
+		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
+		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define HB63C09M=1 --define BASEADDR=0xC000 --define ASSEMBLER_6809 --define CPU_6309 -o $@ -l $(basename $@).lst $<
+		rm -f SBC09VERSION.inc
+		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+
+		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
+
+$(SBC09OUT)/MINIMOS-6309NBAS_HB63C09M.BIN:	6809BAS.asm SBC09_MOS_HB63C09M.asm $(DEPS)
+		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
+		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define HB63C09M=1 --define BASEADDR=0xC000 --define ASSEMBLER_6809 --define CPU_6309 --define NATIVE -o $@ -l $(basename $@).lst $<
+		rm -f SBC09VERSION.inc
+		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+
+		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
+
 $(SBC09OUT)/MINIMOS-6809BAS_68681.BIN:	6809BAS.asm SBC09_MOS_68681.asm $(DEPS)
 		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
 		$(AS) $(ASFLAGS) --define SBC09=1 --define UART68681=1 --define ASSEMBLER_6809 --define CPU_6809 -o $@ -l $(basename $@).lst $<
@@ -367,4 +397,7 @@ $(SBC09OUT)/SBC6309NBAS.bin: $(DEPS)
 $(SBC09OUT)/SBC6809BAS_68681.bin: $(DEPS)
 $(SBC09OUT)/SBC6309EBAS_68681.bin: $(DEPS)
 $(SBC09OUT)/SBC6309NBAS_68681.bin: $(DEPS)
+$(SBC09OUT)/SBC6809BAS_HB63C09M.bin: $(DEPS)
+$(SBC09OUT)/SBC6309EBAS_HB63C09M.bin: $(DEPS)
+$(SBC09OUT)/SBC6309NBAS_HB63C09M.bin: $(DEPS)
 $(MATCHBOXOUT)/6809BAS.bin: $(DEPS)

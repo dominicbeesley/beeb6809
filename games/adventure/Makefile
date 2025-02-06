@@ -11,7 +11,7 @@ include		../../Makefile.defs
 ASFLAGS=-3 -v
 
 $(BEEBOUT)/adventure.ssd: ssd/include.lst tiles $(BEEBOUT)/game.hex maps/home.bin
-	../../scripts/buildssd.sh --dest $(BEEBOUT)/adventure.ssd --hostfs ~/hostfs --name adventure ./ssd
+	../../scripts/buildssd.sh --dest $(BEEBOUT)/adventure.ssd --name adventure ./ssd
 
 game.asm: tiles
 

@@ -4,15 +4,13 @@ TARGETS=
 TARGETS_CHIPKIT=	mosrom.bin
 TARGETS_BEEB=		mosrom-6809.bin \
 			mosrom.bin \
-			mosrom-nat.bin \
-			hostfs			
+			mosrom-nat.bin 			
 TARGETS_SBC09= mosrom-6809.srec \
 			mosrom.srec \
 			mosrom-nat.srec
 
-HOSTFSDIR := ~/hostfs/beebroms
-
 include		../../Makefile.defs
+
 
 DEPS=			../../includes/hardware.inc ../../includes/common.inc ../../includes/mosrom.inc extras.noi 
 DEPS_MAIN=		irq1_main.asm vdu_chardefs.asm  vdu_main.asm sound_main.asm
@@ -24,13 +22,6 @@ CLEAN_EXTRA=$(addprefix $(CHIPKITOUT)/,mosloadandrun.noi mosloadandsyms.noi \
 
 #mosrom.bin:		mosrom.asm $(DEPS)
 #			$(AS) $(ASFLAGS) --define NOICE=0 -o $@ -l $(basename $@).lst $<
-
-.PHONY:	$(BEEBOUT)/hostfs
-
-$(BEEBOUT)/hostfs:
-		cp $(BEEBOUT)/mosrom.bin $(HOSTFSDIR)/M.MOS6309
-		cp $(BEEBOUT)/mosrom-6809.bin $(HOSTFSDIR)/M.MOS6809
-		cp $(BEEBOUT)/mosrom-nat.bin $(HOSTFSDIR)/M.MOS630N
 
 $(CHIPKITOUT)/mosrom.bin:	mosrom.asm $(DEPS) $(DEPS_MAIN)
 			./mkversion.sh

@@ -1,4 +1,6 @@
 TARGETS_BEEB=	line-1.hex line-1.noi
+CLEAN_EXTRA= $(BEEBOUT)/loadgame.noi
+
 include		../../../Makefile.defs
 
 ASFLAGS=-v
