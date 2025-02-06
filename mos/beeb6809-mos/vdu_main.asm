@@ -2311,7 +2311,7 @@ LD1D5		asl	vduvar_GRA_CUR_EXT,x
 		std	vduvar_GRA_CUR_EXT,x
 		rts
 ;; ----------------------------------------------------------------------------
-;; compare X and Y PLOT spans
+;; Line drawing routines
 
 vduvar_TEMP_draw_W		equ	vduvar_TEMP_8 + 0
 vduvar_TEMP_draw_H		equ	vduvar_TEMP_8 + 2
