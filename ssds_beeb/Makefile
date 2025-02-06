@@ -1,11 +1,9 @@
+SUBDIRS=$(shell for a in $$(find -mindepth 1 -type d); do if [ -e $$a/include.lst ]; then echo $$a; fi; done;)
+TARGETS_EXTRA_BEEB=$(addsuffix .ssd, $(addprefix $(BEEBOUT)/, $(notdir $(SUBDIRS))))
+CLEAN_EXTRA+=$(TARGETS_EXTRA_BEEB)
+
 include		../Makefile.defs 
-HOSTFSDIR=$(TOP)/hostfs
 
+$(BEEBOUT)/%.ssd: 
+	../scripts/buildssd.sh --dest $@ $(notdir $(basename $@))
 
-all: all_beeb
-
-all_beeb:	
-	find . -mindepth 1 -maxdepth 1 -type d -print0 | xargs -0 -n1 ../scripts/buildssd.sh --hostfs $(HOSTFSDIR)
-
-clean:
-	rm -f *.ssd

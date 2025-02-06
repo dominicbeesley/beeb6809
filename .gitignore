@@ -69,22 +69,23 @@ VERSION-date.gen.asm
 VERSION-date.gen.*.asm
 *.sublime-workspace
 *.sublime-project
-rom-dev/BBCBASIC/MINIMOS-6309EBAS_68681_free.txt
-rom-dev/BBCBASIC/MINIMOS-6309EBAS_free.txt
-rom-dev/BBCBASIC/MINIMOS-6309EBAS_HB63C09M_free.txt
-rom-dev/BBCBASIC/MINIMOS-6309NBAS_68681_free.txt
-rom-dev/BBCBASIC/MINIMOS-6309NBAS_free.txt
-rom-dev/BBCBASIC/MINIMOS-6309NBAS_HB63C09M_free.txt
-rom-dev/BBCBASIC/MINIMOS-6809BAS_68681_free.txt
-rom-dev/BBCBASIC/MINIMOS-6809BAS_free.txt
-rom-dev/BBCBASIC/MINIMOS-6809BAS_HB63C09M_free.txt
-rom-dev/BBCBASIC/6309BAS_free.txt
-rom-dev/BBCBASIC/6368BAS_free.txt
-rom-dev/BBCBASIC/6809BAS_free.txt
-rom-dev/BBCBASIC/6809BAS-6502ass_free.txt
-rom-dev/BBCBASIC/6309BAS_free.txt
-rom-dev/BBCBASIC/6309BAS_free.txt
-rom-dev/BBCBASIC/6309BAS_free.txt
-rom-dev/BBCBASIC/6368BAS_free.txt
-rom-dev/BBCBASIC/6809BAS_free.txt
-rom-dev/BBCBASIC/6809BAS-6502ass_free.txt
+# I still want these for now
+# rom-dev/BBCBASIC/MINIMOS-6309EBAS_68681_free.txt
+# rom-dev/BBCBASIC/MINIMOS-6309EBAS_free.txt
+# rom-dev/BBCBASIC/MINIMOS-6309EBAS_HB63C09M_free.txt
+# rom-dev/BBCBASIC/MINIMOS-6309NBAS_68681_free.txt
+# rom-dev/BBCBASIC/MINIMOS-6309NBAS_free.txt
+# rom-dev/BBCBASIC/MINIMOS-6309NBAS_HB63C09M_free.txt
+# rom-dev/BBCBASIC/MINIMOS-6809BAS_68681_free.txt
+# rom-dev/BBCBASIC/MINIMOS-6809BAS_free.txt
+# rom-dev/BBCBASIC/MINIMOS-6809BAS_HB63C09M_free.txt
+# rom-dev/BBCBASIC/6309BAS_free.txt
+# rom-dev/BBCBASIC/6368BAS_free.txt
+# rom-dev/BBCBASIC/6809BAS_free.txt
+# rom-dev/BBCBASIC/6809BAS-6502ass_free.txt
+# rom-dev/BBCBASIC/6309BAS_free.txt
+# rom-dev/BBCBASIC/6309BAS_free.txt
+# rom-dev/BBCBASIC/6309BAS_free.txt
+# rom-dev/BBCBASIC/6368BAS_free.txt
+# rom-dev/BBCBASIC/6809BAS_free.txt
+# rom-dev/BBCBASIC/6809BAS-6502ass_free.txt

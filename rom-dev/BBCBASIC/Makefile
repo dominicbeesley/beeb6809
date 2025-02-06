@@ -56,15 +56,6 @@ GETSYMSFLAGS=-rom A
 
 include		../../Makefile.defs
 
-HOSTFSDIR= $(TOP)/hostfs/beebroms/
-
-.PHONY:	hostfs
-
-hostfs: $(filter %.bin, $(addprefix $(HOSTFSDIR)/, $(TARGETS)))
-
-$(HOSTFSDIR)/%.bin: $(BEEBOUT)/%.bin
-	cp $< $@
-
 6809-assembler.gen.asm:	 6x09-ass-readdefs.pl 6x09-assembler.defs.txt
 		perl 6x09-ass-readdefs.pl
 
@@ -130,6 +121,17 @@ BBCASMTEST=$(BEEBOUT)/test-asm-beeb-1.ffb $(BEEBOUT)/test-asm-beeb-2.ffb $(BEEBO
 XROARASMTEST63=$(BEEBOUT)/test-asm-xroar-63-1.bin $(BEEBOUT)/test-asm-xroar-63-2.bin $(BEEBOUT)/test-asm-xroar-63-3.bin $(BEEBOUT)/test-asm-xroar-63-4.bin $(BEEBOUT)/test-asm-xroar-63-5.bin  $(BEEBOUT)/test-asm-xroar-63-6.bin $(BEEBOUT)/test-asm-xroar-63-7.bin $(BEEBOUT)/test-asm-xroar-63-8.bin $(BEEBOUT)/test-asm-xroar-63-9.bin
 BBCASMTEST63=$(BEEBOUT)/test-asm-beeb-63-1.ffb $(BEEBOUT)/test-asm-beeb-63-2.ffb $(BEEBOUT)/test-asm-beeb-63-3.ffb $(BEEBOUT)/test-asm-beeb-63-4.ffb $(BEEBOUT)/test-asm-beeb-63-5.ffb $(BEEBOUT)/test-asm-beeb-63-6.ffb $(BEEBOUT)/test-asm-beeb-63-7.ffb $(BEEBOUT)/test-asm-beeb-63-8.ffb $(BEEBOUT)/test-asm-beeb-63-9.ffb
 
+
+CLEAN_EXTRA+=$(XROARASMTEST) $(patsubst %.bin, %.asm, $(XROARASMTEST)) $(patsubst %.bin, %.lst, $(XROARASMTEST))
+CLEAN_EXTRA+=$(XROARASMTEST63) $(patsubst %.bin, %.asm, $(XROARASMTEST63)) $(patsubst %.bin, %.lst, $(XROARASMTEST63))
+
+CLEAN_EXTRA+=$(BBCASMTEST) $(patsubst %.ffb, %.bbc, $(BBCASMTEST))
+CLEAN_EXTRA+=$(BBCASMTEST63) $(patsubst %.ffb, %.bbc, $(BBCASMTEST63))
+
+CLEAN_EXTRA+=$(BEEBOUT)/loadbasic.noi
+CLEAN_EXTRA+=$(CHIPKITOUT)/loadbasic.noi
+CLEAN_EXTRA+=$(BEEBOUT)/loadbasic.noi
+CLEAN_EXTRA+=$(BEEBOUT)/loadbasic.noi
 
 .PRECIOUS: $(addsuffix .asm, $(basename $(XROARASMTEST63) $(XROARASMTEST)))
 

@@ -69,7 +69,12 @@ dirs_sbc09:
 		mkdir -p $(SBC09OUT)
 
 clean:		
-		$(foreach cln,$(TARGETS_CHIPKIT_PRE) $(TARGETS_BEEB_PRE) $(TARGETS_MATCHBOX_PRE) $(TARGETS_FLEX_PRE) $(TARGETS_SBC09_PRE), \
+		$(foreach cln, \
+			$(TARGETS_CHIPKIT_PRE) \
+			$(TARGETS_BEEB_PRE) \
+			$(TARGETS_MATCHBOX_PRE) \
+			$(TARGETS_FLEX_PRE) \
+			$(TARGETS_SBC09_PRE), \
 			rm -f $(basename $(cln)).bin $(basename $(cln)).lst $(basename $(cln)).sym $(basename $(cln)).hex ;\
 			rm -f $(cln) \
 		)

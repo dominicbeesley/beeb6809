@@ -27,14 +27,6 @@ ROMNO=E
 
 
 include		../../Makefile.defs 
-HOSTFSDIR=$(TOP)/hostfs/beebroms/
-
-.PHONY:	hostfs
-hostfs: $(filter %.bin, $(addprefix $(HOSTFSDIR)/, $(TARGETS_BEEB)))
-
-$(HOSTFSDIR)/%.bin: $(BEEBOUT)/%.bin
-	cp $< $@
-
 
 VERSION-date.gen.asm: UTILS.asm $(DEPS)
 		./gendate.sh		
