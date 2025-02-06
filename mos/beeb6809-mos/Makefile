@@ -10,9 +10,9 @@ TARGETS_SBC09= mosrom-6809.srec \
 			mosrom.srec \
 			mosrom-nat.srec
 
-HOSTFSDIR := ~/hostfs/beebroms
-
 include		../../Makefile.defs
+
+HOSTFSDIR := $(TOP)/hostfs/beebroms
 
 DEPS=			../../includes/hardware.inc ../../includes/common.inc ../../includes/mosrom.inc extras.noi 
 DEPS_MAIN=		irq1_main.asm vdu_chardefs.asm  vdu_main.asm sound_main.asm

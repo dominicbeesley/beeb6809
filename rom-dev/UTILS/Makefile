@@ -24,9 +24,10 @@ DEPS=	../../includes/hardware.inc \
 		Makefile
 
 ROMNO=E
-HOSTFSDIR=~/hostfs/beebroms/
+
 
 include		../../Makefile.defs 
+HOSTFSDIR=$(TOP)/hostfs/beebroms/
 
 .PHONY:	hostfs
 hostfs: $(filter %.bin, $(addprefix $(HOSTFSDIR)/, $(TARGETS_BEEB)))
