@@ -18,9 +18,13 @@ https://stardot.org.uk/forums/viewtopic.php?t=25465
 The build guide at the bottom of the above page and pre-compiled ROMs are out
 of date, and should be disregarded.
 
+The flowing uses the notation <SOMETHING> to indicate you need to modify the
+value in side the brackets ‘< >’  But in the actual code you you will not use
+‘< >’ in the value for most cases.
+
 ON TO THE BUILD GUIDE:
 
-TLDR - just compile whats here:
+TLDR - "Just compile what's here":
 
 Getting the depends:
 
@@ -45,8 +49,7 @@ libswitch-perl
 You can simply install them with the following:
 
 sudo apt-get update
-sudo apt-get install -y bison flex make gcc g++ make-guile automake
-build-essential perl libfreezethaw-perl libswitch-perl srecord
+sudo apt-get install -y bison flex make gcc g++ make-guile automake build-essential perl libfreezethaw-perl libswitch-perl srecord
 
 You will need to build asm6809 (the assembler) it is located here:
 https://www.6809.org.uk/asm6809/
@@ -60,7 +63,8 @@ Most likely build with something like
 make
 sudo make install
 
-additionally build and install the following repositories along side:
+Additionally build and install the following repositories along side:
+
 https://github.com/ZornsLemma/basictool
 
 once downloaded build with (from root of repo):
@@ -89,7 +93,7 @@ The majority of the ROMS are built into:
 
 the burnable 16K ROM’s are named MINIMOS-<CPUMODE>_<UARTNAME>.BIN
 
-The curet CPUMODE’s are:
+The current CPUMODE’s are:
 
 6309EBAS – 6309 Emulation Basic – Currently bugged (See issue #14 on main repo)
 6309NBAS – 6309 Native Basic – Currently bugged  (See issue #14 on main repo)
@@ -136,16 +140,9 @@ target.  Be sure you understand how it works before changing this file, while
 its possible to make some notes here, essentially the build-chain will break if
 the file is written wrong.  Make a backup – you have been warned.
 
-The flowing uses the notation <SOMETHING> to indicate you need to modify the
-value in side the brackets ‘< >’  But in the actual code you you will not use
-‘< >’ in the value for most cases.
-
-Start by modifying one of the existing SBC09_MOS .asm files and saving as:
+Start by modifying one of the existing SBC09_MOS_<UARTNAME>.asm files and saving as:
 
 SBC09_MOS_<UART NAME HERE>.asm
-
-you will also have to modify the select logic coding in SBC09_MOS.asm to select
-your file, so that it will be selected.
 
 Keep in mind the existing source really likes to use a rotating buffer for
 input, its best to just stick with this, and not reinvent the wheel. Its also
@@ -255,3 +252,24 @@ would be something like:
 $(SBC09OUT)/SBC6809BAS_<UART NAME HERE>.bin: $(DEPS)
 $(SBC09OUT)/SBC6309EBAS_<UART NAME HERE>.bin: $(DEPS)
 $(SBC09OUT)/SBC6309NBAS_<UART NAME HERE>.bin: $(DEPS)
+
+To customize SBC09_MOS.asm, modify the select logic coding in SBC09_MOS.asm 
+to select your file, so that it will be selected at build time:
+
+	IF HB63C09M=1 
+		INCLUDE "SBC09_MOS_HB63C09M.asm"
+	ELSE
+		IF <UART NAME HERE>=1
+			INCLUDE "SBC09_MOS_<UART NAME HERE>.asm"
+		ENDIF
+		IF UART68681=1
+			INCLUDE "SBC09_MOS_68681.asm"
+		ELSE
+			INCLUDE "SBC09_MOS_6850.asm"
+		ENDIF
+	ENDIF
+
+You can take a look at the specific syntax for asm6809 in the programers manual here:
+
+https://www.6809.org.uk/asm6809/doc/asm6809.shtml
+
