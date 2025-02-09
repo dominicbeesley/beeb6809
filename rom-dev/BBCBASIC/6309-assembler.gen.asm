@@ -425,52 +425,52 @@ assParseTbl_END	FCB	$FF	; end of table marker
 assSuffSetsTbl
 		* SUFLIST [01] - LD ABDSUXY*EFWQ BT MD
 		* MD Q BT A B D E F W S U X Y
-		FCB	$1C,$20,$09,$04,$07,$0F,$18,$1A,$2E,$24,$2B,$30,$B2
+		FCB	$1C,$20,$09,$05,$06,$0C,$18,$1A,$2D,$24,$29,$2F,$B4
 		* SUFLIST [0E] - ST ABDSUXY*EFWQ BT
 		* Q BT
 		FCB	$21,$08,$FF,$04
 		* SUFLIST [12] - ADC AB*D R CC
 		* CC R A B D
-		FCB	$0B,$23,$04,$07,$92
+		FCB	$0B,$23,$05,$06,$94
 		* SUFLIST [17] - ABD MD
 		* MD A B D
-		FCB	$1C,$04,$07,$8E
+		FCB	$1C,$05,$06,$95
 		* SUFLIST [1B] - SEXW
 		* W 
 		FCB	$2C,$81
 		* SUFLIST [1D] - MULD
 		* D 
-		FCB	$14,$81
+		FCB	$10,$81
 		* SUFLIST [1F] - SUXY
 		* S U X Y
-		FCB	$27,$2A,$31,$B3
+		FCB	$27,$28,$31,$B3
 		* SUFLIST [23] - AB*DW
 		* A B D W
-		FCB	$05,$06,$16,$AD
+		FCB	$04,$07,$13,$AE
 		* SUFLIST [27] - 23
 		* 2 3 
 		FCB	$02,$03,$81
 		* SUFLIST [2A] - DQ
 		* D Q
-		FCB	$13,$9F
+		FCB	$0E,$9F
 		* SUFLIST [2C] - ADD ABD*EFW R
 		* D A B E F W R
-		FCB	$10,$04,$07,$18,$1A,$2E,$A3
+		FCB	$11,$05,$06,$18,$1A,$2D,$A3
 		* SUFLIST [33] - ABD*EFW
 		* A B D E F W
-		FCB	$05,$06,$15,$17,$19,$AD
+		FCB	$04,$07,$0F,$17,$19,$AE
 		* SUFLIST [39] - CMP ABDSUXY*EFW R
 		* S U X Y D
-		FCB	$25,$28,$2F,$34,$0C,$FF,$2D
+		FCB	$26,$2B,$30,$32,$0D,$FF,$2D
 		* SUFLIST [40] - AB*D
 		* A B D
-		FCB	$05,$06,$96
+		FCB	$04,$07,$93
 		* SUFLIST [43] - SUB ABD*EFW R
 		* D
-		FCB	$0D,$FF,$2D
+		FCB	$12,$FF,$2D
 		* SUFLIST [46] - SU
 		* S U
-		FCB	$26,$A9
+		FCB	$25,$AA
 
 
 
@@ -490,19 +490,19 @@ assSuffItemTbl
 		FCB	$91	; FLAGS - 11
 		* SUFITEM [04] - A
 		FCB	$41	; "A"
-		FCB	$80	; FLAGS - 
-		* SUFITEM [05] - A
-		FCB	$41	; "A"
 		FCB	$84	; FLAGS - SUF-OP
 		FCB	$40	; OP
+		* SUFITEM [05] - A
+		FCB	$41	; "A"
+		FCB	$80	; FLAGS - 
 		* SUFITEM [06] - B
 		FCB	$42	; "B"
 		FCB	$84	; FLAGS - SUF-OP
-		FCB	$50	; OP
+		FCB	$40	; OP
 		* SUFITEM [07] - B
 		FCB	$42	; "B"
 		FCB	$84	; FLAGS - SUF-OP
-		FCB	$40	; OP
+		FCB	$50	; OP
 		* SUFITEM [08] - BT
 		FCB	$42,$54	; "BT"
 		FCB	$BD	; FLAGS - 11 6309 SUF-OP SUF-MODE
@@ -523,45 +523,45 @@ ASS_REGS_CC_IX	EQU	$0B
 		FCB	$81	; MODE #
 		* SUFITEM [0C] - D
 		FCB	$44	; "D"
-		FCB	$96	; FLAGS - 10 #16 SUF-OP
-		FCB	$02	; OP
-		* SUFITEM [0D] - D
-		FCB	$44	; "D"
-		FCB	$86	; FLAGS - #16 SUF-OP
-		FCB	$03	; OP
-		* SUFITEM [0E] - D
-		FCB	$44	; "D"
-		FCB	$92	; FLAGS - 10 #16
-		* SUFITEM [0F] - D
-		FCB	$44	; "D"
 		FCB	$86	; FLAGS - #16 SUF-OP
 		FCB	$46	; OP
-		* SUFITEM [10] - D
+		* SUFITEM [0D] - D
 		FCB	$44	; "D"
-		FCB	$86	; FLAGS - #16 SUF-OP
-		FCB	$38	; OP
-		* SUFITEM [11] - D
-		FCB	$44	; "D"
-		FCB	$80	; FLAGS - 
-		* SUFITEM [12] - D
-		FCB	$44	; "D"
-		FCB	$B2	; FLAGS - 10 6309 #16
-		* SUFITEM [13] - D
+		FCB	$96	; FLAGS - 10 #16 SUF-OP
+		FCB	$02	; OP
+		* SUFITEM [0E] - D
 		FCB	$44	; "D"
 		FCB	$B1	; FLAGS - 11 6309
-		* SUFITEM [14] - D
+		* SUFITEM [0F] - D
+		FCB	$44	; "D"
+		FCB	$96	; FLAGS - 10 #16 SUF-OP
+		FCB	$40	; OP
+		* SUFITEM [10] - D
 		FCB	$44	; "D"
 		FCB	$BF	; FLAGS - 11 6309 #16 SUF-OP SUF-MODE
 		FCB	$52	; OP
 		FCB	$1F	; MODE # dp ix ex
-		* SUFITEM [15] - D
+		* SUFITEM [11] - D
 		FCB	$44	; "D"
-		FCB	$96	; FLAGS - 10 #16 SUF-OP
-		FCB	$40	; OP
-		* SUFITEM [16] - D
+		FCB	$86	; FLAGS - #16 SUF-OP
+		FCB	$38	; OP
+		* SUFITEM [12] - D
+		FCB	$44	; "D"
+		FCB	$86	; FLAGS - #16 SUF-OP
+		FCB	$03	; OP
+		* SUFITEM [13] - D
 		FCB	$44	; "D"
 		FCB	$B6	; FLAGS - 10 6309 #16 SUF-OP
 		FCB	$40	; OP
+		* SUFITEM [14] - D
+		FCB	$44	; "D"
+		FCB	$B2	; FLAGS - 10 6309 #16
+		* SUFITEM [15] - D
+		FCB	$44	; "D"
+		FCB	$92	; FLAGS - 10 #16
+		* SUFITEM [16] - D
+		FCB	$44	; "D"
+		FCB	$80	; FLAGS - 
 		* SUFITEM [17] - E
 		FCB	$45	; "E"
 		FCB	$B5	; FLAGS - 11 6309 SUF-OP
@@ -617,57 +617,57 @@ ASS_REGS_REGREG_IX	EQU	$23
 		FCB	$48	; OP
 		* SUFITEM [25] - S
 		FCB	$53	; "S"
-		FCB	$97	; FLAGS - 11 #16 SUF-OP
-		FCB	$0B	; OP
+		FCB	$82	; FLAGS - #16
 		* SUFITEM [26] - S
 		FCB	$53	; "S"
-		FCB	$82	; FLAGS - #16
+		FCB	$97	; FLAGS - 11 #16 SUF-OP
+		FCB	$0B	; OP
 		* SUFITEM [27] - S
 		FCB	$53	; "S"
 		FCB	$86	; FLAGS - #16 SUF-OP
 		FCB	$02	; OP
 		* SUFITEM [28] - U
 		FCB	$55	; "U"
-		FCB	$97	; FLAGS - 11 #16 SUF-OP
-		FCB	$02	; OP
+		FCB	$86	; FLAGS - #16 SUF-OP
+		FCB	$03	; OP
 		* SUFITEM [29] - U
 		FCB	$55	; "U"
 		FCB	$86	; FLAGS - #16 SUF-OP
-		FCB	$02	; OP
+		FCB	$48	; OP
 		* SUFITEM [2A] - U
 		FCB	$55	; "U"
 		FCB	$86	; FLAGS - #16 SUF-OP
-		FCB	$03	; OP
+		FCB	$02	; OP
 		* SUFITEM [2B] - U
 		FCB	$55	; "U"
-		FCB	$86	; FLAGS - #16 SUF-OP
-		FCB	$48	; OP
+		FCB	$97	; FLAGS - 11 #16 SUF-OP
+		FCB	$02	; OP
 		* SUFITEM [2C] - W
 		FCB	$57	; "W"
 		FCB	$A4	; FLAGS - 6309 SUF-OP
 		FCB	$F7	; OP
 		* SUFITEM [2D] - W
 		FCB	$57	; "W"
-		FCB	$B6	; FLAGS - 10 6309 #16 SUF-OP
-		FCB	$50	; OP
+		FCB	$B2	; FLAGS - 10 6309 #16
 		* SUFITEM [2E] - W
 		FCB	$57	; "W"
-		FCB	$B2	; FLAGS - 10 6309 #16
+		FCB	$B6	; FLAGS - 10 6309 #16 SUF-OP
+		FCB	$50	; OP
 		* SUFITEM [2F] - X
 		FCB	$58	; "X"
 		FCB	$86	; FLAGS - #16 SUF-OP
-		FCB	$0B	; OP
+		FCB	$08	; OP
 		* SUFITEM [30] - X
 		FCB	$58	; "X"
 		FCB	$86	; FLAGS - #16 SUF-OP
-		FCB	$08	; OP
+		FCB	$0B	; OP
 		* SUFITEM [31] - X
 		FCB	$58	; "X"
 		FCB	$82	; FLAGS - #16
 		* SUFITEM [32] - Y
 		FCB	$59	; "Y"
 		FCB	$96	; FLAGS - 10 #16 SUF-OP
-		FCB	$08	; OP
+		FCB	$0B	; OP
 		* SUFITEM [33] - Y
 		FCB	$59	; "Y"
 		FCB	$86	; FLAGS - #16 SUF-OP
@@ -675,7 +675,7 @@ ASS_REGS_REGREG_IX	EQU	$23
 		* SUFITEM [34] - Y
 		FCB	$59	; "Y"
 		FCB	$96	; FLAGS - 10 #16 SUF-OP
-		FCB	$0B	; OP
+		FCB	$08	; OP
 
 
 *********************************************************
@@ -811,7 +811,7 @@ assClass_W_ix	equ	$18	; class #assClassTbl_W
 assClass_W1_ix	equ	$19	; class #assClassTbl_W1
 		FCB	$46	; max index
 		FCB	$A8	; flags
-		FCB	$91	; suffix set
+		FCB	$96	; suffix set
 		FCB	$84	; mode set
 assClass_W2_ix	equ	$1A	; class #assClassTbl_W2
 		FCB	$47	; max index
@@ -901,22 +901,22 @@ ASS_MODESET_IMPLIED	equ	$00
 
 assXlateRegReg
 		fcb	$08	; size
-		fcb	$88	; op org
-		fcb	$36	; op new
 		fcb	$82	; op org
 		fcb	$33	; op new
-		fcb	$8A	; op org
-		fcb	$35	; op new
+		fcb	$89	; op org
+		fcb	$31	; op new
 		fcb	$81	; op org
 		fcb	$37	; op new
 		fcb	$84	; op org
 		fcb	$34	; op new
 		fcb	$8B	; op org
 		fcb	$30	; op new
+		fcb	$8A	; op org
+		fcb	$35	; op new
 		fcb	$80	; op org
 		fcb	$32	; op new
-		fcb	$89	; op org
-		fcb	$31	; op new
+		fcb	$88	; op org
+		fcb	$36	; op new
 
 
 *********************************************************

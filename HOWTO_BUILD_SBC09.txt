@@ -1,0 +1,257 @@
+HOW TO COMPILE THE ALL_SBC09 BRANCH:
+
+The SBC09 branch contains support for common and popular simple single board
+computers based around grant searle’s design for a basic 6809 computer, expanded
+on by Jeff tranter, and David Collins for their sbc’s. The mini-mos is
+configured around the 6850 and 68681 UARTs.  As such is also supported by the
+6850 Wrapper built into David’s  HB63C09M.   Building this brach makes 16K top
+of memory position-able (starting at C000) ROM’s, were the UART is at A000.
+Re-targeting the system is fairly simple by building a mini-mos for your target.
+
+Before you begin, the mini-mos is currently configured to only work using IRQ
+based serial IO.  This means the _IRQ line needs to be tied to the _IRQ line on
+the CPU.  currently it requires a modification to Jeff’s board see the
+following:
+
+https://stardot.org.uk/forums/viewtopic.php?t=25465
+
+The build guide at the bottom of the above page and pre-compiled ROMs are out
+of date, and should be disregarded.
+
+ON TO THE BUILD GUIDE:
+
+TLDR - just compile whats here:
+
+Getting the depends:
+
+If building in Ubuntu, you will need the following:
+
+srecord
+bison
+flex
+make
+gcc
+gpp*
+g++*
+make-guile
+automake
+build-essential
+perl (if not installed)
+libfreezethaw-perl
+libswitch-perl
+
+* - gpp and g++ may be required dependencies to build other packages.
+
+You can simply install them with the following:
+
+sudo apt-get update
+sudo apt-get install -y bison flex make gcc g++ make-guile automake
+build-essential perl libfreezethaw-perl libswitch-perl srecord
+
+You will need to build asm6809 (the assembler) it is located here:
+https://www.6809.org.uk/asm6809/
+
+download the source and compile it, the prepackaged binaries are basically
+out of date or no longer managed and their repository is off GitHub which
+complicates things.
+
+Most likely build with something like
+./configure
+make
+sudo make install
+
+additionally build and install the following repositories along side:
+https://github.com/ZornsLemma/basictool
+
+once downloaded build with (from root of repo):
+cd src
+./build.sh
+cd ..
+sudo cp basictool /usr/local/bin
+
+https://github.com/dominicbeesley/dfs-0.4
+Once downloaded build with (from root of repo):
+autoreconf --install
+./configure
+make
+sudo make install
+
+Once all the dependencies are made, you want to build the ROM’s themselves by
+typing in the root of beeb6809:
+
+make all_sbc09
+
+This will build the BEEB (dependency) and the SBC09 directories.
+
+The majority of the ROMS are built into:
+
+./beeb6809/SBC09/rom-dev/BBCBASIC
+
+the burnable 16K ROM’s are named MINIMOS-<CPUMODE>_<UARTNAME>.BIN
+
+The curet CPUMODE’s are:
+
+6309EBAS – 6309 Emulation Basic – Currently bugged (See issue #14 on main repo)
+6309NBAS – 6309 Native Basic – Currently bugged  (See issue #14 on main repo)
+6809 – 6809 (no 6309 optimizations – works in emulation mode on the 6309)
+
+The current UARTNAME’s are:
+
+6850 – if UARTNAME is omitted (this is the UART for the HB63C09M)
+68681 – This is the 68681 UART target.
+HB63C09M – This is almost the same as the 6850 target but without flow control.
+The HB63C09M has transparent buffering in the 6850 wrapper, as well as a
+different expanded memory map (40k for basic programs at the time, there’s
+banking but its not yet implemented)
+
+
+MAP OF THE ./rom-dev/BBCBASIC directory:
+
+roughly, there are several support files which tie into other aspects of the
+repository but the ones that are most significantly important to this build are:
+
+MiniMOS:
+
+SBC09_MOS_6850.asm		6850 UART<UART NAME HERE>
+SBC09_MOS_68681.asm		68681 UART
+SBC09_MOS.asm			MiniMOS include (picks file based on target)
+SBC09_MOS_HB63C09M.asm	HB63C09M 6850 Wrapper with transparent buffering
+
+Basic Source:
+
+6809BAS.asm 			Dominic’s BBC Basic IV translation port for the 6809.
+
+
+BUILD YOUR OWN MINIMOS:
+
+If you would like to customize a MiniMOS, to build your own be sure you
+understand all of the underlying before proceeding.   Its a good idea to
+refrence your UART specific docs and the above map of the directory before going
+any further.
+
+Makefile / Custom MiniMOS Notes:
+
+The Makefile in the ./rom-dev/BBCBASIC directory needs to be modified to add a
+target.  Be sure you understand how it works before changing this file, while
+its possible to make some notes here, essentially the build-chain will break if
+the file is written wrong.  Make a backup – you have been warned.
+
+The flowing uses the notation <SOMETHING> to indicate you need to modify the
+value in side the brackets ‘< >’  But in the actual code you you will not use
+‘< >’ in the value for most cases.
+
+Start by modifying one of the existing SBC09_MOS .asm files and saving as:
+
+SBC09_MOS_<UART NAME HERE>.asm
+
+you will also have to modify the select logic coding in SBC09_MOS.asm to select
+your file, so that it will be selected.
+
+Keep in mind the existing source really likes to use a rotating buffer for
+input, its best to just stick with this, and not reinvent the wheel. Its also
+generally configured to use the _IRQ vector to build these buffers.  See the
+existing examples and understand how they work before modifying your version.
+
+The top half of the file has a listing of the rom targets for the whole
+repository the target within the file we care about is TARGETS_SBC09:
+
+
+TARGETS_SBC09=			\
+			MINIMOS-6809BAS_68681.BIN \
+			MINIMOS-6309EBAS_68681.BIN \
+			MINIMOS-6309NBAS_68681.BIN \
+			MINIMOS-6809BAS.BIN \
+			MINIMOS-6309EBAS.BIN \
+			MINIMOS-6309NBAS.BIN \
+			MINIMOS-6809BAS_HB63C09M.BIN \
+			MINIMOS-6309EBAS_HB63C09M.BIN \
+			MINIMOS-6309NBAS_HB63C09M.BIN \
+			6809BAS.srec \
+			6809BAS-6502ass.srec \
+			6309BAS.srec \
+			6368BAS.srec
+
+Each line needs to be terminated by a ‘\’ except the last one.  To add a MiniMOS
+you need to put 3 lines in after MINIMOS-6309NBAS_HB63C09M.BIN \:
+
+            MINIMOS-6809BAS_<UART NAME HERE>.BIN \
+            MINIMOS-6309EBAS_<UART NAME HERE>.BIN \
+            MINIMOS-6309NBAS_<UART NAME HERE>.BIN \
+
+Be sure each line is terminated with a ‘\’ or the build-chain will break!
+
+Then at the middle of the file we need to create build entries for each file
+something like:
+
+$(SBC09OUT)/MINIMOS-6809BAS_<UART NAME HERE>.BIN:	6809BAS.asm SBC09_MOS_HB63C09M.asm $(DEPS)
+		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
+		$(AS) $(ASFLAGS) --define SBC09=1 --define <UART NAME HERE>=1 --define BASEADDR=0xC000 --define ASSEMBLER_6809 --define CPU_6809 -o $@ -l $(basename $@).lst $<
+		rm -f SBC09VERSION.inc
+		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+
+		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
+
+$(SBC09OUT)/MINIMOS-6309EBAS_<UART NAME HERE>.BIN:	6809BAS.asm SBC09_MOS_HB63C09M.asm $(DEPS)
+		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
+		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define <UART NAME HERE>=1 --define BASEADDR=0xC000 --define ASSEMBLER_6809 --define CPU_6309 -o $@ -l $(basename $@).lst $<
+		rm -f SBC09VERSION.inc
+		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+
+		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
+
+$(SBC09OUT)/MINIMOS-6309NBAS_<UART NAME HERE>.BIN:	6809BAS.asm SBC09_MOS_HB63C09M.asm $(DEPS)
+		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
+		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define <UART NAME HERE>=1 --define BASEADDR=0xC000 --define ASSEMBLER_6809 --define CPU_6309 --define NATIVE -o $@ -l $(basename $@).lst $<
+		rm -f SBC09VERSION.inc
+		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+
+		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
+
+These sections should be grouped together, and should not be inserted between
+another UART output type.  A safe place would be just before the line:
+
+$(SBC09OUT)/6809BAS.srec: 6809BAS.asm $(DEPS)
+
+but after:
+
+./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
+
+Note that you can set the base address of the ROM here, but you may still have
+to make changes to the code to reflect this.  Please be certain you understand
+how this makefile works before changing anything, and again make a backup.
+
+You will also have to add your own –define <UART NAME HERE>=1 this is in the
+line starting with $(AS) in each entry. Understanding how this works will help
+with customizing SBC09_MOS.asm
+
+The last part of the file contains output definitions for the Makefile:
+
+$(BEEBOUT)/6809BAS.bin: $(DEPS)
+$(BEEBOUT)/6809BAS-6309ass.bin: $(DEPS)
+$(BEEBOUT)/6809BAS-6502ass.bin: $(DEPS)
+$(CHIPKITOUT)/6809BAS.bin: $(DEPS)
+$(CHIPKITOUT)/6809BAS-6309ass.bin: $(DEPS)
+$(CHIPKITOUT)/6809BAS-6502ass.bin: $(DEPS)
+$(FLEXOUT)/FLEXBAS.bin: $(DEPS)
+$(FLEXOUT)/FLEXBBC.bin: $(DEPS)
+$(SBC09OUT)/SBC6809BAS.bin: $(DEPS)
+$(SBC09OUT)/SBC6309EBAS.bin: $(DEPS)
+$(SBC09OUT)/SBC6309NBAS.bin: $(DEPS)
+$(SBC09OUT)/SBC6809BAS_68681.bin: $(DEPS)
+$(SBC09OUT)/SBC6309EBAS_68681.bin: $(DEPS)
+$(SBC09OUT)/SBC6309NBAS_68681.bin: $(DEPS)
+$(SBC09OUT)/SBC6809BAS_HB63C09M.bin: $(DEPS)
+$(SBC09OUT)/SBC6309EBAS_HB63C09M.bin: $(DEPS)
+$(SBC09OUT)/SBC6309NBAS_HB63C09M.bin: $(DEPS)
+$(MATCHBOXOUT)/6809BAS.bin: $(DEPS)
+
+You will need to add 3 of your own new entries after:
+
+$(SBC09OUT)/SBC6309NBAS_HB63C09M.bin: $(DEPS)
+
+At this point the specific syntax should be familiar to you but as an example it
+would be something like:
+
+$(SBC09OUT)/SBC6809BAS_<UART NAME HERE>.bin: $(DEPS)
+$(SBC09OUT)/SBC6309EBAS_<UART NAME HERE>.bin: $(DEPS)
+$(SBC09OUT)/SBC6309NBAS_<UART NAME HERE>.bin: $(DEPS)
