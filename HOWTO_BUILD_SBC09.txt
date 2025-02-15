@@ -43,6 +43,7 @@ build-essential
 perl (if not installed)
 libfreezethaw-perl
 libswitch-perl
+srecord
 
 * - gpp and g++ may be required dependencies to build other packages.
 
