@@ -87,5 +87,11 @@ installbin:
 	@rsync -av --progress hostfs/ $(DEST)  # Sync files while preserving structure
 	@echo "Installation complete!"
 
+makehbrom:
+	@echo "Making HB63C09M ROM for Submodule..."
+	@mkdir -p ../ROMS  
+	@cp ./SBC09/rom-dev/BBCBASIC/MINIMOS-6809BAS_HB63C09M.BIN ../ROMS/BBCBASIC.BIN
+	@echo "Complete!"
+
 	
 	
