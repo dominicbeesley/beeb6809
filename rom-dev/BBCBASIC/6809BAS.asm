@@ -1176,6 +1176,7 @@ tokLineNoSk1					; found end of number
 ;L8D62: - when moving stuff to point here beware line number must be in ZP_FPB + 2,3 in bigendian, Y must point at byte before first of the three bytes
 int16atZP_FPB2toBUFasTOKENIZED
 		LDA	ZP_FPB + 2		; see p.40 of ROM UG (note diagram is wrong see text)
+		; TODO: I suspect there should be AND #$3F here?
 		ORA	#$40
 		STA	3,U			; byte 3 = "01" & MSB[5 downto 0] 
 		LDA	ZP_FPB + 3		; lsb
@@ -1955,7 +1956,7 @@ cmdPRINT_TAB						; L9241
 		CALL	skipSpacesCheckCommaAtY		; Get next non-space character, compare with ','
 		BEQ	cmdPRINT_TAB_comma		; Comma, jump to TAB(x,y)
 		CMPA	#')'				; Check for closing bracket
-		LBNE	brkMissingComma			; Jump to give "Missing )" error
+		LBNE	brkMissingEndBracket		; Jump to give "Missing )" error
 		LDA	ZP_INT_WA + 3			; Get value
 		SUBA	ZP_PRLINCOUNT			; A=tab-COUNT
 		BEQ	rtsCLC_L926A			; No spaces needed, jump to clear carry, update and return
@@ -4108,6 +4109,17 @@ LA079		CALL	fpCopyFPA_FPTEMP3
 		BRA	LA05C
 
 
+;;;  __________  ____  ____       _____ ___ _    ________   _____ ____  ___   ____________   __  ____________  ________
+;;; /_  __/ __ \/ __ \/ __ \_    / ___//   | |  / / ____/  / ___// __ \/   | / ____/ ____/  / / / / ____/ __ \/ ____/ /
+;;;  / / / / / / / / / / / (_)   \__ \/ /| | | / / __/     \__ \/ /_/ / /| |/ /   / __/    / /_/ / __/ / /_/ / __/ / /
+;;; / / / /_/ / /_/ / /_/ /     ___/ / ___ | |/ / /___    ___/ / ____/ ___ / /___/ /___   / __  / /___/ _, _/ /___/_/
+;;;/_/  \____/_____/\____(_)   /____/_/  |_|___/_____/   /____/_/   /_/  |_\____/_____/  /_/ /_/_____/_/ |_/_____(_)
+
+;
+; Use DIV on 6309, use an outer loop, slower, shorter.
+;
+
+
 		; formats a 16 bit integer at ZP_INT_WA + 2 to a string
 		; NEW API
 		;	A contains preferred length or 0 for any
@@ -4768,14 +4780,14 @@ fpShiftBMantissaRight
 		ROR	ZP_FPB + 6
 		RTS
 fmMulBy10						; LA436
-		LDD	ZP_FPA + 1			; mantissa + 3 (i.e. * 8)
+		LDD	ZP_FPA + 1			; exponent + 3 (i.e. * 8)
 		ADDD	#$03
 		STD	ZP_FPA + 1
 		CALL	fpCopyFPAtoFPBAndShiftRight	; fpB = fpA / 4 i.e.
-		CALL	fpShiftBMantissaRight		; note C is brought in here!
+		CALL	fpShiftBMantissaRight		; note C is brought out here!
 fpAddAtoBstoreinA_sameExp
 		LDD	ZP_FPA + 6
-		ADCB	ZP_FPB + 6
+		ADCB	ZP_FPB + 6			; TODO: check should the carry be carried in here!?
 		ADCA	ZP_FPB + 5
 		STD	ZP_FPA + 6
 
@@ -8441,7 +8453,7 @@ tokenizeAndStore
 		CALL	skipSpacesDecodeLineNumberNewAPI
 		BCC	rtsLBAEA
 tokenizeAndStoreAlreadyLineNoDecoded					; LBB08
-		CLRB
+		CLRB				// TODO: check if needed?
 		TST	ZP_LISTO
 		BEQ	tokAndStoreListo0
 		JSR	skipSpacesYStepBack		
