@@ -26,7 +26,7 @@ CLEAN_EXTRA=$(addprefix $(CHIPKITOUT)/,mosloadandrun.noi mosloadandsyms.noi \
 $(CHIPKITOUT)/mosrom.bin:	mosrom.asm $(DEPS) $(DEPS_MAIN)
 			./mkversion.sh
 			$(AS) $(ASFLAGS) --define MACH_CHIPKIT=1 -o $@ -l $(basename $@).lst $<
-			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+			$(PERL) ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 						
 			./makeloadnoi.sh $(CHIPKITOUT) mosrom.bin >$(CHIPKITOUT)/mosloadandrun.noi
 			cat $(basename $@).sym >>$(CHIPKITOUT)/mosloadandrun.noi
@@ -41,7 +41,7 @@ $(CHIPKITOUT)/mosrom.bin:	mosrom.asm $(DEPS) $(DEPS_MAIN)
 $(BEEBOUT)/mosrom-6809.bin:	mosrom.asm $(DEPS) $(DEPS_MAIN)
 			./mkversion.sh
 			$(AS) -v --define CPU_6809=1 --define MACH_BEEB=1 --define BLITTER=1 -o $@ -l $(basename $@).lst $<
-			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+			$(PERL) ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 						
 			./makeloadnoi.sh $(BEEBOUT) mosrom-6809.bin >$(BEEBOUT)/mosloadandrun-6809.noi
 			cat $(basename $@).sym >>$(BEEBOUT)/mosloadandrun-6809.noi
@@ -57,7 +57,7 @@ $(BEEBOUT)/mosrom-6809.bin:	mosrom.asm $(DEPS) $(DEPS_MAIN)
 $(BEEBOUT)/mosrom.bin:	mosrom.asm $(DEPS) $(DEPS_MAIN)
 			./mkversion.sh
 			$(AS) -v -3 --define CPU_6309=1 --define MACH_BEEB=1 --define BLITTER=1 -o $@ -l $(basename $@).lst $<
-			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+			$(PERL) ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 						
 			./makeloadnoi.sh $(BEEBOUT) mosrom.bin >$(BEEBOUT)/mosloadandrun.noi
 			cat $(basename $@).sym >>$(BEEBOUT)/mosloadandrun.noi
@@ -72,7 +72,7 @@ $(BEEBOUT)/mosrom.bin:	mosrom.asm $(DEPS) $(DEPS_MAIN)
 $(BEEBOUT)/mosrom-nat.bin:	mosrom.asm $(DEPS) $(DEPS_MAIN)
 			./mkversion.sh
 			$(AS) -v -3 --define NATIVE=1 --define CPU_6309=1 --define MACH_BEEB=1 --define BLITTER=1 -o $@ -l $(basename $@).lst $<
-			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+			$(PERL) ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 						
 			./makeloadnoi.sh $(BEEBOUT) mosrom-nat.bin >$(BEEBOUT)/mosloadandrun-nat.noi
 			cat $(basename $@).sym >>$(BEEBOUT)/mosloadandrun-nat.noi
@@ -91,7 +91,7 @@ $(SBC09OUT)/mosrom-6809.srec:	mosrom.asm $(DEPS) $(DEPS_SBC09)
 
 			srec_cat $@ -fill 0xFF 0xC000 0x10000 -offset -0xC000 -o $(basename $@).bin -binary
 
-			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+			$(PERL) ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 						
 			./makeloadnoi.sh $(SBC09OUT) mosrom-6809.srec >$(SBC09OUT)/mosloadandrun-6809.noi
 			cat $(basename $@).sym >>$(SBC09OUT)/mosloadandrun-6809.noi
@@ -110,7 +110,7 @@ $(SBC09OUT)/mosrom.srec:	mosrom.asm $(DEPS)	$(DEPS_SBC09)
 
 			srec_cat $@ -fill 0xFF 0xC000 0x10000 -offset -0xC000 -o $(basename $@).bin -binary
 
-			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+			$(PERL) ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 						
 			./makeloadnoi.sh $(SBC09OUT) mosrom.srec >$(SBC09OUT)/mosloadandrun.noi
 			cat $(basename $@).sym >>$(SBC09OUT)/mosloadandrun.noi
@@ -128,7 +128,7 @@ $(SBC09OUT)/mosrom-nat.srec:	mosrom.asm $(DEPS)	$(DEPS_SBC09)
 
 			srec_cat $@ -fill 0xFF 0xC000 0x10000 -offset -0xC000 -o $(basename $@).bin -binary
 
-			perl ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+			$(PERL) ../../scripts/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 						
 			./makeloadnoi.sh $(SBC09OUT) mosrom-nat.srec >$(SBC09OUT)/mosloadandrun-nat.noi
 			cat $(basename $@).sym >>$(SBC09OUT)/mosloadandrun-nat.noi

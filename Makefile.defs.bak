@@ -20,26 +20,26 @@ TARGETS_MATCHBOX_PRE=$(addprefix $(MATCHBOXOUT)/,$(TARGETS_MATCHBOX))
 
 $(CHIPKITOUT)/%.hex: 	%.asm	$(DEPS)
 		$(AS) $(ASFLAGS)  --define MACH_CHIPKIT=1 -S -o $@ -l $(basename $@).lst $<
-		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 $(BEEBOUT)/%.hex:	%.asm	$(DEPS)
 		$(AS) $(ASFLAGS) --define MACH_BEEB=1 -S -o $@ -l $(basename $@).lst $<
-		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 $(MATCHBOXOUT)/%.hex:	%.asm	$(DEPS)
 		$(AS) $(ASFLAGS) --define MACH_MATCHBOX=1 -S -o $@ -l $(basename $@).lst $<
-		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 $(FLEXOUT)/%.hex:	%.asm	$(DEPS)
 		$(AS) $(ASFLAGS) --define MACH_FLEX=1 -S -o $@ -l $(basename $@).lst $<
-		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 
 $(CHIPKITOUT)/%.bin: 	%.asm	$(DEPS)
 		$(AS) $(ASFLAGS) --define MACH_CHIPKIT=1 -o $@ -l $(basename $@).lst $<
-		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 $(BEEBOUT)/%.bin:	%.asm	$(DEPS)	
 		$(AS) $(ASFLAGS) --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
-		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 $(MATCHBOXOUT)/%.bin:	%.asm	$(DEPS)
 		$(AS) $(ASFLAGS) --define MACH_MATCHBOX=1 -o $@ -l $(basename $@).lst $<
-		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 
 
 all:		all_beeb all_chipkit all_matchbox all_flex 

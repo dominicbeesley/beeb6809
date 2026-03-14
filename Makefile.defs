@@ -2,6 +2,7 @@
 MLCa:=$(words $(MAKEFILE_LIST))
 MLCb:=$(shell echo "$(MLCa) - 1" | bc)
 CALLER_MAKE=$(realpath $(lastword $(wordlist 1,$(MLCb),$(MAKEFILE_LIST))))
+PERL=/usr/bin/env perl
 AS=asm6809 -B
 TOP:=$(realpath $(dir $(lastword $(MAKEFILE_LIST))))
 INC:=$(TOP)/includes
@@ -25,29 +26,29 @@ MAKELOADNOI=$(SCRIPTS)/makeloadnoi.sh
 
 $(CHIPKITOUT)/%.hex $(CHIPKITOUT)/%.sym $(CHIPKITOUT)/%.lst: 	%.asm	$(DEPS)
 		$(AS) $(ASFLAGS)  --define MACH_CHIPKIT=1 -S -o $@ -l $(basename $@).lst $<
-		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 $(BEEBOUT)/%.hex $(BEEBOUT)/%.sym $(BEEBOUT)/%.lst:	%.asm	$(DEPS)
 		$(AS) $(ASFLAGS) --define MACH_BEEB=1 -S -o $@ -l $(basename $@).lst $<
-		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 $(MATCHBOXOUT)/%.hex $(MATCHBOXOUT)/%.sym $(MATCHBOXOUT)/%.lst:	%.asm	$(DEPS)
 		$(AS) $(ASFLAGS) --define MACH_MATCHBOX=1 -S -o $@ -l $(basename $@).lst $<
-		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 $(FLEXOUT)/%.hex $(FLEXOUT)/%.sym $(FLEXOUT)/%.lst:	%.asm	$(DEPS)
 		$(AS) $(ASFLAGS) --define MACH_FLEX=1 -S -o $@ -l $(basename $@).lst $<
-		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 $(SBC09OUT)/%.hex $(SBC09OUT)/%.sym $(SBC09OUT)/%.lst:	%.asm	$(DEPS)
 		$(AS) $(ASFLAGS) --define MACH_SBC09=1 -S -o $@ -l $(basename $@).lst $<
-		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 
 $(CHIPKITOUT)/%.bin $(CHIPKITOUT)/%.sym $(CHIPKITOUT)/%.lst: 	%.asm	$(DEPS)
 		$(AS) $(ASFLAGS) --define MACH_CHIPKIT=1 -o $@ -l $(basename $@).lst $<
-		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 $(BEEBOUT)/%.bin $(BEEBOUT)/%.sym $(BEEBOUT)/%.lst:	%.asm	$(DEPS)	
 		$(AS) $(ASFLAGS) --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
-		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 $(MATCHBOXOUT)/%.bin $(MATCHBOXOUT)/%.sym $(MATCHBOXOUT)/%.lst:	%.asm	$(DEPS)
 		$(AS) $(ASFLAGS) --define MACH_MATCHBOX=1 -o $@ -l $(basename $@).lst $<
-		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
 
 
 all:		all_beeb all_chipkit all_matchbox all_flex all_sbc09

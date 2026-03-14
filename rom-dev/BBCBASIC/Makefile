@@ -57,17 +57,19 @@ GETSYMSFLAGS=-rom A
 include		../../Makefile.defs
 
 6809-assembler.gen.asm:	 6x09-ass-readdefs.pl 6x09-assembler.defs.txt
-		perl 6x09-ass-readdefs.pl
+		echo "H1"
+		$(PERL) 6x09-ass-readdefs.pl
 
 6309-assembler.gen.asm:	 6x09-ass-readdefs.pl 6x09-assembler.defs.txt
-		perl 6x09-ass-readdefs.pl --6309
+		echo "H2"
+		$(PERL) 6x09-ass-readdefs.pl --6309
 
 
 $(BEEBOUT)/test-asm-xroar-%.asm:asm-test-%.txt mkasmtest.pl
-	perl mkasmtest.pl -A $< $@
+	$(PERL) mkasmtest.pl -A $< $@
 
 $(BEEBOUT)/test-asm-xroar-63-%.asm:asm-test-%.txt mkasmtest.pl
-	perl mkasmtest.pl -3 -A $< $@
+	$(PERL) mkasmtest.pl -3 -A $< $@
 
 
 $(BEEBOUT)/test-asm-xroar-%.bin:$(BEEBOUT)/test-asm-xroar-%.asm
@@ -104,11 +106,11 @@ $(BEEBOUT)/test-asm-beeb-63-8.bbc: CHAIN=B.ASM639
 $(BEEBOUT)/test-asm-beeb-63-9.bbc: SAVE=C.BBC639
 
 $(BEEBOUT)/test-asm-beeb-%.bbc:asm-test-%.txt mkasmtest.pl
-	perl mkasmtest.pl -S "$(SAVE)" -C "$(CHAIN)" -B $< $@
+	$(PERL) mkasmtest.pl -S "$(SAVE)" -C "$(CHAIN)" -B $< $@
 
 
 $(BEEBOUT)/test-asm-beeb-63-%.bbc:asm-test-%.txt mkasmtest.pl
-	perl mkasmtest.pl -3 -S "$(SAVE)" -C "$(CHAIN)" -B $< $@
+	$(PERL) mkasmtest.pl -3 -S "$(SAVE)" -C "$(CHAIN)" -B $< $@
 
 
 $(BEEBOUT)/test-asm-beeb-%.ffb:$(BEEBOUT)/test-asm-beeb-%.bbc
@@ -198,39 +200,39 @@ $(CHIPKITOUT)/loadbasic6309andsyms.noi: $(CHIPKITOUT)/6309BAS.bin
 
 $(BEEBOUT)/6309BAS.bin: 6809BAS.asm $(DEPS)
 		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6309 --define CPU_6309 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
-		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
 $(BEEBOUT)/6368BAS.bin: 6809BAS.asm $(DEPS)
 		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6809 --define CPU_6309 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
-		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
 
 $(CHIPKITOUT)/6309BAS.bin: 6809BAS.asm $(DEPS)
 		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6309 --define CPU_6309 --define MACH_CHIPKIT=1 -o $@ -l $(basename $@).lst $<
-		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> ck_$(notdir $(basename $@))_free.txt
 
 $(CHIPKITOUT)/6368BAS.bin: 6809BAS.asm $(DEPS)
 		$(AS) $(ASFLAGS) -3 --define ASSEMBLER_6809 --define CPU_6309 --define MACH_CHIPKIT=1 -o $@ -l $(basename $@).lst $<
-		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
 
 $(BEEBOUT)/6809BAS.bin: 6809BAS.asm $(DEPS)
 		$(AS) $(ASFLAGS) --define ASSEMBLER_6809 --define CPU_6809 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
-		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
 $(CHIPKITOUT)/6809BAS.bin: 6809BAS.asm $(DEPS)
 		$(AS) $(ASFLAGS) --define ASSEMBLER_6809 --define CPU_6809 --define MACH_CHIPKIT=1 -o $@ -l $(basename $@).lst $<
-		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> ck_$(notdir $(basename $@))_free.txt
 
@@ -238,36 +240,36 @@ $(CHIPKITOUT)/6809BAS.bin: 6809BAS.asm $(DEPS)
 
 $(BEEBOUT)/6809BAS-6502ass.bin: 6809BAS-6502ass.asm $(DEPS)
 		$(AS) $(ASFLAGS) --define ASSEMBLER_6809 --define CPU_6809 --define MACH_BEEB=1 -o $@ -l $(basename $@).lst $<
-		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
 $(CHIPKITOUT)/6809BAS-6502ass.bin: 6809BAS-6502ass.asm $(DEPS)
 		$(AS) $(ASFLAGS) --define ASSEMBLER_6809 --define CPU_6809 --define MACH_CHIPKIT=1 -o $@ -l $(basename $@).lst $<
-		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> ck_$(notdir $(basename $@))_free.txt
 
 
 $(MATCHBOXOUT)/6809BAS-6502ass.bin: 6809BAS-6502ass.asm $(DEPS)
 		$(AS) $(ASFLAGS) --define ASSEMBLER_6809 --define CPU_6809 --define MACH_MATCHBOX=1 -o $@ -l $(basename $@).lst $<
-		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
-		perl $(SCRIPTS)/getsymbols.pl -bem <$(basename $@).lst >$(basename $@).bem
+		$(PERL) $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl -bem <$(basename $@).lst >$(basename $@).bem
 
 		./freespace.pl <$(basename $@).sym >> mb_$(notdir $(basename $@))_free.txt
 
 $(MATCHBOXOUT)/6809BAS.bin: 6809BAS.asm $(DEPS)
 		$(AS) $(ASFLAGS) --define ASSEMBLER_6809 --define CPU_6809 --define MACH_MATCHBOX=1 -o $@ -l $(basename $@).lst $<
-		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
-		perl $(SCRIPTS)/getsymbols.pl -bem <$(basename $@).lst >$(basename $@).bem
+		$(PERL) $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl -bem <$(basename $@).lst >$(basename $@).bem
 
 		./freespace.pl <$(basename $@).sym >> mb_$(notdir $(basename $@))_free.txt
 
 
 $(FLEXOUT)/FLEXBAS.BIN:	6809BAS.asm $(DEPS)
 		$(AS) -S --define FLEX=1 -o $(basename $@).hex -l $(basename $@).lst $<
-		perl $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
-		perl $(BASEDIR)/scripts/flex/hex2bin.pl $(basename $@).hex $@
+		$(PERL) $(SCRIPTS)/getsymbols.pl <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(BASEDIR)/scripts/flex/hex2bin.pl $(basename $@).hex $@
 
 		./freespace.pl <$(basename $@).sym >> fl_$(notdir $(basename $@))_free.txt
 
@@ -275,7 +277,7 @@ $(SBC09OUT)/MINIMOS-6809BAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
 		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
 		$(AS) $(ASFLAGS) --define SBC09=1 --define BASEADDR=0xC000 --define ASSEMBLER_6809 --define CPU_6809 -o $@ -l $(basename $@).lst $<
 		rm -f SBC09VERSION.inc
-		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
@@ -283,7 +285,7 @@ $(SBC09OUT)/MINIMOS-6309EBAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
 		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
 		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define BASEADDR=0xC000 --define ASSEMBLER_6809 --define CPU_6309 -o $@ -l $(basename $@).lst $<
 		rm -f SBC09VERSION.inc
-		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
@@ -291,7 +293,7 @@ $(SBC09OUT)/MINIMOS-6309NBAS.BIN:	6809BAS.asm SBC09_MOS.asm $(DEPS)
 		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
 		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define BASEADDR=0xC000 --define ASSEMBLER_6809 --define CPU_6309 --define NATIVE -o $@ -l $(basename $@).lst $<
 		rm -f SBC09VERSION.inc
-		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
@@ -299,7 +301,7 @@ $(SBC09OUT)/MINIMOS-6809BAS_HB63C09M.BIN:	6809BAS.asm SBC09_MOS_HB63C09M.asm $(D
 		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
 		$(AS) $(ASFLAGS) --define SBC09=1 --define HB63C09M=1 --define BASEADDR=0xC000 --define ASSEMBLER_6809 --define CPU_6809 -o $@ -l $(basename $@).lst $<
 		rm -f SBC09VERSION.inc
-		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
@@ -307,7 +309,7 @@ $(SBC09OUT)/MINIMOS-6309EBAS_HB63C09M.BIN:	6809BAS.asm SBC09_MOS_HB63C09M.asm $(
 		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
 		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define HB63C09M=1 --define BASEADDR=0xC000 --define ASSEMBLER_6809 --define CPU_6309 -o $@ -l $(basename $@).lst $<
 		rm -f SBC09VERSION.inc
-		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
@@ -315,7 +317,7 @@ $(SBC09OUT)/MINIMOS-6309NBAS_HB63C09M.BIN:	6809BAS.asm SBC09_MOS_HB63C09M.asm $(
 		echo "SBC09VERSION EQU /`git rev-parse --short HEAD`/" > SBC09VERSION.inc
 		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define HB63C09M=1 --define BASEADDR=0xC000 --define ASSEMBLER_6809 --define CPU_6309 --define NATIVE -o $@ -l $(basename $@).lst $<
 		rm -f SBC09VERSION.inc
-		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
@@ -324,7 +326,7 @@ $(SBC09OUT)/MINIMOS-6809BAS_68681.BIN:	6809BAS.asm SBC09_MOS_68681.asm $(DEPS)
 		$(AS) $(ASFLAGS) --define SBC09=1 --define UART68681=1 --define ASSEMBLER_6809 --define CPU_6809 -o $@ -l $(basename $@).lst $<
 		if [ -f ../../../FUZIX/Kernel/fuzix.bin ]; then cat ../../../FUZIX/Kernel/fuzix.bin >> $@; else echo "Skipping FUZIX"; fi
 		rm -f SBC09VERSION.inc
-		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
@@ -333,7 +335,7 @@ $(SBC09OUT)/MINIMOS-6309EBAS_68681.BIN:	6809BAS.asm SBC09_MOS_68681.asm $(DEPS)
 		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define UART68681=1 --define ASSEMBLER_6309 --define CPU_6309 -o $@ -l $(basename $@).lst $<
 		if [ -f ../../../FUZIX/Kernel/fuzix.bin ]; then cat ../../../FUZIX/Kernel/fuzix.bin >> $@; else echo "Skipping FUZIX"; fi
 		rm -f SBC09VERSION.inc
-		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
@@ -342,7 +344,7 @@ $(SBC09OUT)/MINIMOS-6309NBAS_68681.BIN:	6809BAS.asm SBC09_MOS_68681.asm $(DEPS)
 		$(AS) $(ASFLAGS) -3 --define SBC09=1 --define UART68681=1 --define ASSEMBLER_6309 --define CPU_6309 --define NATIVE -o $@ -l $(basename $@).lst $<
 		if [ -f ../../../FUZIX/Kernel/fuzix.bin ]; then cat ../../../FUZIX/Kernel/fuzix.bin >> $@; else echo "Skipping FUZIX"; fi
 		rm -f SBC09VERSION.inc
-		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
@@ -351,7 +353,7 @@ $(SBC09OUT)/6809BAS.srec: 6809BAS.asm $(DEPS)
 
 		srec_cat $@ -fill 0xFF 0x8000 0xC000 -offset -0x8000 -o $(basename $@).bin -binary
 
-		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
@@ -360,7 +362,7 @@ $(SBC09OUT)/6309BAS.srec: 6809BAS.asm $(DEPS)
 
 		srec_cat $@ -fill 0xFF 0x8000 0xC000 -offset -0x8000 -o $(basename $@).bin -binary
 
-		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
@@ -369,7 +371,7 @@ $(SBC09OUT)/6368BAS.srec: 6809BAS.asm $(DEPS)
 
 		srec_cat $@ -fill 0xFF 0x8000 0xC000 -offset -0x8000 -o $(basename $@).bin -binary
 
-		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
@@ -378,7 +380,7 @@ $(SBC09OUT)/6809BAS-6502ass.srec: 6809BAS-6502ass.asm $(DEPS)
 
 		srec_cat $@ -fill 0xFF 0x8000 0xC000 -offset -0x8000 -o $(basename $@).bin -binary
 
-		perl $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
+		$(PERL) $(SCRIPTS)/getsymbols.pl $(GETSYMSFLAGS) <$(basename $@).lst >$(basename $@).sym
 
 		./freespace.pl <$(basename $@).sym >> $(notdir $(basename $@))_free.txt
 
